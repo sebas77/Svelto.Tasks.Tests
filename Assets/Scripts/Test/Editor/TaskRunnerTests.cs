@@ -329,13 +329,13 @@ namespace Test
         public void TestStopStartTaskRoutine()
         {
             _reusableTaskRoutine.SetScheduler(new MultiThreadRunner("TestStopStartTaskRoutine"));
-            _reusableTaskRoutine.SetEnumerator(TestWithThrow()).Start();
-
-            _reusableTaskRoutine.Stop();
+            _reusableTaskRoutine.SetEnumerator(TestWithThrow());
+            _reusableTaskRoutine.Start();
+            _reusableTaskRoutine.Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
 
             _reusableTaskRoutine.SetScheduler(StandardSchedulers.syncScheduler);
             var enumerator = TestWithoutThrow();
-            _reusableTaskRoutine.SetEnumerator(enumerator).Start();
+            _reusableTaskRoutine.SetEnumerator(enumerator).Start(); //test routine can be reused with another enumerator
             Assert.That((int)enumerator.Current, Is.EqualTo(1));
         }
 
@@ -350,7 +350,7 @@ namespace Test
             
             while (continuator.MoveNext()) yield return null;
 
-            Assert.That(result.counter == 2);
+            Assert.That(result.counter == 1);
         }
 
         [UnityTest]
@@ -361,17 +361,16 @@ namespace Test
             _reusableTaskRoutine.SetScheduler(new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider")).SetEnumerator(SimpleEnumerator(result)).Start();
             _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).Start();
             _reusableTaskRoutine.Stop();
+
             var continuator = _reusableTaskRoutine.Start();
 
             while (continuator.MoveNext()) yield return null;
 
-            Assert.That(result.counter == 2);
+            Assert.That(result.counter == 1);
         }
 
         IEnumerator SimpleEnumerator(ValueObject result)
         {
-            result.counter++;
-
             yield return new WaitForSecondsEnumerator(1);
 
             result.counter++;
@@ -379,7 +378,7 @@ namespace Test
 
         IEnumerator TestWithThrow()
         {
-            yield return null;
+            yield return new WaitForSecondsEnumerator(0.1f);
 
             throw new Exception();
         }
