@@ -2,8 +2,6 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
-using System.Diagnostics;
-using NUnit.Framework.Constraints;
 using Svelto.Tasks;
 
 public class TestsThatCanRunOnlyInPlayMode
@@ -11,7 +9,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [SetUp]
     public void Setup()
     {
-        iterable1 = new Enumerable(10000);
+        iterable1 = new Enumerable(1000);
     }
     // A UnityTest behaves like a coroutine in PlayMode
     // and allows you to yield null to skip a frame in EditMode
@@ -43,7 +41,7 @@ public class TestsThatCanRunOnlyInPlayMode
         {
             DateTime now = DateTime.Now;
 
-            var task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+            var task = iterable1.ThreadSafeRunOnSchedule(runner);
 
             while (task.MoveNext())
                 yield return null;
@@ -52,16 +50,33 @@ public class TestsThatCanRunOnlyInPlayMode
 
             //10000 iteration * 1ms = 10 seconds
 
-            Assert.That(iterable1.AllRight == true && seconds == 10);
+            Assert.That(iterable1.AllRight == true && seconds == 1);
+        }
+    }
+    
+    [UnityTest]
+    [Timeout(1000)]
+    public IEnumerator TestTightMultithread()
+    {
+        var iterable2 = new Enumerable(100);
+        
+        using (var runner = new MultiThreadRunner("tighttest"))
+        {
+            var taskroutine = iterable1.PrepareTaskRoutineOnSchedule(runner);
+            
+            yield return taskroutine.Start();
+
+            taskroutine.SetEnumerator(iterable2);
+            yield return taskroutine.Start();
+
+            Assert.That(true);
         }
     }
 
     Enumerable iterable1;
 
-    class Enumerable : IEnumerable
+    class Enumerable : IEnumerator
     {
-        public long endOfExecutionTime { get; private set; }
-
         public bool AllRight
         {
             get
@@ -76,29 +91,25 @@ public class TestsThatCanRunOnlyInPlayMode
             totalIterations = niterations;
         }
 
+        public bool MoveNext()
+        {
+            if (iterations < totalIterations)
+            {
+                iterations++;
+                return true;
+            }
+
+            return false;
+        }
+
         public void Reset()
         {
             iterations = 0;
         }
 
-        public IEnumerator GetEnumerator()
-        {
-            Reset();
+        public object Current { get; private set; }
 
-            if (totalIterations < 0)
-                throw new Exception("can't handle this");
-
-            while (iterations < totalIterations)
-            {
-                iterations++;
-
-                yield return null;
-            }
-
-            endOfExecutionTime = DateTime.Now.Ticks;
-        }
-
-        int totalIterations;
+        readonly int totalIterations;
         int iterations;
     }
 }

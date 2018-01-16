@@ -14,9 +14,14 @@ Temp
 /Svelto.Tasks.CSharp.Plugins.csproj
 /Svelto.Tasks.CSharp.csproj
 /Svelto.Tasks.v11.suo
+/.idea/
 /*.csproj
 /Assets/Plugins/Svelto/**/*.meta
 /.vs/Svelto.Tasks/v14/*.suo
 /.vs/Svelto.Tasks/v15
 /UnityPackageManager/manifest.json
 /.vs/Svelto.Tasks.Tests/v15
+/Assets/Plugins/Editor/JetBrains.meta
+/Assets/Plugins/Editor/JetBrains/Unity3DRider.cs
+/Assets/Plugins/Editor/JetBrains/Unity3DRider.cs.meta
+/obj/
