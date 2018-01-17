@@ -42,7 +42,7 @@ namespace Test.Editor
             pt.Add(Print("7"));
             pt.Add(Print("8"));
 
-            pt.onComplete += () =>
+            pt.onComplete += (success) =>
                              {
                                  Application.targetFrameRate = -1;
                                  Debug.Log("Unlock framerate");

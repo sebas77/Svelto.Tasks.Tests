@@ -11,14 +11,12 @@ namespace Test.Editor
         public int justForTest;
     }
 
-    class LoadSomething : IEnumerable, IChainLink<SomeData>
+    class LoadSomething : IEnumerable
     {
         public LoadSomething(WWW wWW)
         {
             this.wWW = wWW;
         }
-
-        public SomeData token { set; private get; }
 
         public IEnumerator GetEnumerator()
         {
@@ -26,8 +24,6 @@ namespace Test.Editor
 
             foreach (var s in wWW.responseHeaders.Values)
                 Debug.Log(s);
-
-            token.justForTest++;
         }
 
         WWW wWW;
