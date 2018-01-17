@@ -404,7 +404,8 @@ namespace Test
                 Assert.That(continuator.completed == true, "must be completed");
                 
                 continuator = 
-                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).ThreadSafeStart();
+                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result))
+                                        .ThreadSafeStart();
                 
                 while (continuator.MoveNext()) yield return null;
             }
