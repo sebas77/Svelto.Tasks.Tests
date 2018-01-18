@@ -46,7 +46,7 @@ namespace Test
         [Test]
         public void TestEnumerablesAreExecutedInSerial()
         {
-            _serialTasks1.onComplete += (success) => Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime), Is.True);
+            _serialTasks1.onComplete += () => Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime), Is.True);
 
             _serialTasks1.Add(_iterable1.GetEnumerator());
             _serialTasks1.Add(_iterable2.GetEnumerator());
@@ -128,7 +128,7 @@ namespace Test
         [Test]
         public void TestEnumerableAreExecutedInParallel()
         {
-            _parallelTasks1.onComplete += (withSuccess) => { Assert.That(_iterable1.AllRight && _iterable2.AllRight); };
+            _parallelTasks1.onComplete += () => { Assert.That(_iterable1.AllRight && _iterable2.AllRight); };
 
             _parallelTasks1.Add(_iterable1.GetEnumerator());
             _parallelTasks1.Add(_iterable2.GetEnumerator());
@@ -141,16 +141,16 @@ namespace Test
         {
             bool allDone = false;
 
-            _serialTasks1.onComplete += (withSuccess) =>
-                                        {
-                                            allDone = true; Assert.That(withSuccess == false);
-                                        };
+            //this must never happen
+            _serialTasks1.onComplete += () => { allDone = true; Assert.That(false); };
+            //it won't happen because we are telling the serial task to break on exception
+            _serialTasks1.onException += (e) => true;
 
             _serialTasks1.Add (_iterable1.GetEnumerator());
             _serialTasks1.Add (_iterableWithException.GetEnumerator()); //will throw an exception
 
             _reusableTaskRoutine.SetEnumerator(_serialTasks1).Start
-                (e => Assert.That(allDone, Is.True)); //will catch the exception
+                (e => Assert.That(allDone, Is.False)); //will catch the exception
         }
 
         [Test]
@@ -159,7 +159,7 @@ namespace Test
             bool allDone = false;
             bool testDone = false;
 
-            _serialTasks1.onComplete += (withSuccess) => { allDone = true; Assert.That(false); };
+            _serialTasks1.onComplete += () => { allDone = true; Assert.That(false); };
 
             _serialTasks1.Add (_iterable1.GetEnumerator());
             _serialTasks1.Add (_iterable2.GetEnumerator());
@@ -200,7 +200,7 @@ namespace Test
         [Test]
         public void TestSerializedTasksAreExecutedInSerial()
         {
-            _serialTasks1.onComplete += (withSuccess) => Assert.That(_task1.isDone && _task2.isDone, Is.True); 
+            _serialTasks1.onComplete += () => Assert.That(_task1.isDone && _task2.isDone, Is.True); 
             
             _serialTasks1.Add (_task1);
             _serialTasks1.Add (_task2);
@@ -225,7 +225,7 @@ namespace Test
         [Test]
         public void TestTasksAreExecutedInParallel()
         {
-            _parallelTasks1.onComplete += (withSuccess) => Assert.That(_task1.isDone && _task2.isDone, Is.True); 
+            _parallelTasks1.onComplete += () => Assert.That(_task1.isDone && _task2.isDone, Is.True); 
                 
             _parallelTasks1.Add (_task1);
             _parallelTasks1.Add (_task2);
@@ -276,15 +276,15 @@ namespace Test
 
             _parallelTasks1.Add(_task1);
             _parallelTasks1.Add(_iterable1.GetEnumerator());
-            _parallelTasks1.onComplete += (withSuccess) => { Assert.That(parallelTasks2Done, Is.False); parallelTasks1Done = true; };
+            _parallelTasks1.onComplete += () => { Assert.That(parallelTasks2Done, Is.False); parallelTasks1Done = true; };
 
             _parallelTasks2.Add(_task2);
             _parallelTasks2.Add(_iterable2.GetEnumerator());
-            _parallelTasks2.onComplete += (withSuccess) => { Assert.That(parallelTasks1Done, Is.True); parallelTasks2Done = true; };
+            _parallelTasks2.onComplete += () => { Assert.That(parallelTasks1Done, Is.True); parallelTasks2Done = true; };
 
             _serialTasks1.Add(_parallelTasks1);
             _serialTasks1.Add(_parallelTasks2);
-            _serialTasks1.onComplete += (withSuccess) => { Assert.That(parallelTasks1Done && parallelTasks2Done); };
+            _serialTasks1.onComplete += () => { Assert.That(parallelTasks1Done && parallelTasks2Done); };
             
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, _serialTasks1);
         }
@@ -303,7 +303,7 @@ namespace Test
             _parallelTasks1.Add(_serialTasks2);
 
             _parallelTasks1.onComplete += 
-                (withSuccess) => Assert.That(_vo.counter, Is.EqualTo(4));
+                () => Assert.That(_vo.counter, Is.EqualTo(4));
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, _parallelTasks1);
         }
@@ -316,15 +316,15 @@ namespace Test
 
             _serialTasks1.Add (_iterable1.GetEnumerator());
             _serialTasks1.Add (_iterable2.GetEnumerator());
-            _serialTasks1.onComplete += (withSuccess) => { test1++; test2++; }; 
+            _serialTasks1.onComplete += () => { test1++; test2++; }; 
 
             _serialTasks2.Add (_task1);
             _serialTasks2.Add (_task2);
-            _serialTasks2.onComplete += (withSuccess) => { test2++; };
+            _serialTasks2.onComplete += () => { test2++; };
 
             _parallelTasks1.Add (_serialTasks1);
             _parallelTasks1.Add (_serialTasks2);
-            _parallelTasks1.onComplete += (withSuccess) => Assert.That((test1 == 1) && (test2 == 2), Is.True);
+            _parallelTasks1.onComplete += () => Assert.That((test1 == 1) && (test2 == 2), Is.True);
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, _parallelTasks1);
         }
