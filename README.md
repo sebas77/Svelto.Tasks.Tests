@@ -9,4 +9,5 @@ http://www.sebaslab.com/svelto-taskrunner-run-serial-and-parallel-asynchronous-t
 
 Note: last compiled with Unity 2017. Now compatible with UWP (you must delete the unit tests if you want to build a project from the example). I try to keep the library Unity agnostic, but since I don't test on anything else, it won't probably work out of the box.
 
-Svelto.Tasks is referenced inside through a submodule, so always up to date with the master repository. Svelto is best to be put in another dll, that's why it's put under the Plugins folder.
+Note: The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, when present, are submodules pointing to the relavite repositories. If you find them empty, you need to update them through the submodule command. Check some instructions here: https://github.com/sebas77/Svelto.ECS.Vanilla.Example/wiki
+
