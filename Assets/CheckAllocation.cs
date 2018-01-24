@@ -15,10 +15,10 @@ public class CheckAllocation : MonoBehaviour
 	IEnumerator UpdateIT()
 	{
 		var waitForSecondsEnumerator = new WaitForSecondsEnumerator(0.1f);
-		
+		var syncRunner = new SyncRunner();
 		while (true)
 		{
-			yield return waitForSecondsEnumerator.RunOnSchedule(StandardSchedulers.syncScheduler);
+			yield return waitForSecondsEnumerator.RunOnSchedule(syncRunner);
 			
 			yield return null;
 		}
