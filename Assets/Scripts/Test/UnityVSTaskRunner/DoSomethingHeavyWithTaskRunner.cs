@@ -1,4 +1,5 @@
 using System.Collections;
+using Svelto.Tasks;
 using UnityEngine;
 
 namespace Test.Editor.UnityVSTaskRunner

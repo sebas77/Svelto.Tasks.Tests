@@ -328,7 +328,7 @@ namespace Test
 
             _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
         }
-
+        
         [UnityTest]
         public IEnumerator TestStopStartTaskRoutine()
         {
