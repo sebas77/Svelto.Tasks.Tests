@@ -4,6 +4,7 @@ using System.Collections;
 using System;
 using System.Runtime.Remoting;
 using Svelto.Tasks;
+using UnityEngine;
 
 public class TestsThatCanRunOnlyInPlayMode
 {
@@ -202,7 +203,84 @@ public class TestsThatCanRunOnlyInPlayMode
         Assert.That(_hasReset == true);
     }
     
+    [UnityTest]
+    public IEnumerator TaskWithWaitForSecondsMustRestartImmediatly()
+    {
+        DateTime then = DateTime.Now;
+        
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+            SetEnumeratorProvider(WaitEnumerator);
+            
+        bool done = false;
+
+        task.Start(onStop: () => {
+            done = true;
+        });
+
+        int iteration = 0;
+            
+        while (iteration++ < 3)
+            yield return null;
+            
+        Assert.That(done == false);
+            
+        task.Stop();
+
+        int iteration2 = 0;
+            
+        while (iteration2++ < 3)
+            yield return null;
+        
+        Assert.That(done == true);
+        
+        DateTime time = DateTime.Now;
+        
+        yield return task.Start();
+
+        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+        Assert.That(totalSeconds >= 2 && totalSeconds <= 3);
+        
+        totalSeconds = (DateTime.Now - then).TotalSeconds;
+        Assert.That(totalSeconds >= 2 && totalSeconds <= 3);
+    }
     
+    [UnityTest]
+    public IEnumerator TaskWithWaitForSecondsMustRestartImmediatlyInParallelToo()
+    {
+        ParallelTaskCollection tasks = new ParallelTaskCollection();
+        tasks.Add(WaitEnumerator());
+            
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+            SetEnumerator(tasks);
+            
+        bool done = false;
+
+        task.Start(onStop: () => {
+            done = true;
+        });
+
+        int iteration = 0;
+            
+        while (iteration++ < 3)
+            yield return null;
+            
+        Assert.That(done == false);
+            
+        task.Stop();
+
+        int iteration2 = 0;
+            
+        while (iteration2++ < 3)
+            yield return null;
+        
+        Assert.That(done == true);
+    }
+
+    IEnumerator WaitEnumerator()
+    {
+        yield return new WaitForSeconds(2);
+    }
+
     IEnumerator SubEnumerator(int i)
     {
         _hasReset = true;
