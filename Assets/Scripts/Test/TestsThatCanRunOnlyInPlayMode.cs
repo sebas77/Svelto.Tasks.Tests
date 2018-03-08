@@ -2,8 +2,11 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
+using System.Linq.Expressions;
 using System.Runtime.Remoting;
+using System.Threading;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using UnityEngine;
 
 public class TestsThatCanRunOnlyInPlayMode
@@ -163,9 +166,9 @@ public class TestsThatCanRunOnlyInPlayMode
         while (iteration2++ < 3)
             yield return null;
             
-        Assert.That(done == true);
+        Assert.That(done == true); 
 
-        Assert.Throws<DesignByContract.AssertionException>(() => task.Start());
+        Assert.Throws<DBC.AssertionException>(() => task.Start());
     }
     
     [UnityTest]
@@ -209,7 +212,7 @@ public class TestsThatCanRunOnlyInPlayMode
         DateTime then = DateTime.Now;
         
         var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
-            SetEnumeratorProvider(WaitEnumerator);
+            SetEnumeratorProvider(UnityWaitEnumerator);
             
         bool done = false;
 
@@ -248,7 +251,7 @@ public class TestsThatCanRunOnlyInPlayMode
     public IEnumerator TaskWithWaitForSecondsMustRestartImmediatlyInParallelToo()
     {
         ParallelTaskCollection tasks = new ParallelTaskCollection();
-        tasks.Add(WaitEnumerator());
+        tasks.Add(UnityWaitEnumerator());
             
         var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
             SetEnumerator(tasks);
@@ -275,8 +278,97 @@ public class TestsThatCanRunOnlyInPlayMode
         
         Assert.That(done == true);
     }
+    
+    class Token
+    {
+        public int count;
+    }
 
-    IEnumerator WaitEnumerator()
+    [UnityTest] 
+    public IEnumerator TestStopMultiThreadParallelTask()
+    {
+        var test = new MultiThreadedParallelTaskCollection(4);
+
+        Token token = new Token();
+        bool done = false;
+        test.onComplete += () => done = true;
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+
+        test.Run();
+
+        yield return new WaitForSeconds(0.5f); 
+        
+        test.Stop();
+        
+        Assert.That(done, Is.False);
+        Assert.AreEqual(token.count, 0);
+    }
+    
+    [UnityTest]  
+    public IEnumerator TestMultiThreadParallelTaskReset()
+    {
+        var test = new MultiThreadedParallelTaskCollection(4);
+        
+        Token token = new Token();
+
+        int done = 0;
+        test.onComplete += () => done++;
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+        test.Add(new WaitEnumerator(token));
+        
+        test.Run();
+        
+        yield return new WaitForSeconds(0.5f);
+
+        token.count = 3;
+        
+        test.Stop();
+        
+        test.Complete();
+        
+        Assert.That(done == 1);
+        Assert.AreEqual(4, token.count);
+    }
+
+    class WaitEnumerator:IEnumerator
+    {
+        Token _token;
+
+        public WaitEnumerator(Token token)
+        {
+            _token  = token;
+            _future = DateTime.UtcNow.AddSeconds(2);
+        }
+        
+        public void Reset()
+        {
+            _future      = DateTime.UtcNow.AddSeconds(2);
+            _token.count = 0;
+        }
+
+        public object Current { get { return null; } }
+
+        DateTime _future;
+
+        public bool MoveNext()
+        {
+            if (_future <= DateTime.UtcNow)
+            {
+                Interlocked.Increment(ref _token.count);
+        
+                return false;
+            }
+
+            return true;
+        }
+    }
+    
+    IEnumerator UnityWaitEnumerator()
     {
         yield return new WaitForSeconds(2);
     }

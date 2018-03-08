@@ -23,7 +23,7 @@ namespace PerformanceMT
 
                 long result = (long)enumerator.Current * 333;
 
-                yield return SetColor(result).ThreadSafeRun(); //yep the thread will wait for this other task to finish on the mainThreadScheduler
+                yield return SetColor(result).ThreadSafeRunOnSchedule(StandardSchedulers.coroutineScheduler); //yep the thread will wait for this other task to finish on the mainThreadScheduler
             }
         }
 
