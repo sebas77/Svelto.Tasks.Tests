@@ -27,11 +27,6 @@ namespace PerformanceMT
             }
         }
 
-        void OnDestroy()
-        {
-            TaskRunner.Instance.StopAndCleanupAllDefaultSchedulerTasks();
-        }
-
         IEnumerator SetColor(long result)
         {
             GetComponent<Renderer>().material.color = new Color((result % 255) / 255f, ((result * result) % 255) / 255f, ((result / 44) % 255) / 255f);
@@ -39,14 +34,9 @@ namespace PerformanceMT
             yield return null;
         }
 
-        void OnApplicationQuit()
-        {
-            StandardSchedulers.StopSchedulers(); //Unity will get stuck for ever if you don't do this
-        }
-
         void OnDisable()
         {
-            StandardSchedulers.StopSchedulers(); //Unity will get stuck for ever if you don't do this
+            TaskRunner.Instance.StopAndCleanupAllDefaultSchedulerTasks();
         }
 
         void Update()
