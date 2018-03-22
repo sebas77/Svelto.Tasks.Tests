@@ -36,7 +36,7 @@ namespace PerformanceMT
 
         void OnDisable()
         {
-            TaskRunner.Instance.StopAndCleanupAllDefaultSchedulerTasks();
+            TaskRunner.StopAndCleanupAllDefaultSchedulers();
         }
 
         void Update()

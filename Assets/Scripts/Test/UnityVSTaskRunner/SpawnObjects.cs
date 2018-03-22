@@ -17,7 +17,7 @@ namespace Test.Editor.UnityVSTaskRunner
         // Use this for initialization
         void Start () 
         {
-            TaskRunner.Instance.StopAndCleanupAllDefaultSchedulerTasks();
+            TaskRunner.StopAndCleanupAllDefaultSchedulers();
 
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;

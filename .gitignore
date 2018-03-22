@@ -1,7 +1,6 @@
 Library
 /Assets/VSCode
 test_Data
-/ProjectSettings
 /.vscode/launch.json
 /Assembly-CSharp-Editor.csproj
 /Assembly-CSharp-firstpass.csproj
@@ -26,3 +25,4 @@ Temp
 /Assets/Plugins/Editor/JetBrains/Unity3DRider.cs.meta
 /obj/
 /Svelto.Tasks.Tests.sln
+/Assets/Plugins/Editor/JetBrains/JetBrains.Rider.Unity.Editor.Plugin.Repacked.dll
