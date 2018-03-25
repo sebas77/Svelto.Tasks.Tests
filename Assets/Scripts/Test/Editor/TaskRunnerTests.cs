@@ -575,7 +575,7 @@ namespace Test
                 while (continuator.MoveNext()) yield return null;
             }
 
-            Assert.That(result.counter == 1);
+            Assert.That(result.counter, Is.EqualTo(1));
         }
         
         [UnityTest]
