@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Threading;
+using JetBrains.Annotations;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -251,6 +252,77 @@ namespace Test
         public void TestParallelTasks1IsExecutedBeforeParallelTask2 ()
         {
             TaskRunner.Instance.RunOnSchedule(new SyncRunner(), SerialContinuation());
+        }
+
+        [Test]
+        public void ParallelMultiThread()
+        {
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection();
+
+            parallelMultiThread.Add(new SlowTask());
+            parallelMultiThread.Add(new SlowTask());
+            
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            parallelMultiThread.Complete();
+
+            sw.Stop();
+
+            Assert.That(sw.ElapsedMilliseconds, Is.AtLeast(1000));
+            Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
+
+        }
+        
+        [UnityTest]
+        public IEnumerator ParalelMultiThreadOnAnotherRunner()
+        {
+            using (var runner = new MultiThreadRunner("MT"))
+            {
+                ITaskRoutine routine = TaskRunner.Instance.AllocateNewTaskRoutine();
+
+                routine.SetEnumerator(ParallelMultiThreadWithYielding()).SetScheduler(runner);
+
+                var continuator = routine.Start();
+
+                while (continuator.MoveNext() == true) yield return null;
+            }
+        }
+        
+        [UnityTest]
+        public IEnumerator ParallelMultiThreadWithYielding()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection();
+
+            parallelMultiThread.Add(new SlowTask());
+            parallelMultiThread.Add(new SlowTask());
+
+            while (parallelMultiThread.MoveNext() == true) yield return null;
+
+            sw.Stop();
+
+            Assert.That(sw.ElapsedMilliseconds, Is.AtLeast(1000));
+            Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
+        }
+
+        public class SlowTask : IEnumerator
+        {
+            public object Current { get; private set; }
+
+            public SlowTask()
+            {}
+
+            public bool MoveNext()
+            {
+                System.Threading.Thread.Sleep(1000);
+                
+                return false;
+            }
+
+            public void Reset()
+            {
+            }
         }
 
         [Test]
@@ -532,7 +604,7 @@ namespace Test
             yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
             yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
             yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-        }
+        }   
         
         IEnumerator SimpleEnumeratorLong(ValueObject result)
         {
