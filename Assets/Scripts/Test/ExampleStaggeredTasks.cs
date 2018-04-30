@@ -18,7 +18,7 @@ public class ExampleStaggeredTasks : MonoBehaviour
         _runner = new StaggeredMonoRunner("StaggeredRunner", MaxTasksPerFrame);
 
         for (int i = 0; i < 300; i++)
-            TaskRunner.Instance.RunOnSchedule(_runner, PrintFrame);
+            PrintFrame().ThreadSafeRunOnSchedule(_runner);
 	}
 
     void OnDisable()

@@ -16,7 +16,7 @@ namespace Test.Editor
 
             Time.fixedDeltaTime = 0.5f;
 
-            TaskRunner.Instance.RunOnSchedule(StandardSchedulers.physicScheduler, PrintTime);
+            TaskRunner.Instance.RunOnSchedule(StandardSchedulers.physicScheduler, PrintTime());
         }
 
         void OnDisable()

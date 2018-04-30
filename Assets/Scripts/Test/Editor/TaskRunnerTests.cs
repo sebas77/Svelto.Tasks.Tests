@@ -5,6 +5,7 @@ using System.Collections;
 using System.Threading;
 using JetBrains.Annotations;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
@@ -578,6 +579,26 @@ namespace Test
             Assert.That(result.counter, Is.EqualTo(1));
         }
         
+        [Test]
+        public void TestParallelTimeOut()
+        {
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+            _parallelTasks1.Add(new TimeoutEnumerator());
+
+            DateTime then = DateTime.Now;
+            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+
+            var totalSeconds = (DateTime.Now - then).TotalSeconds;
+            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        }
+        
         [UnityTest]
         public IEnumerator TestCrazyMultiThread()
         {
@@ -636,6 +657,33 @@ namespace Test
         {
             yield return 1;
         }
+
+
+        public class TimeoutEnumerator : IEnumerator
+        {
+            public TimeoutEnumerator()
+            {
+                _then = DateTime.Now;
+            }
+
+            public bool MoveNext()
+            {
+                var timePassed = (float) (DateTime.Now - _then).TotalSeconds;
+
+                if (timePassed > 1)
+                    return false;
+
+                return true;
+            }
+
+            public void Reset()
+            {}
+
+            public object Current { get; private set; }
+
+            DateTime _then;
+        }
+
 
         [Test]
         public void TestComplexCoroutine()
@@ -779,8 +827,9 @@ namespace Test
         TaskChain _taskChain1;
         TaskChain _taskChain2;
         ValueObject _vo;
+      
 
-        class Task : ITask
+            class Task : ITask
         {
             //ITask Implementation
             public bool  isDone { get; private set; }
