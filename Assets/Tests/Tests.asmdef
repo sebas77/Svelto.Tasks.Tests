@@ -1,0 +1,14 @@
+{
+    "name": "Tests",
+    "references": [
+        "Svelto"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}

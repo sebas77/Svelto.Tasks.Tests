@@ -3,15 +3,11 @@
 using System;
 using System.Collections;
 using System.Threading;
-using JetBrains.Annotations;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
-using UnityEngine;
 using UnityEngine.TestTools;
-using Random = System.Random;
 
 //Note: RunSync is used only for testing purposes
 //Real scenarios should use Run or RunManaged
