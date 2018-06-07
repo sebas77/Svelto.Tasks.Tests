@@ -1,7 +1,7 @@
 {
     "name": "Tests",
     "references": [
-        "Svelto"
+        "Svelto.Tasks"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

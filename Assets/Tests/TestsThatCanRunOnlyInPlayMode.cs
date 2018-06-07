@@ -2,11 +2,8 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
-using System.Linq.Expressions;
-using System.Runtime.Remoting;
 using System.Threading;
 using Svelto.Tasks;
-using Svelto.Tasks.Enumerators;
 using UnityEngine;
 
 public class TestsThatCanRunOnlyInPlayMode
@@ -22,7 +19,7 @@ public class TestsThatCanRunOnlyInPlayMode
 	public IEnumerator TestHandlingInstructionsToUnity() {
         // Use the Assert class to test conditions.
         // yield to skip a frame
-        var task = UnityHandle().Run();
+        var task = UnityHandle().AllocateNewRoutine().Start();
 
         while (task.MoveNext())
             yield return null;
@@ -46,7 +43,7 @@ public class TestsThatCanRunOnlyInPlayMode
         {
             DateTime now = DateTime.Now;
 
-            var task = _iterable1.ThreadSafeRunOnSchedule(runner);
+            var task = _iterable1.AllocateNewRoutine().SetScheduler(runner).Start();
 
             while (task.MoveNext())
                 yield return null;
@@ -168,7 +165,7 @@ public class TestsThatCanRunOnlyInPlayMode
             
         Assert.That(done == true); 
 
-        Assert.Throws<DBC.AssertionException>(() => task.Start());
+        Assert.Throws<Exception>(() => task.Start());
     }
     
     [UnityTest]

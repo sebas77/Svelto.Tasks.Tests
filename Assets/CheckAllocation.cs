@@ -16,9 +16,10 @@ public class CheckAllocation : MonoBehaviour
 	{
 		var waitForSecondsEnumerator = new WaitForSecondsEnumerator(0.1f);
 		var syncRunner = new SyncRunner();
+		var task = waitForSecondsEnumerator.AllocateNewRoutine().SetScheduler(syncRunner);
 		while (true)
 		{
-			yield return waitForSecondsEnumerator.RunOnSchedule(syncRunner);
+			yield return task;
 			
 			yield return null;
 		}

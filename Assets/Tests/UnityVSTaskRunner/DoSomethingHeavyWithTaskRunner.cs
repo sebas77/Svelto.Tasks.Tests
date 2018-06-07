@@ -11,8 +11,7 @@ namespace Test.Editor.UnityVSTaskRunner
             _direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
             _transform = this.transform;
 
-            _task = TaskRunner.Instance.AllocateNewTaskRoutine().
-                SetEnumeratorProvider(UpdateIt2);
+            _task = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(UpdateIt2);
         }
 
         void OnEnable() 

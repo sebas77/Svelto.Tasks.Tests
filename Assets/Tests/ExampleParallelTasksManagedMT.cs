@@ -83,7 +83,7 @@ namespace Test.MultiThread
 
         public IEnumerator GetEnumerator()
         {
-            yield return task.ThreadSafeStart(); //Continuation! The task will continue on the main thread scheduler!
+            yield return task.Start(); //Continuation! The task will continue on the main thread scheduler!
         }
 
         IEnumerator DoIt()
@@ -95,6 +95,6 @@ namespace Test.MultiThread
         }
 
         WWWEnumerator   wWW;
-        ITaskRoutine    task;
+        ITaskRoutine<IEnumerator>    task;
     }
 }

@@ -1,7 +1,6 @@
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
-using Svelto.Tasks.Experimental;
 using UnityEngine;
 
 namespace Test.Editor
@@ -44,8 +43,8 @@ namespace Test.Editor
         {
             var someData = new SomeData();
 
-            var pt = new ParallelTaskCollection<SomeData>(someData);
-            var st = new SerialTaskCollection<SomeData>(someData);
+            var pt = new ParallelTaskCollection<IEnumerator, SomeData>(ref someData);
+            var st = new SerialTaskCollection<IEnumerator, SomeData>(ref someData);
         
             st.Add(Print("s1"));
             st.Add(Print("s2"));

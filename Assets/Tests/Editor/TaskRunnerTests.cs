@@ -1,16 +1,14 @@
 #if !NETFX_CORE
 
-using System;
-using System.Collections;
-using System.Threading;
 using NUnit.Framework;
+using System.Collections;
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
-using Svelto.Tasks.Experimental;
 using UnityEngine.TestTools;
 
-//Note: RunSync is used only for testing purposes
-//Real scenarios should use Run or RunManaged
 namespace Test
 {
     [TestFixture]
@@ -21,16 +19,16 @@ namespace Test
         {
             _vo = new ValueObject();
 
-            _serialTasks1 = new SerialTaskCollection<ValueObject>(_vo);
-            _parallelTasks1 = new ParallelTaskCollection<ValueObject>(_vo);
-            _serialTasks2 = new SerialTaskCollection<ValueObject>(_vo);
-            _parallelTasks2 = new ParallelTaskCollection<ValueObject>(_vo);
+            _serialTasks1 = new SerialTaskCollection<IEnumerator, ValueObject>();
+            _parallelTasks1 = new ParallelTaskCollection<IEnumerator, ValueObject>();
+            _serialTasks2 = new SerialTaskCollection<IEnumerator, ValueObject>();
+            _parallelTasks2 = new ParallelTaskCollection<IEnumerator, ValueObject>();
 
             _task1 = new Task();
             _task2 = new Task();
 
-            _taskChain1 = new TaskChain();
-            _taskChain2 = new TaskChain();
+            _asyncTaskChain1 = new AsyncTask();
+            _asyncTaskChain2 = new AsyncTask();
             
             _iterable1 = new Enumerable(10000);
             _iterable2 = new Enumerable(10000);
@@ -40,11 +38,53 @@ namespace Test
             _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
                 .SetScheduler(new SyncRunner()); //the taskroutine will stall the thread because it runs on the SyncScheduler
         }
+        
+        [Test]
+        public void TestTaskCollectionReturningTaskCollection()
+        {
+            
+        }
+        
+        [Test]
+        public void TestTaskCollectionReturningItself()
+        {
+            
+        }
+        
+        [Test]
+        public void RestartSerialTask()
+        {}
+        
+        [Test]
+        public void RestartParallelTask()
+        {}
+
+        [Test]
+        public void TestUnityInstruction()
+        {
+            
+        }
+
+        [Test]
+        public void TestContinuationWrapper()
+        {
+            
+        }
+
+        [Test]
+        public void TaskCollectionCanRunMultipleTimesIfResettable()
+        {
+            
+        }
+        
+        [Test]
+        public void TestTaskCanBeAddedToCOllectionWhileRunning()
+        {}
 
         [Test]
         public void TestEnumerablesAreExecutedInSerial()
         {
-            _serialTasks1.onComplete += () => Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime), Is.True);
+            _serialTasks1.onComplete += () => Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.startOfExecutionTime) && (_iterable2.startOfExecutionTime < _iterable2.endOfExecutionTime), Is.True);
 
             _serialTasks1.Add(_iterable1.GetEnumerator());
             _serialTasks1.Add(_iterable2.GetEnumerator());
@@ -124,14 +164,30 @@ namespace Test
         }
 
         [Test]
+        public void TestCollectionCallbacksAreCalled()
+        {
+            
+        }
+
+        [Test] 
         public void TestEnumerableAreExecutedInParallel()
         {
-            _parallelTasks1.onComplete += () => { Assert.That(_iterable1.AllRight && _iterable2.AllRight); };
+            var iterable3 = new Enumerable(5000);
+            
+            _parallelTasks1.Add (_iterable1.GetEnumerator());
+            _parallelTasks1.Add (iterable3.GetEnumerator());
+            _parallelTasks1.Add (_iterable2.GetEnumerator());
 
-            _parallelTasks1.Add(_iterable1.GetEnumerator());
-            _parallelTasks1.Add(_iterable2.GetEnumerator());
+            _parallelTasks1.MoveNext();
 
+            Assert.That(_iterable1.iterations, Is.EqualTo(1));
+            Assert.That(_iterable2.iterations, Is.EqualTo(1));
+            Assert.That(iterable3.iterations, Is.EqualTo(1));
+            
             _taskRunner.RunOnSchedule(new SyncRunner(),_parallelTasks1);
+            
+            Assert.That(_iterable1.AllRight && _iterable2.AllRight && iterable3.AllRight && 
+                        (iterable3.endOfExecutionTime <= _iterable1.endOfExecutionTime) && (iterable3.startOfExecutionTime < _iterable2.endOfExecutionTime), Is.True);
         }
 
         [Test]
@@ -176,7 +232,7 @@ namespace Test
             
             //this time we will make the task run on another thread
             _reusableTaskRoutine.SetScheduler(new MultiThreadRunner("TestPromisesCancellation")).
-                SetEnumerator(_serialTasks1).ThreadSafeStart
+                SetEnumerator(_serialTasks1).Start
                 (null, () => { testDone = true; Assert.That(allDone, Is.False); });
             _reusableTaskRoutine.Stop();
 
@@ -375,10 +431,10 @@ namespace Test
         [Test]
         public void TestSerialTasks1ExecutedInParallelWithToken ()
         {
-            _serialTasks1.Add(_taskChain1);
-            _serialTasks1.Add(_taskChain1);
-            _serialTasks2.Add(_taskChain2);
-            _serialTasks2.Add(_taskChain2);
+            _serialTasks1.Add(_asyncTaskChain1);
+            _serialTasks1.Add(_asyncTaskChain1);
+            _serialTasks2.Add(_asyncTaskChain2);
+            _serialTasks2.Add(_asyncTaskChain2);
 
             _parallelTasks1.Add(_serialTasks1);
             _parallelTasks1.Add(_serialTasks2);
@@ -417,14 +473,14 @@ namespace Test
             {
                 _reusableTaskRoutine.SetScheduler(runner);
                 _reusableTaskRoutine.SetEnumerator(TestWithThrow());
-                _reusableTaskRoutine.ThreadSafeStart();
+                _reusableTaskRoutine.Start();
                 _reusableTaskRoutine
                     .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
 
                 _reusableTaskRoutine.SetScheduler(new SyncRunner());
                 var enumerator = TestWithoutThrow();
                 var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
-                                    .ThreadSafeStart(); //test routine can be reused with another enumerator
+                                    .Start(); //test routine can be reused with another enumerator
                 
                 while (continuator.MoveNext()) yield return null;
                 
@@ -441,11 +497,11 @@ namespace Test
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
                 
-                taskRoutine.ThreadSafeStart();
+                taskRoutine.Start();
                 _reusableTaskRoutine.Stop();
                 taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
                 
-                var continuator = taskRoutine.ThreadSafeStart();
+                var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
 
@@ -520,8 +576,8 @@ namespace Test
                 ValueObject result = new ValueObject();
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
-                taskRoutine.ThreadSafeStart();
-                var continuator = taskRoutine.ThreadSafeStart();
+                taskRoutine.Start();
+                var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
 
@@ -537,7 +593,7 @@ namespace Test
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
             {
                 var continuator =_reusableTaskRoutine.SetScheduler(runner)
-                                    .SetEnumerator(SimpleEnumeratorLong(result)).ThreadSafeStart();
+                                    .SetEnumerator(SimpleEnumeratorLong(result)).Start();
                 
                 Assert.That(continuator.completed == false, "can't be completed");
                 _reusableTaskRoutine.Stop();
@@ -548,7 +604,7 @@ namespace Test
                 
                 continuator = 
                     _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result))
-                                        .ThreadSafeStart();
+                                        .Start();
                 
                 while (continuator.MoveNext()) yield return null;
             }
@@ -564,10 +620,10 @@ namespace Test
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
             {
                 var continuator = _reusableTaskRoutine.SetScheduler(runner)
-                                    .SetEnumerator(SimpleEnumeratorLong(result)).ThreadSafeStart();
+                                    .SetEnumerator(SimpleEnumeratorLong(result)).Start();
                 Assert.That(continuator.completed == false, "can't be completed");
                 continuator = 
-                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).ThreadSafeStart();
+                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).Start();
 
                 while (continuator.MoveNext()) yield return null;
             }
@@ -616,11 +672,13 @@ namespace Test
 
         IEnumerator crazyEnumerator(ValueObject result, IRunner runner)
         {
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(() => SimpleEnumerator(result)).SetScheduler(runner);
+
+            yield return taskRoutine;
+            yield return taskRoutine;
+            yield return taskRoutine;
+            yield return taskRoutine;
+            yield return taskRoutine;
         }   
         
         IEnumerator SimpleEnumeratorLong(ValueObject result)
@@ -695,24 +753,22 @@ namespace Test
             {
                 _iterable1.Reset();
 
-                var continuator = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
-                
-                while (continuator.MoveNext());
+                _iterable1.GetEnumerator().RunOnSchedule(runner);
 
-                Assert.That(_iterable1.AllRight == true);
+                while (_iterable1.AllRight == false);
 
                 _iterable1.Reset();
 
-                continuator = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                _iterable1.GetEnumerator().RunOnSchedule(runner);
 
-                while (continuator.MoveNext());
+                while (_iterable1.AllRight == false);
 
-                Assert.That(_iterable1.AllRight == true);
+                Assert.Pass();
             }
         }
         
         [Test]
-        public void TestMultithreadWitTaskRoutines()
+        public void TestMultithreadWithTaskRoutines()
         {
             using (var runner = new MultiThreadRunner("TestMultithread"))
             {
@@ -720,7 +776,7 @@ namespace Test
 
                 _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
                 
-                var continuator = _reusableTaskRoutine.SetScheduler(runner).ThreadSafeStart();
+                var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
                 
                 while (continuator.MoveNext());
 
@@ -730,7 +786,7 @@ namespace Test
                 
                 _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
                 
-                continuator = _reusableTaskRoutine.ThreadSafeStart();
+                continuator = _reusableTaskRoutine.Start();
 
                 while (continuator.MoveNext());
 
@@ -741,23 +797,21 @@ namespace Test
         [Test]
         public void TestMultithreadQuick()
         {
-            using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
+            using (var runner = new MultiThreadRunner("TestMultithread", false))
             {
-                var task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                _iterable1.Reset();
 
-                while (task.MoveNext());
+                _iterable1.GetEnumerator().RunOnSchedule(runner);
 
-                Assert.That(_iterable1.AllRight == true);
-
-                //do it again to test if starting another task works
+                while (_iterable1.AllRight == false);
 
                 _iterable1.Reset();
 
-                task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                _iterable1.GetEnumerator().RunOnSchedule(runner);
 
-                while (task.MoveNext());
+                while (_iterable1.AllRight == false);
 
-                Assert.That(_iterable1.AllRight == true);
+                Assert.Pass();
             }
         }
 
@@ -768,15 +822,15 @@ namespace Test
             {
                 DateTime now = DateTime.Now;
 
-                var task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                _iterable1.GetEnumerator().RunOnSchedule(runner);
 
-                while (task.MoveNext());
+                while (_iterable1.AllRight == false);
 
                 var seconds = (DateTime.Now - now).Seconds;
 
                 //10000 iteration * 1ms = 10 seconds
 
-                Assert.That(_iterable1.AllRight == true && seconds == 10);
+                Assert.That(seconds == 10);
             }
         }
 
@@ -806,12 +860,12 @@ namespace Test
         }
 
         TaskRunner _taskRunner;
-        ITaskRoutine _reusableTaskRoutine;
+        ITaskRoutine<IEnumerator> _reusableTaskRoutine;
 
-        SerialTaskCollection<ValueObject> _serialTasks1;
-        SerialTaskCollection<ValueObject> _serialTasks2;
-        ParallelTaskCollection<ValueObject> _parallelTasks1;
-        ParallelTaskCollection<ValueObject> _parallelTasks2;
+        SerialTaskCollection<IEnumerator, ValueObject> _serialTasks1;
+        SerialTaskCollection<IEnumerator, ValueObject> _serialTasks2;
+        ParallelTaskCollection<IEnumerator, ValueObject> _parallelTasks1;
+        ParallelTaskCollection<IEnumerator, ValueObject> _parallelTasks2;
 
         Task _task1;
         Task _task2;
@@ -820,12 +874,12 @@ namespace Test
         Enumerable _iterable2;
 
         Enumerable _iterableWithException;
-        TaskChain _taskChain1;
-        TaskChain _taskChain2;
+        AsyncTask _asyncTaskChain1;
+        AsyncTask _asyncTaskChain2;
         ValueObject _vo;
       
 
-            class Task : ITask
+            class Task : IAsyncTask
         {
             //ITask Implementation
             public bool  isDone { get; private set; }
@@ -866,16 +920,16 @@ namespace Test
             Action _onComplete;
         }
 
-        class TaskChain: ITaskChain<ValueObject>
+        class AsyncTask: IAsyncTask<ValueObject>
         {
             public bool  isDone { get; private set; }
             
-            public TaskChain()
+            public AsyncTask()
             {
                 isDone = false;
             }
 
-            public void Execute(ValueObject token)
+            public void Execute(ref ValueObject token)
             {
                 Interlocked.Increment(ref token.counter);
 
@@ -910,6 +964,8 @@ namespace Test
 
             public IEnumerator GetEnumerator()
             {
+                startOfExecutionTime = DateTime.Now.Ticks;
+                
                 if (totalIterations < 0)
                     throw new Exception("can't handle this");
 
@@ -923,8 +979,55 @@ namespace Test
                 endOfExecutionTime = DateTime.Now.Ticks;
             }
 
-            int totalIterations;
+            readonly int totalIterations;
             public int iterations;
+            public long startOfExecutionTime;
+        }
+        
+        struct Enumerator : IEnumerator
+        {
+            public long endOfExecutionTime {get; private set;}
+
+            public bool AllRight { get 
+            {
+                return iterations == totalIterations; 
+            }}
+
+            public Enumerator(int niterations):this()
+            {
+                iterations      = 0; 
+                totalIterations = niterations;
+                if (totalIterations < 0)
+                    throw new Exception("can't handle this");
+            }
+
+            public bool MoveNext()
+            {
+                if (iterations == 0)
+                    startOfExecutionTime = DateTime.Now.Ticks;
+
+                if (iterations < totalIterations)
+                {
+                    iterations++;
+
+                    return false;
+                }
+
+                endOfExecutionTime = DateTime.Now.Ticks;
+                
+                return true;
+            }
+
+            public void Reset()
+            {
+                iterations = 0;
+            }
+
+            public object Current { get; private set; }
+
+            readonly int  totalIterations;
+            public   int  iterations;
+            public   long startOfExecutionTime;
         }
     }
 }
