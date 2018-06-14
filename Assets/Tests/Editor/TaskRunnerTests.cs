@@ -5,8 +5,10 @@ using System.Collections;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using JetBrains.Annotations;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using UnityEngine.Profiling;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -90,6 +92,12 @@ namespace Test
             _serialTasks1.Add(_iterable2.GetEnumerator());
             
             _taskRunner.RunOnSchedule(new SyncRunner(),_serialTasks1);
+        }
+
+        [Test]
+        public void TestYieldingNotStartingTaskRoutineThrows()
+        {
+            
         }
 
         [Test]
