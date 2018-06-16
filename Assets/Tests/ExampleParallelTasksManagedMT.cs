@@ -72,8 +72,6 @@ namespace Test.MultiThread
 
     class LoadSomething : IEnumerable
     {
-        public SomeData token { set; private get; }
-
         public LoadSomething(WWWEnumerator wWW)
         {
             this.wWW = wWW;

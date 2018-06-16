@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics.Tracing;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using UnityEngine;
@@ -16,8 +15,9 @@ public class CheckAllocation : MonoBehaviour
 	IEnumerator UpdateIT()
 	{
 		var waitForSecondsEnumerator = new WaitForSecondsEnumerator(0.1f);
-		var syncRunner = new SyncRunner();
-		var task = waitForSecondsEnumerator.AllocateNewRoutine().SetScheduler(syncRunner);
+		var syncRunner = new SyncRunner<Allocation0Enumerator>();
+		var syncRunner2 = new SyncRunner<WaitForSecondsEnumerator>();
+		var task = waitForSecondsEnumerator.AllocateNewRoutine().SetScheduler(syncRunner2);
 		var task2 = TaskRunner.Instance.AllocateNewTaskRoutine<Allocation0Enumerator>().SetScheduler(syncRunner);
 		var serialtask = new SerialTaskCollection<Allocation0Enumerator>();
 		

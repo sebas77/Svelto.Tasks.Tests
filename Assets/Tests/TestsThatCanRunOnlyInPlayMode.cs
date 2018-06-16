@@ -39,7 +39,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestMultithreadIntervaled()
     {
-        using (var runner = new MultiThreadRunner("intervalTest", 1))
+        using (var runner = new MultiThreadRunner<Enumerator>("intervalTest", 1))
         {
             DateTime now = DateTime.Now;
 

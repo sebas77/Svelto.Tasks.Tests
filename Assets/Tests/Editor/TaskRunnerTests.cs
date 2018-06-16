@@ -21,10 +21,10 @@ namespace Test
         {
             _vo = new ValueObject();
 
-            _serialTasks1 = new SerialTaskCollection<IEnumerator, ValueObject>();
-            _parallelTasks1 = new ParallelTaskCollection<IEnumerator, ValueObject>();
-            _serialTasks2 = new SerialTaskCollection<IEnumerator, ValueObject>();
-            _parallelTasks2 = new ParallelTaskCollection<IEnumerator, ValueObject>();
+            _serialTasks1 = new SerialTaskCollection<IEnumerator>();
+            _parallelTasks1 = new ParallelTaskCollection<IEnumerator>();
+            _serialTasks2 = new SerialTaskCollection<IEnumerator>();
+            _parallelTasks2 = new ParallelTaskCollection<IEnumerator>();
 
             _task1 = new Task();
             _task2 = new Task();
@@ -49,9 +49,7 @@ namespace Test
         
         [Test]
         public void TestTaskCollectionReturningItself()
-        {
-            
-        }
+        {}
         
         [Test]
         public void RestartSerialTask()
@@ -339,7 +337,7 @@ namespace Test
         {
             using (var runner = new MultiThreadRunner("MT"))
             {
-                ITaskRoutine routine = TaskRunner.Instance.AllocateNewTaskRoutine();
+                var routine = TaskRunner.Instance.AllocateNewTaskRoutine();
 
                 routine.SetEnumerator(ParallelMultiThreadWithYielding()).SetScheduler(runner);
 
@@ -805,7 +803,7 @@ namespace Test
         [Test]
         public void TestMultithreadQuick()
         {
-            using (var runner = new MultiThreadRunner("TestMultithread", false))
+            using (var runner = new MultiThreadRunner("TestMultithread"))
             {
                 _iterable1.Reset();
 
@@ -870,10 +868,10 @@ namespace Test
         TaskRunner _taskRunner;
         ITaskRoutine<IEnumerator> _reusableTaskRoutine;
 
-        SerialTaskCollection<IEnumerator, ValueObject> _serialTasks1;
-        SerialTaskCollection<IEnumerator, ValueObject> _serialTasks2;
-        ParallelTaskCollection<IEnumerator, ValueObject> _parallelTasks1;
-        ParallelTaskCollection<IEnumerator, ValueObject> _parallelTasks2;
+        SerialTaskCollection<IEnumerator> _serialTasks1;
+        SerialTaskCollection<IEnumerator> _serialTasks2;
+        ParallelTaskCollection<IEnumerator> _parallelTasks1;
+        ParallelTaskCollection<IEnumerator> _parallelTasks2;
 
         Task _task1;
         Task _task2;
@@ -928,7 +926,7 @@ namespace Test
             Action _onComplete;
         }
 
-        class AsyncTask: IAsyncTask<ValueObject>
+        class AsyncTask: IAsyncTask
         {
             public bool  isDone { get; private set; }
             
@@ -937,12 +935,14 @@ namespace Test
                 isDone = false;
             }
 
-            public void Execute(ref ValueObject token)
+            public void Execute()
             {
-                Interlocked.Increment(ref token.counter);
+                Interlocked.Increment(ref _value.counter);
 
                 isDone = true;
             }
+
+            ValueObject _value;
         }
 
         class ValueObject
