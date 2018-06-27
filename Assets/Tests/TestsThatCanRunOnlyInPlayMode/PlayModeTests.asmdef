@@ -1,14 +1,12 @@
 {
-    "name": "Tests",
+    "name": "PlayModeTests",
     "references": [
         "Svelto.Tasks"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false
 }
