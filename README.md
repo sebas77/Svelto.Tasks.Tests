@@ -1,7 +1,7 @@
 # Svelto.Tasks.Tests
 ======================
 
-Run Parallel and Serial Promises compliant tasks, even on other threads! Compatible with Unity 5 and onward.
+Note: Please check the releases for stable tests, I use the master to keep on developing on new features, so the tests are very likely broken.
 
 These are the tests and example of Svelto.Tasks:
 
