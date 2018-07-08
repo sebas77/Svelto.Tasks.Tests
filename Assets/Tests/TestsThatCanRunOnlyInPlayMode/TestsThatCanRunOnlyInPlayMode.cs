@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using Svelto.Tasks;
 using UnityEngine;
-
+/*
 public class TestsThatCanRunOnlyInPlayMode
 {
     [SetUp]
@@ -424,3 +424,4 @@ public class TestsThatCanRunOnlyInPlayMode
         public int iterations;
     }
 }
+*/

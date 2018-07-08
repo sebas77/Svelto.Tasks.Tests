@@ -3,6 +3,7 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -19,7 +20,7 @@ namespace Test
         {
             _vo = new ValueObject();
 
-            _serialTasks1 = new SerialTaskCollection<Enumerator>();
+            _serialTasks1 = new SerialTaskCollection<TestEnumerator>();
             _parallelTasks1 = new ParallelTaskCollection<IEnumerator>();
             _serialTasks2 = new SerialTaskCollection();
             _parallelTasks2 = new ParallelTaskCollection();
@@ -30,13 +31,13 @@ namespace Test
             _asyncTaskChain1 = new AsyncTask();
             _asyncTaskChain2 = new AsyncTask();
             
-            _iterable1 = new Enumerator(10000);
-            _iterable2 = new Enumerator(10000);
-            _iterableWithException = new Enumerator(-5);
+            _iterable1 = new TestEnumerator(10000);
+            _iterable2 = new TestEnumerator(10000);
+            _iterableWithException = new TestEnumerator(-5);
             
             _taskRunner = TaskRunner.Instance;
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
-                .SetScheduler(new SyncRunner()); //the taskroutine will stall the thread because it runs on the SyncScheduler
+            //the taskroutine will stall the thread because it runs on the SyncScheduler
+            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new SyncRunner());
         }
         
         [Test]
@@ -70,6 +71,133 @@ namespace Test
         [Test]
         public void TestTaskCanBeAddedToCOllectionWhileRunning()
         {}
+
+        /// <summary>
+        /// TODO: Test Coroutine Wrapper
+        /// TODO: a serial task should be able to run in the same runner of its enumerator?
+        /// </summary>
+        /// <returns></returns>
+        /*  [UnityTest]
+          public IEnumerator TestStopStartTaskRoutine()
+          {
+              using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
+              {
+                  _reusableTaskRoutine.SetScheduler(runner);
+                  _reusableTaskRoutine.SetEnumerator(TestWithThrow());
+                  _reusableTaskRoutine.Start();
+                  _reusableTaskRoutine
+                      .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
+  
+                  _reusableTaskRoutine.SetScheduler(new SyncRunner());
+                  var enumerator = TestWithoutThrow();
+                  var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
+                                      .Start(); //test routine can be reused with another enumerator
+                  
+                  while (continuator.MoveNext()) yield return null;
+                  
+                  Assert.That((int)enumerator.Current, Is.EqualTo(1));
+              }
+          }
+  
+          [UnityTest]
+          public IEnumerator TestSimpleTaskRoutineStopStart()
+          {
+              using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStart"))
+              {
+                  ValueObject result = new ValueObject();
+  
+                  var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
+                  
+                  taskRoutine.Start();
+                  _reusableTaskRoutine.Stop();
+                  taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
+                  
+                  var continuator = taskRoutine.Start();
+                  
+                  while (continuator.MoveNext()) yield return null;
+  
+                  Assert.That(result.counter == 1);
+              }
+          }
+  
+          [UnityTest]
+          public IEnumerator TestSimpleTaskRoutineStopStartWithProvider()
+          {
+              ValueObject result = new ValueObject();
+  
+              using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
+              {
+                  var continuator =_reusableTaskRoutine.SetScheduler(runner)
+                                      .SetEnumerator(SimpleEnumeratorLong(result)).Start();
+                  
+                  Assert.That(continuator.completed == false, "can't be completed");
+                  _reusableTaskRoutine.Stop();
+                  
+                  Thread.Sleep(500); //let's be sure it's cmompleted
+                  
+                  Assert.That(continuator.completed == true, "must be completed");
+                  
+                  continuator = 
+                      _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result))
+                                          .Start();
+                  
+                  while (continuator.MoveNext()) yield return null;
+              }
+  
+              Assert.That(result.counter == 1);
+          }
+  */
+        [Test]
+        public void TestInefficientNestedEnumerator()
+        {
+            var routine = _taskRunner.AllocateNewTaskRoutine(new SyncRunner()).SetEnumerator(Inefficent());
+
+            routine.Start();
+        }
+
+        IEnumerator Inefficent()
+        {
+            var routine = _taskRunner.AllocateNewTaskRoutine(new SyncRunner<TestEnumerator>()).SetEnumeratorRef(ref _iterable1);
+            int i = 0;
+            while (i++ < 10)
+                yield return routine.Start();
+        }
+        
+        [Test]
+        public void TestValueEnumeratorIsExecuted()
+        {
+            //in order to achieve allocation 0 code
+            //it's currently necessary to preallocate 
+            //a TaskRoutine and relative runner.
+            var routine = _taskRunner.AllocateNewTaskRoutine(new SyncRunner<TestEnumerator>()).SetEnumeratorRef(ref _iterable1);
+            
+            //this will be allocation 0
+            var wrapper = routine.Start();
+
+            //TODO: routine or wrapper to have the enumerator? What if the routine is completed
+            Assert.That(wrapper.Current.AllRight, Is.True);
+        }
+        /*
+        [Test]
+        public void TestComplexValueEnumeratorIsExecuted()
+        {
+            //in order to achieve allocation 0 code
+            //it's currently necessary to preallocate 
+            //a TaskRoutine and relative runner.
+            var routine    = TaskRunner.Instance.AllocateNewTaskRoutine<Enumerator>();
+            var syncRunner = new SyncRunner<Enumerator>();
+            
+            //the best part is that setting new enumerator
+            //even when capturing external variable
+            //will be free
+
+            for (int i = 0; i < 5; i++)
+            {
+                routine.SetEnumerator(new Enumerator(10)).Start();
+
+                Assert.That(_iterable1.AllRight, Is.True);
+            }
+        }
         
         [Test]
         public void TestEnumerablesAreExecutedInSerial()
@@ -77,7 +205,7 @@ namespace Test
             _serialTasks1.Add(_iterable1);
             _serialTasks1.Add(_iterable2);
             
-            _serialTasks1.RunOnSchedule(new SyncRunner<Enumerator>());
+            _serialTasks1.RunOnSchedule(new SyncRunner<SerialTaskCollection<Enumerator>>());
             
             Assert.That
                 (_iterable1.AllRight && _iterable2.AllRight);
@@ -482,49 +610,6 @@ namespace Test
             _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
         }
         
-        [UnityTest]
-        public IEnumerator TestStopStartTaskRoutine()
-        {
-            using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
-            {
-                _reusableTaskRoutine.SetScheduler(runner);
-                _reusableTaskRoutine.SetEnumerator(TestWithThrow());
-                _reusableTaskRoutine.Start();
-                _reusableTaskRoutine
-                    .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
-
-                _reusableTaskRoutine.SetScheduler(new SyncRunner());
-                var enumerator = TestWithoutThrow();
-                var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
-                                    .Start(); //test routine can be reused with another enumerator
-                
-                while (continuator.MoveNext()) yield return null;
-                
-                Assert.That((int)enumerator.Current, Is.EqualTo(1));
-            }
-        }
-
-        [UnityTest]
-        public IEnumerator TestSimpleTaskRoutineStopStart()
-        {
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStart"))
-            {
-                ValueObject result = new ValueObject();
-
-                var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
-                
-                taskRoutine.Start();
-                _reusableTaskRoutine.Stop();
-                taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
-                
-                var continuator = taskRoutine.Start();
-                
-                while (continuator.MoveNext()) yield return null;
-
-                Assert.That(result.counter == 1);
-            }
-        }
-        
         [Test]
         public void TestMultiThreadParallelTaskComplete()
         {
@@ -593,6 +678,49 @@ namespace Test
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
                 taskRoutine.Start();
+                var continuator = taskRoutine.Start();
+                
+                while (continuator.MoveNext()) yield return null;
+
+                Assert.That(result.counter == 1);
+            }
+        }
+        
+        [UnityTest]
+        public IEnumerator TestStopStartTaskRoutine()
+        {
+            using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
+            {
+                _reusableTaskRoutine.SetScheduler(runner);
+                _reusableTaskRoutine.SetEnumerator(TestWithThrow());
+                _reusableTaskRoutine.Start();
+                _reusableTaskRoutine
+                    .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
+
+                _reusableTaskRoutine.SetScheduler(new SyncRunner());
+                var enumerator = TestWithoutThrow();
+                var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
+                                    .Start(); //test routine can be reused with another enumerator
+                
+                while (continuator.MoveNext()) yield return null;
+                
+                Assert.That((int)enumerator.Current, Is.EqualTo(1));
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TestSimpleTaskRoutineStopStart()
+        {
+            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStart"))
+            {
+                ValueObject result = new ValueObject();
+
+                var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
+                
+                taskRoutine.Start();
+                _reusableTaskRoutine.Stop();
+                taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
+                
                 var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
@@ -849,7 +977,7 @@ namespace Test
                 Assert.That(seconds == 10);
             }
         }
-
+*/
         IEnumerator ComplexEnumerator(Action<int> callback)
         {
             int i = 0;
@@ -878,7 +1006,7 @@ namespace Test
         TaskRunner _taskRunner;
         ITaskRoutine<IEnumerator> _reusableTaskRoutine;
 
-        SerialTaskCollection<Enumerator> _serialTasks1;
+        SerialTaskCollection<TestEnumerator> _serialTasks1;
         SerialTaskCollection _serialTasks2;
         ParallelTaskCollection<IEnumerator> _parallelTasks1;
         ParallelTaskCollection _parallelTasks2;
@@ -886,10 +1014,10 @@ namespace Test
         Task _task1;
         Task _task2;
 
-        Enumerator _iterable1;
-        Enumerator _iterable2;
+        TestEnumerator _iterable1;
+        TestEnumerator _iterable2;
 
-        Enumerator _iterableWithException;
+        TestEnumerator _iterableWithException;
         AsyncTask _asyncTaskChain1;
         AsyncTask _asyncTaskChain2;
         ValueObject _vo;
@@ -960,7 +1088,7 @@ namespace Test
             public int counter;
         }
 
-        struct Enumerator : IEnumerator
+        struct TestEnumerator : IEnumerator
         {
             public long endOfExecutionTime {get; private set;}
 
@@ -969,7 +1097,7 @@ namespace Test
                 return iterations == totalIterations; 
             }}
 
-            public Enumerator(int niterations):this()
+            public TestEnumerator(int niterations):this()
             {
                 iterations      = 0; 
                 totalIterations = niterations;

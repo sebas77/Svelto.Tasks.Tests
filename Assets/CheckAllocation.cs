@@ -17,8 +17,8 @@ public class CheckAllocation : MonoBehaviour
 		var waitForSecondsEnumerator = new WaitForSecondsEnumerator(0.1f);
 		var syncRunner = new SyncRunner<Allocation0Enumerator>();
 		var syncRunner2 = new SyncRunner<WaitForSecondsEnumerator>();
-		var task = waitForSecondsEnumerator.AllocateNewRoutine().SetScheduler(syncRunner2);
-		var task2 = TaskRunner.Instance.AllocateNewTaskRoutine<Allocation0Enumerator>().SetScheduler(syncRunner);
+		var task = TaskRunner.Instance.AllocateNewTaskRoutine(syncRunner2).SetEnumeratorRef(ref waitForSecondsEnumerator);
+		var task2 = TaskRunner.Instance.AllocateNewTaskRoutine(syncRunner);
 		var serialtask = new SerialTaskCollection<Allocation0Enumerator>();
 		
 		int counter = 0;
