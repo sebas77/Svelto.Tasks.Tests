@@ -53,7 +53,7 @@ namespace Test
             _serialTasks1.Add(_iterable1.GetEnumerator());
             _serialTasks1.Add(_iterable2.GetEnumerator());
             
-            _taskRunner.RunOnSchedule(new SyncRunner(),_serialTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(),_serialTasks1);
         }
 
         [Test]
@@ -63,7 +63,7 @@ namespace Test
             _serialTasks1.Add(BreakIt());
             _serialTasks1.Add(_iterable2.GetEnumerator());
 
-            _taskRunner.RunOnSchedule(new SyncRunner(), _serialTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
 
             Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
         }
@@ -80,7 +80,7 @@ namespace Test
             _parallelTasks1.Add(BreakIt());
             _parallelTasks1.Add(_iterable2.GetEnumerator());
 
-            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
 
             Assert.That(_iterable1.AllRight == false && _iterable1.iterations == 1 && 
                 _iterable2.AllRight == false && _iterable2.iterations == 0);
@@ -89,7 +89,7 @@ namespace Test
         [Test]
         public void TestBreakIt()
         {
-             _taskRunner.RunOnSchedule(new SyncRunner(),SeveralTasks());
+             _taskRunner.RunOnScheduler(new SyncRunner(),SeveralTasks());
 
              Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
         }
@@ -135,7 +135,7 @@ namespace Test
             _parallelTasks1.Add(_iterable1.GetEnumerator());
             _parallelTasks1.Add(_iterable2.GetEnumerator());
 
-            _taskRunner.RunOnSchedule(new SyncRunner(),_parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(),_parallelTasks1);
         }
 
         [Test]
@@ -180,7 +180,7 @@ namespace Test
             
             //this time we will make the task run on another thread
             _reusableTaskRoutine.SetScheduler(new MultiThreadRunner("TestPromisesCancellation")).
-                SetEnumerator(_serialTasks1).ThreadSafeStart
+                SetEnumerator(_serialTasks1).Start
                 (null, () => { testDone = true; Assert.That(allDone, Is.False); });
             _reusableTaskRoutine.Stop();
 
@@ -219,7 +219,7 @@ namespace Test
             _serialTasks1.Add (_task1);
             _serialTasks1.Add (_task2);
             
-            _taskRunner.RunOnSchedule(new SyncRunner(),_serialTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(),_serialTasks1);
         }
 
         [Test]
@@ -233,7 +233,7 @@ namespace Test
             _serialTasks1.Add (_task1);
             _serialTasks1.Add (_task2);
             
-            _taskRunner.RunOnSchedule(new SyncRunner(), _serialTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
         }
 
         [Test]
@@ -244,7 +244,7 @@ namespace Test
             _parallelTasks1.Add (_task1);
             _parallelTasks1.Add (_task2);
             
-            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
         }
 
         //test parallel/serial tasks combinations
@@ -252,7 +252,7 @@ namespace Test
         [Test]
         public void TestParallelTasks1IsExecutedBeforeParallelTask2 ()
         {
-            TaskRunner.Instance.RunOnSchedule(new SyncRunner(), SerialContinuation());
+            TaskRunner.Instance.RunOnScheduler(new SyncRunner(), SerialContinuation());
         }
 
         [Test]
@@ -329,7 +329,7 @@ namespace Test
         [Test]
         public void TestExtension()
         {
-            SerialContinuation().RunOnSchedule(new SyncRunner());
+            SerialContinuation().RunOnScheduler(new SyncRunner());
         }
 
         IEnumerator SerialContinuation()
@@ -371,7 +371,7 @@ namespace Test
             _serialTasks1.Add(_parallelTasks2);
             _serialTasks1.onComplete += () => { Assert.That(parallelTasks1Done && parallelTasks2Done); };
             
-            _taskRunner.RunOnSchedule(new SyncRunner(), _serialTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
         }
 
         //test passage of token between tasks 
@@ -390,7 +390,7 @@ namespace Test
             _parallelTasks1.onComplete += 
                 () => Assert.That(_vo.counter, Is.EqualTo(4));
 
-            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
         }
 
         [Test]
@@ -411,7 +411,7 @@ namespace Test
             _parallelTasks1.Add (_serialTasks2);
             _parallelTasks1.onComplete += () => Assert.That((test1 == 1) && (test2 == 2), Is.True);
 
-            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
         }
         
         [UnityTest]
@@ -421,14 +421,14 @@ namespace Test
             {
                 _reusableTaskRoutine.SetScheduler(runner);
                 _reusableTaskRoutine.SetEnumerator(TestWithThrow());
-                _reusableTaskRoutine.ThreadSafeStart();
+                _reusableTaskRoutine.Start();
                 _reusableTaskRoutine
                     .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
 
                 _reusableTaskRoutine.SetScheduler(new SyncRunner());
                 var enumerator = TestWithoutThrow();
                 var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
-                                    .ThreadSafeStart(); //test routine can be reused with another enumerator
+                                    .Start(); //test routine can be reused with another enumerator
                 
                 while (continuator.MoveNext()) yield return null;
                 
@@ -445,11 +445,11 @@ namespace Test
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
                 
-                taskRoutine.ThreadSafeStart();
+                taskRoutine.Start();
                 _reusableTaskRoutine.Stop();
                 taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
                 
-                var continuator = taskRoutine.ThreadSafeStart();
+                var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
 
@@ -524,8 +524,8 @@ namespace Test
                 ValueObject result = new ValueObject();
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
-                taskRoutine.ThreadSafeStart();
-                var continuator = taskRoutine.ThreadSafeStart();
+                taskRoutine.Start();
+                var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
 
@@ -541,7 +541,7 @@ namespace Test
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
             {
                 var continuator =_reusableTaskRoutine.SetScheduler(runner)
-                                    .SetEnumerator(SimpleEnumeratorLong(result)).ThreadSafeStart();
+                                    .SetEnumerator(SimpleEnumeratorLong(result)).Start();
                 
                 Assert.That(continuator.completed == false, "can't be completed");
                 _reusableTaskRoutine.Stop();
@@ -552,7 +552,7 @@ namespace Test
                 
                 continuator = 
                     _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result))
-                                        .ThreadSafeStart();
+                                        .Start();
                 
                 while (continuator.MoveNext()) yield return null;
             }
@@ -568,10 +568,10 @@ namespace Test
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
             {
                 var continuator = _reusableTaskRoutine.SetScheduler(runner)
-                                    .SetEnumerator(SimpleEnumeratorLong(result)).ThreadSafeStart();
+                                    .SetEnumerator(SimpleEnumeratorLong(result)).Start();
                 Assert.That(continuator.completed == false, "can't be completed");
                 continuator = 
-                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).ThreadSafeStart();
+                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).Start();
 
                 while (continuator.MoveNext()) yield return null;
             }
@@ -593,7 +593,7 @@ namespace Test
             _parallelTasks1.Add(new TimeoutEnumerator());
 
             DateTime then = DateTime.Now;
-            _taskRunner.RunOnSchedule(new SyncRunner(), _parallelTasks1);
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
@@ -609,7 +609,7 @@ namespace Test
                 int i = 0;
                 while (i++ < 200)
                 {
-                    crazyEnumerator(result, runner).RunOnSchedule(new SyncRunner());
+                    crazyEnumerator(result, runner).Complete();
 
                     yield return null;
                 }
@@ -620,11 +620,11 @@ namespace Test
 
         IEnumerator crazyEnumerator(ValueObject result, IRunner runner)
         {
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
-            yield return SimpleEnumeratorFast(result).ThreadSafeRunOnSchedule(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
         }   
         
         IEnumerator SimpleEnumeratorLong(ValueObject result)
@@ -688,7 +688,7 @@ namespace Test
         [Test]
         public void TestComplexCoroutine()
         {
-            _taskRunner.RunOnSchedule(new SyncRunner(),
+            _taskRunner.RunOnScheduler(new SyncRunner(),
                 ComplexEnumerator((i) => Assert.That(i == 100, Is.True)));
         }
 
@@ -699,7 +699,7 @@ namespace Test
             {
                 _iterable1.Reset();
 
-                var continuator = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                var continuator = _iterable1.GetEnumerator().RunOnScheduler(runner);
                 
                 while (continuator.MoveNext());
 
@@ -707,7 +707,7 @@ namespace Test
 
                 _iterable1.Reset();
 
-                continuator = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                continuator = _iterable1.GetEnumerator().RunOnScheduler(runner);
 
                 while (continuator.MoveNext());
 
@@ -724,7 +724,7 @@ namespace Test
 
                 _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
                 
-                var continuator = _reusableTaskRoutine.SetScheduler(runner).ThreadSafeStart();
+                var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
                 
                 while (continuator.MoveNext());
 
@@ -734,7 +734,7 @@ namespace Test
                 
                 _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
                 
-                continuator = _reusableTaskRoutine.ThreadSafeStart();
+                continuator = _reusableTaskRoutine.Start();
 
                 while (continuator.MoveNext());
 
@@ -747,7 +747,7 @@ namespace Test
         {
             using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
             {
-                var task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                var task = _iterable1.GetEnumerator().RunOnScheduler(runner);
 
                 while (task.MoveNext());
 
@@ -757,7 +757,7 @@ namespace Test
 
                 _iterable1.Reset();
 
-                task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                task = _iterable1.GetEnumerator().RunOnScheduler(runner);
 
                 while (task.MoveNext());
 
@@ -772,7 +772,7 @@ namespace Test
             {
                 DateTime now = DateTime.Now;
 
-                var task = _iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+                var task = _iterable1.GetEnumerator().RunOnScheduler(runner);
 
                 while (task.MoveNext());
 
