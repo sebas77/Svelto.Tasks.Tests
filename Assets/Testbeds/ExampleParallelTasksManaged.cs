@@ -1,10 +1,16 @@
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Experimental;
 using UnityEngine;
 
 namespace Test.Editor
 {
+    class SomeData
+    {
+        public int justForTest;
+    }
+
     class LoadSomething : IEnumerable
     {
         public LoadSomething(WWW wWW)
@@ -36,8 +42,10 @@ namespace Test.Editor
         // Use this for initialization
         void Start () 
         {
-            var pt = new ParallelTaskCollection<IEnumerator>();
-            var st = new SerialTaskCollection<IEnumerator>();
+            var someData = new SomeData();
+
+            var pt = new ParallelTaskCollection<SomeData>(someData);
+            var st = new SerialTaskCollection<SomeData>(someData);
         
             st.Add(Print("s1"));
             st.Add(Print("s2"));
@@ -62,6 +70,7 @@ namespace Test.Editor
             pt.Add(Print("5"));
             pt.Add(Print("6"));
             pt.Add(Print("7"));
+            pt.Add(Print(someData.justForTest.ToString()));
             
             TaskRunner.Instance.Run(st);
         }

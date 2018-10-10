@@ -72,6 +72,8 @@ namespace Test.MultiThread
 
     class LoadSomething : IEnumerable
     {
+        public SomeData token { set; private get; }
+
         public LoadSomething(WWWEnumerator wWW)
         {
             this.wWW = wWW;
@@ -81,7 +83,7 @@ namespace Test.MultiThread
 
         public IEnumerator GetEnumerator()
         {
-            yield return task.Start(); //Continuation! The task will continue on the main thread scheduler!
+            yield return task.ThreadSafeStart(); //Continuation! The task will continue on the main thread scheduler!
         }
 
         IEnumerator DoIt()
@@ -93,6 +95,6 @@ namespace Test.MultiThread
         }
 
         WWWEnumerator   wWW;
-        ITaskRoutine<IEnumerator>    task;
+        ITaskRoutine    task;
     }
 }

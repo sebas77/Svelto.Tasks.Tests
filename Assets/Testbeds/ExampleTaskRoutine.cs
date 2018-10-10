@@ -6,13 +6,13 @@ using UnityEngine;
 namespace Test.Editor
 {
     public class ExampleTaskRoutine : MonoBehaviour 
-    { 
+    {
         [TextArea]
         public string Notes = "This example shows how to use the ITaskRoutine feature";
 
         int i;
     
-        ITaskRoutine<IEnumerator> _taskRountine;
+        ITaskRoutine _taskRountine;
         bool         _paused;
 
         ParallelTaskCollection pt = new ParallelTaskCollection();

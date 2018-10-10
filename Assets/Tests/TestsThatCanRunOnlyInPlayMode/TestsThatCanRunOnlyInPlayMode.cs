@@ -2,10 +2,13 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
+using System.Linq.Expressions;
+using System.Runtime.Remoting;
 using System.Threading;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using UnityEngine;
-/*
+
 public class TestsThatCanRunOnlyInPlayMode
 {
     [SetUp]
@@ -19,7 +22,7 @@ public class TestsThatCanRunOnlyInPlayMode
 	public IEnumerator TestHandlingInstructionsToUnity() {
         // Use the Assert class to test conditions.
         // yield to skip a frame
-        var task = UnityHandle().AllocateNewRoutine().Start();
+        var task = UnityHandle().Run();
 
         while (task.MoveNext())
             yield return null;
@@ -39,11 +42,11 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestMultithreadIntervaled()
     {
-        using (var runner = new MultiThreadRunner<Enumerator>("intervalTest", 1))
+        using (var runner = new MultiThreadRunner("intervalTest", 1))
         {
             DateTime now = DateTime.Now;
 
-            var task = _iterable1.AllocateNewRoutine().SetScheduler(runner).Start();
+            var task = _iterable1.ThreadSafeRunOnSchedule(runner);
 
             while (task.MoveNext())
                 yield return null;
@@ -165,7 +168,7 @@ public class TestsThatCanRunOnlyInPlayMode
             
         Assert.That(done == true); 
 
-        Assert.Throws<Exception>(() => task.Start());
+        Assert.Throws<DBC.AssertionException>(() => task.Start());
     }
     
     [UnityTest]
@@ -424,4 +427,3 @@ public class TestsThatCanRunOnlyInPlayMode
         public int iterations;
     }
 }
-*/

@@ -63,7 +63,7 @@ namespace Test.Editor
 
             yield return parallelTasks;
 
-            if (parallelTasks.Current.current == Break.It)
+            if (parallelTasks.Current == Break.It)
             {
                 yield return Break.AndStop;
 

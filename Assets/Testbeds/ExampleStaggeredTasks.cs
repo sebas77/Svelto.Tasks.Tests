@@ -1,6 +1,7 @@
 using System.Collections;
 using Svelto.Tasks;
 using UnityEngine;
+using System;
 
 public class ExampleStaggeredTasks : MonoBehaviour 
 {
@@ -17,7 +18,7 @@ public class ExampleStaggeredTasks : MonoBehaviour
         _runner = new StaggeredMonoRunner("StaggeredRunner", MaxTasksPerFrame);
 
         for (int i = 0; i < 300; i++)
-            PrintFrame().RunOnSchedule(_runner);
+            PrintFrame().ThreadSafeRunOnSchedule(_runner);
 	}
 
     void OnDisable()
