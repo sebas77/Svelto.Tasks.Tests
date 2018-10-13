@@ -1,8 +1,6 @@
 # Svelto.Tasks.Tests
 ======================
 
-Note: Please check the releases for stable tests, I use the master to keep on developing on new features, so the tests are very likely broken.
-
 These are the tests and example of Svelto.Tasks:
 
 https://github.com/sebas77/Svelto.Tasks
