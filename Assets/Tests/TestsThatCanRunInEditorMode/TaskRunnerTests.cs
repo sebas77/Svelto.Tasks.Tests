@@ -3,15 +3,14 @@
 using System;
 using System.Collections;
 using System.Threading;
-using JetBrains.Annotations;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
+using Svelto.Tasks.Unity;
+using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Random = System.Random;
 
 //Note: RunSync is used only for testing purposes
 //Real scenarios should use Run or RunManaged
@@ -38,6 +37,7 @@ namespace Test
             
             _iterable1 = new Enumerable(10000);
             _iterable2 = new Enumerable(10000);
+            _iterable3 = new Enumerable(2000);
             _iterableWithException = new Enumerable(-5);
             
             _taskRunner = TaskRunner.Instance;
@@ -89,9 +89,100 @@ namespace Test
         [Test]
         public void TestBreakIt()
         {
-             _taskRunner.RunOnScheduler(new SyncRunner(),SeveralTasks());
+            SeveralTasks().RunOnScheduler(new SyncRunner());
 
              Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
+        }
+
+        class SimpleEnumeratorClass : IEnumerator
+        {
+            public bool MoveNext()
+            {
+                Thread.Sleep(100);
+                return false;
+            }
+
+            public void Reset()
+            {
+                
+            }
+
+            public object Current { get; }
+        }
+
+        [UnityTest]
+        public IEnumerator TestStaggeredMonoRunner()
+        {
+            var frames = 0;
+            
+            var staggeredMonoRunner = new StaggeredMonoRunner("staggered", 4);
+            
+            for (int i = 0; i < 32; i++)
+                new SimpleEnumeratorClass().RunOnScheduler(staggeredMonoRunner);
+
+            var runnerBehaviour = staggeredMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
+            
+            frames++;
+            runnerBehaviour.Update();
+            
+            while (staggeredMonoRunner.numberOfRunningTasks > 0)
+            {
+                frames++;
+                runnerBehaviour.Update();
+                yield return null;
+            }
+
+            Assert.That(frames, Is.EqualTo(8));
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTimeBoundMonoRunner()
+        {
+            var frames = 0;
+            
+            var timeBoundMonoRunner = new TimeBoundMonoRunner("timebound", 200);
+            
+            for (int i = 0; i < 32; i++)
+                new SimpleEnumeratorClass().RunOnScheduler(timeBoundMonoRunner);
+
+            var runnerBehaviour = timeBoundMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
+            
+            frames++;
+            runnerBehaviour.Update();
+            
+            while (timeBoundMonoRunner.numberOfRunningTasks > 0)
+            {
+                frames++;
+                runnerBehaviour.Update();
+                yield return null;
+            }
+
+            Assert.That(frames, Is.EqualTo(16));
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTimeSlicedMonoRunner()
+        {
+            var frames = 0;
+            
+            var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 2000);
+            
+            for (int i = 0; i < 100; i++)
+                new SimpleEnumeratorClass().RunOnScheduler(timeSlicedMonoRunner);
+
+            var runnerBehaviour = timeSlicedMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
+            
+            frames++;
+            runnerBehaviour.Update();
+            
+            while (timeSlicedMonoRunner.numberOfRunningTasks > 0)
+            {
+                frames++;
+                runnerBehaviour.Update();
+                yield return null;
+            }
+
+            Assert.That(frames, Is.EqualTo(5));
         }
 
         IEnumerator SeveralTasks()
@@ -599,6 +690,56 @@ namespace Test
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
         }
         
+        [Test]
+        public void TestParallelWait()
+        {
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+
+            DateTime then = DateTime.Now;
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+
+            var totalSeconds = (DateTime.Now - then).TotalSeconds;
+            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        }
+        
+        [Test]
+        public void TestParallelUnityWait()
+        {
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+
+            DateTime then = DateTime.Now;
+            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+
+            var totalSeconds = (DateTime.Now - then).TotalSeconds;
+            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        }
+        
+        [Test]
+        public void TestUnityWait()
+        {
+            DateTime then = DateTime.Now;
+            new WaitForSecondsU().GetEnumerator().RunOnScheduler(new SyncRunner());
+
+            var totalSeconds = (DateTime.Now - then).TotalSeconds;
+            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        }
+        
         [UnityTest]
         public IEnumerator TestCrazyMultiThread()
         {
@@ -770,21 +911,23 @@ namespace Test
         {
             using (var runner = new MultiThreadRunner("TestMultithreadIntervaled", 1))
             {
+                ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
+                taskRoutine.SetEnumerator(_iterable3.GetEnumerator()).SetScheduler(runner);
+                
                 DateTime now = DateTime.Now;
 
-                var task = _iterable1.GetEnumerator().RunOnScheduler(runner);
+                taskRoutine.Start().Complete();
 
-                while (task.MoveNext());
+                var seconds = (DateTime.Now - now).TotalSeconds;
 
-                var seconds = (DateTime.Now - now).Seconds;
+                //2000 iteration * 1ms = 2 seconds
 
-                //10000 iteration * 1ms = 10 seconds
-
-                Assert.That(_iterable1.AllRight == true && seconds == 10);
+                Assert.That((int)seconds, Is.EqualTo(2));
+                Assert.IsTrue(_iterable3.AllRight);
             }
         }
 
-        IEnumerator ComplexEnumerator(Action<int> callback)
+        IEnumerator ComplexEnumerator(Action<int> callback)    
         {
             int i = 0;
             int j = 0;
@@ -827,9 +970,10 @@ namespace Test
         TaskChain _taskChain1;
         TaskChain _taskChain2;
         ValueObject _vo;
-      
+        Enumerable _iterable3;
 
-            class Task : ITask
+
+        class Task : ITask
         {
             //ITask Implementation
             public bool  isDone { get; private set; }
@@ -920,15 +1064,23 @@ namespace Test
                 while (iterations < totalIterations)
                 {
                     iterations++;
-                    
+
                     yield return null;
                 }
                 
                 endOfExecutionTime = DateTime.Now.Ticks;
             }
 
-            int totalIterations;
+            readonly int totalIterations;
             public int iterations;
+        }
+    }
+
+    public class WaitForSecondsU : IEnumerable
+    {
+        public IEnumerator GetEnumerator()
+        {
+            yield return new WaitForSecondsRealtime(1);
         }
     }
 }
