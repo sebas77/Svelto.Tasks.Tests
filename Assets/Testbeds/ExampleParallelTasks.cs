@@ -2,6 +2,7 @@ using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Test.Editor
 {
@@ -10,7 +11,7 @@ namespace Test.Editor
         int i;
 
         [TextArea]
-        public string Notes = "This example shows how to run different types of tasks in Parallel (using time-spliting technique)";
+        public string Notes = "This example shows how to run different types of tasks in Parallel";
 
         void OnEnable()
         {
@@ -48,7 +49,7 @@ namespace Test.Editor
                                  Debug.Log("Unlock framerate");
                              };
 			
-            StartCoroutine(pt);
+            pt.Run();
         }
 	
         IEnumerator Print(string i)
@@ -67,11 +68,11 @@ namespace Test.Editor
 	
         IEnumerator WWWTest()
         {
-            WWW www = new WWW("www.google.com");
+            UnityWebRequest www = new UnityWebRequest("www.google.com");
 		
-            yield return new WWWEnumerator(www);
+            yield return new UnityWebRequestEnumerator(www);
 		
-            Debug.Log("www done:" + www.text);
+            Debug.Log("www done:" + www.GetResponseHeaders());
         }
     }
 }

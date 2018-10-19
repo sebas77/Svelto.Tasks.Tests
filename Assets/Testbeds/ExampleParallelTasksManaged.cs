@@ -3,6 +3,7 @@ using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Test.Editor
 {
@@ -13,26 +14,27 @@ namespace Test.Editor
 
     class LoadSomething : IEnumerable
     {
-        public LoadSomething(WWW wWW)
+        public LoadSomething(UnityWebRequest wWW)
         {
             this.wWW = wWW;
         }
 
         public IEnumerator GetEnumerator()
         {
-            yield return new WWWEnumerator(wWW);
+            yield return new UnityWebRequestEnumerator(wWW);
 
-            foreach (var s in wWW.responseHeaders.Values)
+            foreach (var s in wWW.GetResponseHeaders())
                 Debug.Log(s);
         }
 
-        WWW wWW;
+        UnityWebRequest wWW;
     }
 
     public class ExampleParallelTasksManaged : MonoBehaviour 
     {
         [TextArea]
-        public string Notes = "This example shows how to run different types of tasks in Parallel with the TaskRunner (using time-spliting technique)";
+        public string Notes = "This example shows how to run different types of tasks in Parallel with the TaskRunner " +
+                              "(pressing any key will pause the task)";
 
         void OnEnable()
         {
@@ -42,10 +44,8 @@ namespace Test.Editor
         // Use this for initialization
         void Start () 
         {
-            var someData = new SomeData();
-
-            var pt = new ParallelTaskCollection<SomeData>(someData);
-            var st = new SerialTaskCollection<SomeData>(someData);
+            var pt = new ParallelTaskCollection();
+            var st = new SerialTaskCollection();
         
             st.Add(Print("s1"));
             st.Add(Print("s2"));
@@ -62,17 +62,16 @@ namespace Test.Editor
             pt.Add(UnityAsyncOperationsMustNotBreakTheParallelism());
             pt.Add(UnityYieldInstructionsMustNotBreakTheParallelism());
 
-            pt.Add(new LoadSomething(new WWW("www.google.com")).GetEnumerator()); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
-            pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")).GetEnumerator());
-            pt.Add(new LoadSomething(new WWW("www.ebay.com")).GetEnumerator());
+            pt.Add(new LoadSomething(new UnityWebRequest("www.google.com")).GetEnumerator()); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
+            pt.Add(new LoadSomething(new UnityWebRequest("http://download.thinkbroadband.com/5MB.zip")).GetEnumerator());
+            pt.Add(new LoadSomething(new UnityWebRequest("www.ebay.com")).GetEnumerator());
             pt.Add(Print("3"));
             pt.Add(Print("4"));
             pt.Add(Print("5"));
             pt.Add(Print("6"));
             pt.Add(Print("7"));
-            pt.Add(Print(someData.justForTest.ToString()));
             
-            TaskRunner.Instance.Run(st);
+            st.Run();
         }
 
         IEnumerator UnityAsyncOperationsMustNotBreakTheParallelism()

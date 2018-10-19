@@ -4,6 +4,7 @@ using System.Collections;
 using System;
 using System.Threading;
 using Svelto.Tasks;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 public class TestsThatCanRunOnlyInPlayMode
@@ -82,27 +83,45 @@ public class TestsThatCanRunOnlyInPlayMode
             done = true;
         });
 
-        int iteration = 0;
-            
-        while (iteration++ < 3)
+        while (task.isRunning == true)
+        {
             yield return null;
-            
-        Assert.That(done == false);
-            
-        task.Stop();
-
-        iteration = 0;
-            
-        while (iteration++ < 3)
-            yield return null;
+            task.Stop();
+        }
             
         Assert.That(done == true);
+        Assert.IsFalse(_iterable1.AllRight);
 
         task.Start();
+
+        while (task.isRunning == true) yield return null;
         
         //it's one because the Start run immediatly the code until the first yield 
-        Assert.That(_iterable1.iterations, Is.EqualTo(1));
+        Assert.IsTrue(_iterable1.AllRight);
     }
+    
+    [UnityTest]
+    public IEnumerator TestUnityWait()
+    {
+            
+        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
+        taskRoutine.SetEnumeratorProvider(new WaitForSecondsU().GetEnumerator).SetScheduler(new UpdateMonoRunner("test"));
+        taskRoutine.Start();
+        DateTime then = DateTime.Now;
+        while (taskRoutine.isRunning == true) yield return null;
+
+        var totalSeconds = (DateTime.Now - then).TotalSeconds;
+        Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+    }
+    
+    public class WaitForSecondsU : IEnumerable
+    {
+        public IEnumerator GetEnumerator()
+        {
+            yield return new WaitForSecondsRealtime(1);
+        }
+    }
+
         
     [UnityTest]
     public IEnumerator TaskWithEnumeratorProviderMustStopAndRestart()
@@ -165,7 +184,7 @@ public class TestsThatCanRunOnlyInPlayMode
             
         Assert.That(done == true); 
 
-        Assert.Throws<Exception>(() => task.Start());
+        Assert.Catch<Exception>(() => task.Start());
     }
     
     [UnityTest]
@@ -212,36 +231,37 @@ public class TestsThatCanRunOnlyInPlayMode
             SetEnumeratorProvider(UnityWaitEnumerator);
             
         bool done = false;
-
-        task.Start(onStop: () => {
-            done = true;
-        });
-
-        int iteration = 0;
-            
-        while (iteration++ < 3)
-            yield return null;
-            
-        Assert.That(done == false);
-            
-        task.Stop();
-
-        int iteration2 = 0;
-            
-        while (iteration2++ < 3)
-            yield return null;
-        
-        Assert.That(done == true);
         
         DateTime time = DateTime.Now;
         
-        yield return task.Start();
-
-        var totalSeconds = (DateTime.Now - time).TotalSeconds;
-        Assert.That(totalSeconds >= 2 && totalSeconds <= 3);
+        task.Start(onStop: () => {
+            done = true;
+        });
         
-        totalSeconds = (DateTime.Now - then).TotalSeconds;
-        Assert.That(totalSeconds >= 2 && totalSeconds <= 3);
+        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+        Assert.Less(totalSeconds, 1);
+
+        while (task.isRunning == true)
+        {
+            yield return null; //stop is called inside the runner
+            task.Stop();
+            yield return null; //stop is called inside the runner
+        }
+        
+        Assert.That(done == true);
+        done = false;
+        
+        time = DateTime.Now;
+        
+        yield return task.Start(onStop: () => {
+            done = true;
+        });
+
+        totalSeconds = (DateTime.Now - time).TotalSeconds;
+        Assert.Greater(totalSeconds, 1.9);
+        Assert.Less(totalSeconds, 2.1);
+        
+        Assert.That(done == false);
     }
     
     [UnityTest]
@@ -253,27 +273,35 @@ public class TestsThatCanRunOnlyInPlayMode
         var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
             SetEnumerator(tasks);
             
-        bool done = false;
+        bool stopped = false;
 
         task.Start(onStop: () => {
-            done = true;
+            stopped = true;
         });
 
-        int iteration = 0;
-            
-        while (iteration++ < 3)
-            yield return null;
-            
-        Assert.That(done == false);
-            
-        task.Stop();
-
-        int iteration2 = 0;
-            
-        while (iteration2++ < 3)
-            yield return null;
+        while (task.isRunning == true)
+        {
+            yield return null; //stop is called inside the runner
+            task.Stop();
+            yield return null; //stop is called inside the runner
+        }
         
-        Assert.That(done == true);
+        Assert.That(stopped == true);
+        
+        task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+                              SetEnumerator(tasks);
+        
+        DateTime time = DateTime.Now;
+        
+        yield return task.Start(onStop: () => {
+            stopped = true;
+        });
+        
+        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+        Assert.Greater(totalSeconds, 1.9);
+        Assert.Less(totalSeconds, 2.1);
+
+        Assert.That(stopped == false);
     }
     
     class Token

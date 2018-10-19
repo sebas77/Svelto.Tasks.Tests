@@ -400,15 +400,18 @@ namespace Test
 
         public class SlowTask : IEnumerator
         {
+            DateTime _then;
             public object Current { get; private set; }
 
             public SlowTask()
-            {}
+            {
+                _then = DateTime.Now.AddSeconds(1);
+            }
 
             public bool MoveNext()
             {
-                System.Threading.Thread.Sleep(1000);
-                
+                if (DateTime.Now < _then)
+                return true;
                 return false;
             }
 
@@ -730,16 +733,6 @@ namespace Test
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
         }
         
-        [Test]
-        public void TestUnityWait()
-        {
-            DateTime then = DateTime.Now;
-            new WaitForSecondsU().GetEnumerator().RunOnScheduler(new SyncRunner());
-
-            var totalSeconds = (DateTime.Now - then).TotalSeconds;
-            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
-        }
-        
         [UnityTest]
         public IEnumerator TestCrazyMultiThread()
         {
@@ -756,7 +749,7 @@ namespace Test
                 }
             }
 
-            Assert.That(result.counter == 1000);
+            Assert.That(result.counter, Is.EqualTo(1000));
         }
 
         IEnumerator crazyEnumerator(ValueObject result, IRunner runner)

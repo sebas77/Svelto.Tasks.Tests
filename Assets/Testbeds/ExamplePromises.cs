@@ -3,6 +3,7 @@ using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Test.Editor
 {
@@ -59,7 +60,7 @@ namespace Test.Editor
 
             //parallel tasks with race condition (timeout Breaks it)
             parallelTasks.Add(BreakOnTimeOut(timeout));
-            parallelTasks.Add(new LoadSomething(new WWW(url)).GetEnumerator());
+            parallelTasks.Add(new LoadSomething(new UnityWebRequest(url)).GetEnumerator());
 
             yield return parallelTasks;
 
@@ -95,7 +96,7 @@ namespace Test.Editor
 
         class LoadSomething : IEnumerable
         {
-            public LoadSomething(WWW wWW)
+            public LoadSomething(UnityWebRequest wWW)
             {
                 this.wWW = wWW;
             }
@@ -104,9 +105,9 @@ namespace Test.Editor
             {
                 Debug.Log("download started");
 
-                yield return new ParallelTaskCollection(new [] { new WWWEnumerator(wWW), PrintProgress(wWW) });
+                yield return new ParallelTaskCollection(new [] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) });
 
-                foreach (string s in wWW.responseHeaders.Values)
+                foreach (string s in wWW.GetResponseHeaders().Values)
                     Debug.Log(s);
 
                 Debug.Log("Success! Let's throw an Exception to be caught by OnFail");
@@ -114,17 +115,17 @@ namespace Test.Editor
                 throw new Exception("Dayyym");
             }
 
-            IEnumerator PrintProgress(WWW wWW)
+            IEnumerator PrintProgress(UnityWebRequest wWW)
             {
                 while (wWW.isDone == false)
                 {
-                    Debug.Log(wWW.progress);
+                    Debug.Log(wWW.downloadProgress);
 
                     yield return null;
                 }
             }
 
-            WWW wWW;
+            UnityWebRequest wWW;
         }
     }
 }
