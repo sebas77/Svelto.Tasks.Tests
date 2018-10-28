@@ -103,9 +103,24 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWait()
     {
-            
         ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
         taskRoutine.SetEnumeratorProvider(new WaitForSecondsU().GetEnumerator).SetScheduler(new UpdateMonoRunner("test"));
+        taskRoutine.Start();
+        DateTime then = DateTime.Now;
+        while (taskRoutine.isRunning == true) yield return null;
+
+        var totalSeconds = (DateTime.Now - then).TotalSeconds;
+        Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestUnityWaitInParallel()
+    {
+        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
+        ParallelTaskCollection pt = new ParallelTaskCollection();
+        pt.Add(new WaitForSecondsU().GetEnumerator());
+        pt.Add(new WaitForSecondsU().GetEnumerator());
+        taskRoutine.SetEnumerator(pt).SetScheduler(new UpdateMonoRunner("test"));
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
@@ -221,54 +236,62 @@ public class TestsThatCanRunOnlyInPlayMode
 
         Assert.That(_hasReset == true);
     }
+
+    class ValueRef
+    {
+        public bool isDone;
+    }
     
     [UnityTest]
-    public IEnumerator TaskWithWaitForSecondsMustRestartImmediatly()
+    public IEnumerator TaskWithWaitForSecondsMustRestartImmediately()
     {
-        DateTime then = DateTime.Now;
-        
+        var valueRef = new ValueRef();
         var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
-            SetEnumeratorProvider(UnityWaitEnumerator);
+            SetEnumeratorProvider(() => UnityWaitEnumerator(valueRef));
             
-        bool done = false;
+        bool stopped = false;
         
         DateTime time = DateTime.Now;
         
         task.Start(onStop: () => {
-            done = true;
+            stopped = true;
         });
         
-        var totalSeconds = (DateTime.Now - time).TotalSeconds;
-        Assert.Less(totalSeconds, 1);
-
         while (task.isRunning == true)
         {
             yield return null; //stop is called inside the runner
             task.Stop();
             yield return null; //stop is called inside the runner
         }
+        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+        Assert.Less(totalSeconds, 0.2);
+        Assert.That(stopped == true);
+        Assert.That(valueRef.isDone == false);
         
-        Assert.That(done == true);
-        done = false;
-        
+        stopped = false;
         time = DateTime.Now;
         
         yield return task.Start(onStop: () => {
-            done = true;
+            stopped = true;
         });
 
         totalSeconds = (DateTime.Now - time).TotalSeconds;
         Assert.Greater(totalSeconds, 1.9);
         Assert.Less(totalSeconds, 2.1);
-        
-        Assert.That(done == false);
+        Assert.That(valueRef.isDone == true);
+        Assert.That(stopped == false);
     }
     
-    [UnityTest]
+/*    [UnityTest]
     public IEnumerator TaskWithWaitForSecondsMustRestartImmediatlyInParallelToo()
     {
         ParallelTaskCollection tasks = new ParallelTaskCollection();
-        tasks.Add(UnityWaitEnumerator());
+        var valueRef = new ValueRef();
+        var valueRef2 = new ValueRef();
+        tasks.Add(SubEnumerator(1));
+        tasks.Add(UnityWaitEnumerator(valueRef));
+        tasks.Add(UnityWaitEnumerator(valueRef2));
+        tasks.Add(SubEnumerator(1));
             
         var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
             SetEnumerator(tasks);
@@ -278,31 +301,40 @@ public class TestsThatCanRunOnlyInPlayMode
         task.Start(onStop: () => {
             stopped = true;
         });
-
+        
+        DateTime time = DateTime.Now;
+        
         while (task.isRunning == true)
         {
-            yield return null; //stop is called inside the runner
+            yield return null; 
             task.Stop();
             yield return null; //stop is called inside the runner
         }
         
+        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+       // Assert.Less(totalSeconds, 0.2);
         Assert.That(stopped == true);
+        Assert.That(valueRef.isDone == false);
+        Assert.That(valueRef2.isDone == false);
         
-        task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
-                              SetEnumerator(tasks);
+        tasks = new ParallelTaskCollection();
+        tasks.Add(UnityWaitEnumerator(new ValueRef()));
+        task.SetEnumerator(tasks);
         
-        DateTime time = DateTime.Now;
+        stopped = false;
+        time = DateTime.Now;
         
         yield return task.Start(onStop: () => {
             stopped = true;
         });
         
-        var totalSeconds = (DateTime.Now - time).TotalSeconds;
+        totalSeconds = (DateTime.Now - time).TotalSeconds;
         Assert.Greater(totalSeconds, 1.9);
         Assert.Less(totalSeconds, 2.1);
-
         Assert.That(stopped == false);
-    }
+        Assert.That(valueRef.isDone == true);
+        Assert.That(valueRef2.isDone == true);
+    }*/
     
     class Token
     {
@@ -312,7 +344,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest] 
     public IEnumerator TestStopMultiThreadParallelTask()
     {
-        var test = new MultiThreadedParallelTaskCollection(4);
+        var test = new MultiThreadedParallelTaskCollection(4, false);
 
         Token token = new Token();
         bool done = false;
@@ -335,7 +367,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]  
     public IEnumerator TestMultiThreadParallelTaskReset()
     {
-        var test = new MultiThreadedParallelTaskCollection(4);
+        var test = new MultiThreadedParallelTaskCollection(4, false);
         
         Token token = new Token();
 
@@ -393,9 +425,11 @@ public class TestsThatCanRunOnlyInPlayMode
         }
     }
     
-    IEnumerator UnityWaitEnumerator()
+    IEnumerator UnityWaitEnumerator(ValueRef valueRef)
     {
         yield return new WaitForSeconds(2);
+
+        valueRef.isDone = true;
     }
 
     IEnumerator SubEnumerator(int i)

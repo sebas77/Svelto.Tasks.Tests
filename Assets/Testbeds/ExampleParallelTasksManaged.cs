@@ -1,17 +1,11 @@
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
-using Svelto.Tasks.Experimental;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Test.Editor
 {
-    class SomeData
-    {
-        public int justForTest;
-    }
-
     class LoadSomething : IEnumerable
     {
         public LoadSomething(UnityWebRequest wWW)
