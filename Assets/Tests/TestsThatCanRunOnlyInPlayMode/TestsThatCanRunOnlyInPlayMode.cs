@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Unity;
@@ -30,11 +31,40 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         DateTime now = DateTime.Now;
 
-        yield return new UnityEngine.WaitForSeconds(2);
+        yield return new WaitForSeconds(2);
 
         var seconds = (DateTime.Now - now).Seconds;
 
         Assert.That(seconds == 2);
+    }
+
+    [UnityTest]
+    public IEnumerator TestCoroutineRunnerYieldOneFrame()
+    {
+        var enumerator = Continuation();
+        var continuation = enumerator.Run();
+
+        while (continuation.MoveNext() == true) yield return null;
+        
+        Assert.That(enumerator.Current, Is.EqualTo(100));
+    }
+
+    IEnumerator Continuation()
+    {
+        var result = false;
+        var frame = Time.frameCount;
+        int i = 0;
+        while (++i < 100)
+        {
+            yield return null;
+
+            if (frame == Time.frameCount)
+                yield break;
+            
+            frame = Time.frameCount;
+        }
+
+        yield return i;
     }
 
     [UnityTest]
