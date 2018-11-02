@@ -632,31 +632,32 @@ namespace Test
         public IEnumerator TestMultiThreadParallelTaskCompletes()
         {
             yield return null;
-            
-            var test = new MultiThreadedParallelTaskCollection();
 
-            bool done = false;
-            test.onComplete += () => done = true;
-            Token token = new Token();
-        
-            test.Add(new WaitEnumerator(token));
-            test.Add(new WaitEnumerator(token));
-            test.Add(new WaitEnumerator(token));
-            test.Add(new WaitEnumerator(token));
+            using (var test = new MultiThreadedParallelTaskCollection())
+            {
+                bool done = false;
+                test.onComplete += () => done = true;
+                Token token = new Token();
 
-            test.RunOnScheduler(StandardSchedulers.multiThreadScheduler);
-            DateTime now = DateTime.Now;
-            yield return null;
-            
-            while (test.isRunning) 
+                test.Add(new WaitEnumerator(token));
+                test.Add(new WaitEnumerator(token));
+                test.Add(new WaitEnumerator(token));
+                test.Add(new WaitEnumerator(token));
+
+                test.RunOnScheduler(new MultiThreadRunner("test", true, false));
+                DateTime now = DateTime.Now;
                 yield return null;
 
-            var totalSeconds = (DateTime.Now - now).TotalSeconds;
-            
-            Assert.Greater(totalSeconds, 1.9);
-            Assert.Less(totalSeconds, 2.1);
-            Assert.That(done, Is.True);
-            Assert.AreEqual(4, token.count);
+                while (test.isRunning)
+                    yield return null;
+
+                var totalSeconds = (DateTime.Now - now).TotalSeconds;
+
+                Assert.Greater(totalSeconds, 1.9);
+                Assert.Less(totalSeconds, 2.1);
+                Assert.That(done, Is.True);
+                Assert.AreEqual(4, token.count);
+            }
         }
         
         class Token
@@ -810,35 +811,6 @@ namespace Test
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
-        }
-        
-        [UnityTest]
-        public IEnumerator TestParallelUnityWait()
-        {
-            yield return null;
-
-            try
-            {
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-
-                DateTime then = DateTime.Now;
-                _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
-
-                var totalSeconds = (DateTime.Now - then).TotalSeconds;
-                Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
-            }
-            catch (CoroutineMonoRunnerException c)
-            {
-                Assert.Pass();
-            }
         }
         
         IEnumerator SimpleEnumeratorLong(ValueObject result)
