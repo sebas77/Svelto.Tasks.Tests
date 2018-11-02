@@ -617,8 +617,8 @@ namespace Test
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
                 
                 taskRoutine.Start();
-                _reusableTaskRoutine.Stop();
-                taskRoutine = _reusableTaskRoutine.SetEnumerator(SimpleEnumerator(result));
+                taskRoutine.Stop();
+                taskRoutine.SetEnumerator(SimpleEnumerator(result));
                 
                 var continuator = taskRoutine.Start();
                 
@@ -709,11 +709,12 @@ namespace Test
 
                 var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
                 taskRoutine.Start();
+                yield return null;
                 var continuator = taskRoutine.Start();
                 
                 while (continuator.MoveNext()) yield return null;
 
-                Assert.That(result.counter == 1);
+                Assert.That(result.counter, Is.EqualTo(1));
             }
         }
 
@@ -815,22 +816,29 @@ namespace Test
         public IEnumerator TestParallelUnityWait()
         {
             yield return null;
-            
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
-            _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
 
-            DateTime then = DateTime.Now;
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+            try
+            {
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
+                _parallelTasks1.Add(new WaitForSecondsU().GetEnumerator());
 
-            var totalSeconds = (DateTime.Now - then).TotalSeconds;
-            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+                DateTime then = DateTime.Now;
+                _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+
+                var totalSeconds = (DateTime.Now - then).TotalSeconds;
+                Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+            }
+            catch (CoroutineMonoRunnerException c)
+            {
+                Assert.Pass();
+            }
         }
         
         IEnumerator SimpleEnumeratorLong(ValueObject result)

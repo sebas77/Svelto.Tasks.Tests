@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Unity;
 using UnityEngine;
+using UnityEngine.Experimental.PlayerLoop;
 
 public class TestsThatCanRunOnlyInPlayMode
 {
@@ -51,7 +53,6 @@ public class TestsThatCanRunOnlyInPlayMode
 
     IEnumerator Continuation()
     {
-        var result = false;
         var frame = Time.frameCount;
         int i = 0;
         while (++i < 100)
@@ -59,7 +60,7 @@ public class TestsThatCanRunOnlyInPlayMode
             yield return null;
 
             if (frame == Time.frameCount)
-                yield break;
+                throw new Exception();
             
             frame = Time.frameCount;
         }
@@ -420,6 +421,160 @@ public class TestsThatCanRunOnlyInPlayMode
         
         Assert.That(done == 1);
         Assert.AreEqual(4, token.count);
+    }
+    
+    [UnityTest]
+    public IEnumerator TestSimpleTaskRoutineStartStart()
+    {
+        yield return null;
+            
+        using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
+        {
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+                                         SetEnumeratorProvider(() => LongTermEnumerator());
+            taskRoutine.Start();
+            taskRoutine.Start();
+            taskRoutine.Start();
+            taskRoutine.Start();
+            var continuator = taskRoutine.Start();
+                
+            while (continuator.MoveNext()) yield return null;
+            
+            Assert.Pass();
+        }
+    }
+    
+    [UnityTest]
+    public IEnumerator TestSimpleTaskRoutineStopStart()
+    {
+        yield return null;
+            
+        using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
+        {
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+                                         SetEnumeratorProvider(() => LongTermEnumerator());
+            int test = 0;
+            var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
+            yield return null;
+            taskRoutine.Stop();
+            while (continuator.MoveNext()) yield return null;
+            var continuator2 = taskRoutine.Start();
+            Assert.That(test, Is.EqualTo(1));
+            while (continuator2.MoveNext()) yield return null;
+            
+            Assert.Pass();
+        }
+    }
+    
+     
+    [UnityTest]
+    public IEnumerator TestSimpleTaskRoutineStartStartUnity()
+    {
+        yield return null;
+            
+        using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
+        {
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+                                         SetEnumeratorProvider(() => LongTermEnumeratorUnity());
+            taskRoutine.Start();
+            taskRoutine.Start();
+            taskRoutine.Start();
+            taskRoutine.Start();
+            var continuator = taskRoutine.Start();
+                
+            while (continuator.MoveNext()) yield return null;
+            
+            Assert.Pass();
+        }
+    }
+    
+    [UnityTest]
+    public IEnumerator TestSimpleTaskRoutineStopStartUnity()
+    {
+        yield return null;
+            
+        using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
+        {
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+                                         SetEnumeratorProvider(() => LongTermEnumeratorUnity());
+            int test        = 0;
+            var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
+            yield return null;
+            taskRoutine.Stop();
+            while (continuator.MoveNext()) yield return null;
+            var continuator2 = taskRoutine.Start();
+            Assert.That(test, Is.EqualTo(1));
+            while (continuator2.MoveNext()) yield return null;
+            
+            Assert.Pass();
+        }
+    }
+
+    void OnStop(ref int test)
+    {
+        test = 1;
+    }
+
+    [UnityTest]
+    public IEnumerator TestSimpleTaskRoutineStart()
+    {
+        yield return null;
+            
+        using (var runner = new CoroutineMonoRunner("TestSimpleTaskRoutineStartStart"))
+        {
+            ValueObject result = new ValueObject();
+
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+                                         SetEnumeratorProvider(() => SimpleEnumerator(result));
+
+            var continuation = taskRoutine.Start();
+                
+            while (continuation.MoveNext()) yield return null;
+
+            Assert.That(result.counter, Is.EqualTo(1));
+        }
+    }
+    
+     
+    IEnumerator LongTermEnumerator()
+    {
+        int frame;
+        int counter = 0;
+        while (counter++ < 3)
+        {
+            frame = Time.frameCount;
+            yield return null;
+            if (frame == Time.frameCount)
+                throw new Exception();
+        }
+    }
+    
+    IEnumerator LongTermEnumeratorUnity()
+    {
+        int frame;
+        int counter = 0;
+        while (counter++ < 3)
+        {
+            frame = Time.frameCount;
+            yield return new WaitForEndOfFrame();
+            if (frame == Time.frameCount)
+                throw new Exception();
+        }
+    }
+    
+    IEnumerator SimpleEnumerator(ValueObject result)
+    {
+        var frame = Time.frameCount;
+        yield return null;
+        if (frame == Time.frameCount)
+            throw new Exception();
+        
+        Interlocked.Increment(ref result.counter);
+    }
+    
+    class ValueObject
+    {
+        public int counter;
     }
 
     class WaitEnumerator:IEnumerator
