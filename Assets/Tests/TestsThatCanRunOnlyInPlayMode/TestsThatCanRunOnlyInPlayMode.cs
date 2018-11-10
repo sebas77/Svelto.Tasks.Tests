@@ -272,45 +272,45 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         public bool isDone;
     }
-    
+
     [UnityTest]
     public IEnumerator TaskWithWaitForSecondsMustRestartImmediately()
     {
         var valueRef = new ValueRef();
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
-            SetEnumeratorProvider(() => UnityWaitEnumerator(valueRef));
-            
-        bool stopped = false;
-        
-        DateTime time = DateTime.Now;
-        
-        task.Start(onStop: () => {
-            stopped = true;
-        });
-        
-        while (task.isRunning == true)
+        using (var runner = new CoroutineMonoRunner("test"))
         {
-            yield return null; //stop is called inside the runner
-            task.Stop();
-            yield return null; //stop is called inside the runner
-        }
-        var totalSeconds = (DateTime.Now - time).TotalSeconds;
-        Assert.Less(totalSeconds, 0.2);
-        Assert.That(stopped == true);
-        Assert.That(valueRef.isDone == false);
-        
-        stopped = false;
-        time = DateTime.Now;
-        
-        yield return task.Start(onStop: () => {
-            stopped = true;
-        });
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner)
+                                 .SetEnumeratorProvider(() => UnityWaitEnumerator(valueRef));
 
-        totalSeconds = (DateTime.Now - time).TotalSeconds;
-        Assert.Greater(totalSeconds, 1.9);
-        Assert.Less(totalSeconds, 2.1);
-        Assert.That(valueRef.isDone == true);
-        Assert.That(stopped == false);
+            bool stopped = false;
+
+            DateTime time = DateTime.Now;
+
+            task.Start(onStop: () => { stopped = true; });
+
+            while (task.isRunning == true)
+            {
+                yield return null; //stop is called inside the runner
+                task.Stop();
+                yield return null; //stop is called inside the runner
+            }
+
+            var totalSeconds = (DateTime.Now - time).TotalSeconds;
+            Assert.Less(totalSeconds, 0.2);
+            Assert.That(stopped == true);
+            Assert.That(valueRef.isDone == false);
+
+            stopped = false;
+            time    = DateTime.Now;
+
+            yield return task.Start(onStop: () => { stopped = true; });
+
+            totalSeconds = (DateTime.Now - time).TotalSeconds;
+            Assert.Greater(totalSeconds, 1.9);
+            Assert.Less(totalSeconds, 2.1);
+            Assert.That(valueRef.isDone == true);
+            Assert.That(stopped == false);
+        }
     }
     
 /*    [UnityTest]
@@ -616,7 +616,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
         valueRef.isDone = true;
     }
-
+    
     IEnumerator SubEnumerator(int i)
     {
         _hasReset = true;

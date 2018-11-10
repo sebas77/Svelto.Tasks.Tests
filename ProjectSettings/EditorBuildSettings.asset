@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/TaskRunner.unity
+    guid: 8eac48ef9b2759a46887b66b82cb77a3
   m_configObjects: {}

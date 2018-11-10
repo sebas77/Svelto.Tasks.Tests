@@ -135,11 +135,42 @@ namespace Test
             Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
         }
 
-        class SimpleEnumeratorClass : IEnumerator
+        class SimpleEnumeratorClassRefTime : IEnumerator
         {
+            ValueObject _val;
+
+            public SimpleEnumeratorClassRefTime(ValueObject val)
+            {
+                _val = val;
+            }
+            
             public bool MoveNext()
             {
                 Thread.Sleep(100);
+                _val.counter++;
+                return false;
+            }
+
+            public void Reset()
+            {
+                
+            }
+
+            public object Current { get; }
+        }
+        
+        class SimpleEnumeratorClassRef : IEnumerator
+        {
+            ValueObject _val;
+
+            public SimpleEnumeratorClassRef(ValueObject val)
+            {
+                _val = val;
+            }
+            
+            public bool MoveNext()
+            {
+                _val.counter++;
                 return false;
             }
 
@@ -151,29 +182,70 @@ namespace Test
             public object Current { get; }
         }
 
+        IEnumerator TimeSlicedYieldBreak(ValueObject val)
+        {
+            int i = 0;
+            while (++i < 100)
+            {
+                int j = 0;
+                while (++j < 100)
+                {
+                    var frame = val.counter; 
+                    yield return null;
+                    if (frame != val.counter) throw new Exception("must always finish before next iteration");
+                }
+
+                yield return Break.RunnerExecutionAndResumeNextIteration;
+            }
+
+            yield return i;
+        }
+        
+        IEnumerator TimeSlicedYield(ValueObject val)
+        {
+            int i = 0;
+            while (++i < 100)
+            {
+                int j = 0;
+                while (++j < 100)
+                {
+                    var frame = val.counter; 
+                    yield return null;
+                    if (frame != val.counter) throw new Exception("must always finish before next iteration");
+                }
+            }
+
+            yield return i;
+        }
+            
+
         [UnityTest]
         public IEnumerator TestStaggeredMonoRunner()
         {
-            var frames = 0;
+            yield return null;
             
             var staggeredMonoRunner = new StaggeredMonoRunner("staggered", 4);
-            
-            for (int i = 0; i < 32; i++)
-                new SimpleEnumeratorClass().RunOnScheduler(staggeredMonoRunner);
+
+            ValueObject val = new ValueObject();
+            for (int i = 0; i < 16; i++)
+                new SimpleEnumeratorClassRef(val).RunOnScheduler(staggeredMonoRunner);
 
             var runnerBehaviour = staggeredMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
             
-            frames++;
             runnerBehaviour.Update();
             
-            while (staggeredMonoRunner.numberOfRunningTasks > 0)
-            {
-                frames++;
-                runnerBehaviour.Update();
-                yield return null;
-            }
+            Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(12));
+            runnerBehaviour.Update();
+            
+            Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(8));
+            runnerBehaviour.Update();
+            
+            Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(4));
+            runnerBehaviour.Update();
+            
+            Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(0));
 
-            Assert.That(frames, Is.EqualTo(8));
+            Assert.That(val.counter, Is.EqualTo(16));
         }
         
         [UnityTest]
@@ -183,13 +255,14 @@ namespace Test
             
             var timeBoundMonoRunner = new TimeBoundMonoRunner("timebound", 200);
             
+            ValueObject val = new ValueObject();
             for (int i = 0; i < 32; i++)
-                new SimpleEnumeratorClass().RunOnScheduler(timeBoundMonoRunner);
+                new SimpleEnumeratorClassRefTime(val).RunOnScheduler(timeBoundMonoRunner);
 
             var runnerBehaviour = timeBoundMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
             
             frames++;
-            runnerBehaviour.Update();
+            runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
             
             while (timeBoundMonoRunner.numberOfRunningTasks > 0)
             {
@@ -199,6 +272,7 @@ namespace Test
             }
 
             Assert.That(frames, Is.EqualTo(16));
+            Assert.That(val.counter, Is.EqualTo(32));
         }
         
         [UnityTest]
@@ -206,24 +280,73 @@ namespace Test
         {
             var frames = 0;
             
-            var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 2000);
-            
-            for (int i = 0; i < 100; i++)
-                new SimpleEnumeratorClass().RunOnScheduler(timeSlicedMonoRunner);
+            var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 200);
+
+            ValueObject val = new ValueObject();
+            var yieldBreak = TimeSlicedYield(val);
+            yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak1 = TimeSlicedYield(val);
+            yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak2 = TimeSlicedYield(val);
+            yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak3 = TimeSlicedYield(val);
+            yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
 
             var runnerBehaviour = timeSlicedMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
             
             frames++;
-            runnerBehaviour.Update();
+            runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
             
             while (timeSlicedMonoRunner.numberOfRunningTasks > 0)
             {
                 frames++;
+                val.counter++;
                 runnerBehaviour.Update();
                 yield return null;
             }
 
-            Assert.That(frames, Is.EqualTo(5));
+            Assert.That(frames, Is.EqualTo(1));
+            Assert.That(yieldBreak.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak1.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak2.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak3.Current, Is.EqualTo(100));
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTimeSlicedMonoRunnerWithBreak()
+        {
+            var frames = 0;
+            
+            var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 200);
+
+            ValueObject val        = new ValueObject();
+            var         yieldBreak = TimeSlicedYieldBreak(val);
+            yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak1 = TimeSlicedYieldBreak(val);
+            yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak2 = TimeSlicedYieldBreak(val);
+            yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+            var yieldBreak3 = TimeSlicedYieldBreak(val);
+            yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
+
+            var runnerBehaviour = timeSlicedMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
+            
+            frames++;
+            runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
+            
+            while (timeSlicedMonoRunner.numberOfRunningTasks > 0)
+            {
+                frames++;
+                val.counter++;
+                runnerBehaviour.Update();
+                yield return null;
+            }
+
+            Assert.That(frames, Is.EqualTo(100));
+            Assert.That(yieldBreak.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak1.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak2.Current, Is.EqualTo(100));
+            Assert.That(yieldBreak3.Current, Is.EqualTo(100));
         }
 
         IEnumerator SeveralTasks()
