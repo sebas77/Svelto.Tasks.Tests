@@ -2,14 +2,13 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
-using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Parallelism;
 using Svelto.Tasks.Unity;
 using UnityEngine;
-using UnityEngine.Experimental.PlayerLoop;
 
+[TestFixture]
 public class TestsThatCanRunOnlyInPlayMode
 {
     [SetUp]
@@ -20,24 +19,14 @@ public class TestsThatCanRunOnlyInPlayMode
     // A UnityTest behaves like a coroutine in PlayMode
     // and allows you to yield null to skip a frame in EditMode
     [UnityTest]
-	public IEnumerator TestHandlingInstructionsToUnity() {
+	public IEnumerator TestHandlingInstructionsToUnity() 
+    {
         // Use the Assert class to test conditions.
         // yield to skip a frame
         var task = UnityHandle().Run();
 
         while (task.MoveNext())
             yield return null;
-    }
-
-    IEnumerator UnityHandle()
-    {
-        DateTime now = DateTime.Now;
-
-        yield return new WaitForSeconds(2);
-
-        var seconds = (DateTime.Now - now).Seconds;
-
-        Assert.That(seconds == 2);
     }
 
     [UnityTest]
@@ -50,24 +39,7 @@ public class TestsThatCanRunOnlyInPlayMode
         
         Assert.That(enumerator.Current, Is.EqualTo(100));
     }
-
-    IEnumerator Continuation()
-    {
-        var frame = Time.frameCount;
-        int i = 0;
-        while (++i < 100)
-        {
-            yield return null;
-
-            if (frame == Time.frameCount)
-                throw new Exception();
-            
-            frame = Time.frameCount;
-        }
-
-        yield return i;
-    }
-
+    
     [UnityTest]
     public IEnumerator TestMultithreadIntervaled()
     {
@@ -268,11 +240,6 @@ public class TestsThatCanRunOnlyInPlayMode
         Assert.That(_hasReset == true);
     }
 
-    class ValueRef
-    {
-        public bool isDone;
-    }
-
     [UnityTest]
     public IEnumerator TaskWithWaitForSecondsMustRestartImmediately()
     {
@@ -313,65 +280,6 @@ public class TestsThatCanRunOnlyInPlayMode
         }
     }
     
-/*    [UnityTest]
-    public IEnumerator TaskWithWaitForSecondsMustRestartImmediatlyInParallelToo()
-    {
-        ParallelTaskCollection tasks = new ParallelTaskCollection();
-        var valueRef = new ValueRef();
-        var valueRef2 = new ValueRef();
-        tasks.Add(SubEnumerator(1));
-        tasks.Add(UnityWaitEnumerator(valueRef));
-        tasks.Add(UnityWaitEnumerator(valueRef2));
-        tasks.Add(SubEnumerator(1));
-            
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
-            SetEnumerator(tasks);
-            
-        bool stopped = false;
-
-        task.Start(onStop: () => {
-            stopped = true;
-        });
-        
-        DateTime time = DateTime.Now;
-        
-        while (task.isRunning == true)
-        {
-            yield return null; 
-            task.Stop();
-            yield return null; //stop is called inside the runner
-        }
-        
-        var totalSeconds = (DateTime.Now - time).TotalSeconds;
-       // Assert.Less(totalSeconds, 0.2);
-        Assert.That(stopped == true);
-        Assert.That(valueRef.isDone == false);
-        Assert.That(valueRef2.isDone == false);
-        
-        tasks = new ParallelTaskCollection();
-        tasks.Add(UnityWaitEnumerator(new ValueRef()));
-        task.SetEnumerator(tasks);
-        
-        stopped = false;
-        time = DateTime.Now;
-        
-        yield return task.Start(onStop: () => {
-            stopped = true;
-        });
-        
-        totalSeconds = (DateTime.Now - time).TotalSeconds;
-        Assert.Greater(totalSeconds, 1.9);
-        Assert.Less(totalSeconds, 2.1);
-        Assert.That(stopped == false);
-        Assert.That(valueRef.isDone == true);
-        Assert.That(valueRef2.isDone == true);
-    }*/
-    
-    class Token
-    {
-        public int count;
-    }
-
     [UnityTest] 
     public IEnumerator TestStopMultiThreadParallelTask()
     {
@@ -510,11 +418,6 @@ public class TestsThatCanRunOnlyInPlayMode
         }
     }
 
-    void OnStop(ref int test)
-    {
-        test = 1;
-    }
-
     [UnityTest]
     public IEnumerator TestSimpleTaskRoutineStart()
     {
@@ -560,6 +463,34 @@ public class TestsThatCanRunOnlyInPlayMode
             if (frame == Time.frameCount)
                 throw new Exception();
         }
+    }
+    
+    IEnumerator UnityHandle()
+    {
+        DateTime now = DateTime.Now;
+
+        yield return new WaitForSeconds(2);
+
+        var seconds = (DateTime.Now - now).Seconds;
+
+        Assert.That(seconds == 2);
+    }
+
+    IEnumerator Continuation()
+    {
+        var frame = Time.frameCount;
+        int i     = 0;
+        while (++i < 100)
+        {
+            yield return null;
+
+            if (frame == Time.frameCount)
+                throw new Exception();
+            
+            frame = Time.frameCount;
+        }
+
+        yield return i;
     }
     
     IEnumerator SimpleEnumerator(ValueObject result)
@@ -630,44 +561,11 @@ public class TestsThatCanRunOnlyInPlayMode
         yield return i; //careful it will be boxed;
     }
     
+    void OnStop(ref int test)
+    {
+        test = 1;
+    }
+    
     Enumerator _iterable1;
     bool _hasReset;
-
-    class Enumerator : IEnumerator
-    {
-        public bool AllRight
-        {
-            get
-            {
-                return iterations == totalIterations;
-            }
-        }
-
-        public Enumerator(int niterations)
-        {
-            iterations = 0;
-            totalIterations = niterations;
-        }
-
-        public bool MoveNext()
-        {
-            if (iterations < totalIterations)
-            {
-                iterations++;
-                return true;
-            }
-
-            return false;
-        }
-
-        public void Reset()
-        {
-            iterations = 0;
-        }
-
-        public object Current { get; private set; }
-
-        readonly int totalIterations;
-        public int iterations;
-    }
 }
