@@ -19,7 +19,6 @@ namespace Test
             _serialTasks1   = new Svelto.Tasks.Chain.SerialTaskCollection<ValueObject>(_vo);
             _parallelTasks1 = new Svelto.Tasks.Chain.ParallelTaskCollection<ValueObject>(_vo);
             _serialTasks2   = new Svelto.Tasks.Chain.SerialTaskCollection<ValueObject>(_vo);
-            _parallelTasks2 = new Svelto.Tasks.Chain.ParallelTaskCollection<ValueObject>(_vo);
         }
         
         [UnityTest]
@@ -48,7 +47,6 @@ namespace Test
         Svelto.Tasks.Chain.SerialTaskCollection<ValueObject>   _serialTasks1;
         Svelto.Tasks.Chain.ParallelTaskCollection<ValueObject> _parallelTasks1;
         Svelto.Tasks.Chain.SerialTaskCollection<ValueObject>   _serialTasks2;
-        Svelto.Tasks.Chain.ParallelTaskCollection<ValueObject> _parallelTasks2;
         
         ValueObject _vo;
     }

@@ -3,10 +3,19 @@ using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
+using Svelto.Tasks.Unity.Internal;
 using UnityEngine.TestTools;
 
 namespace Test
 {
+    /// <summary>
+    /// It is possible to run tasks in serial and in parallel without the collections already, but the collections
+    /// allows simpler pattern, like setting an onComplete and tracking the execution of the collection outside
+    /// from the task itself. Their use is not common, but can be handy some times, especially when combination
+    /// of serial and paralletasks can form more complex behaviours. Under the point of view of the runner,
+    /// A collection is a unique task, which is another fundamental difference. 
+    /// </summary>
     [TestFixture]
     public class TaskRunnerTestsWithTaskCollections
     {
@@ -18,47 +27,85 @@ namespace Test
             _parallelTasks1 = new ParallelTaskCollection();
             _parallelTasks2 = new ParallelTaskCollection();
 
-            _iterable1             = new Enumerable(10000);
-            _iterable2             = new Enumerable(10000);
-            _iterable3             = new Enumerable(2000);
-            _iterableWithException = new Enumerable(-5);
+            _iterable1             = new Enumerator(10000);
+            _iterable2             = new Enumerator(5000);
             
-            _taskRunner = TaskRunner.Instance;
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
-                                             .SetScheduler(new SyncRunner()); //the taskroutine will stall the thread because it runs on the SyncScheduler
+            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new SyncRunner());
         }
-        
         
         [UnityTest]
         public IEnumerator TestParallelBreakIt()
         {
             yield return null;
 
-            _parallelTasks1.Add(_iterable1.GetEnumerator());
+            _parallelTasks1.Add(_iterable1);
             _parallelTasks1.Add(BreakIt());
-            _parallelTasks1.Add(_iterable2.GetEnumerator());
+            _parallelTasks1.Add(_iterable2);
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+            _parallelTasks1.RunOnScheduler(new SyncRunner());
 
-            Assert.That(_iterable1.AllRight == false && _iterable1.iterations == 1 &&
-                        _iterable2.AllRight == false && _iterable2.iterations == 0);
+            Assert.That(_iterable1.AllRight == false && _iterable1.iterations == 1); 
+            Assert.That(_iterable2.AllRight == false && _iterable2.iterations == 0);
         }
         
         [UnityTest]
-        public IEnumerator TestEnumerablesAreExecutedInSerialAndOnCompleteIsCalled()
+        public IEnumerator TestTasksAreExecutedInSerialAndOnCompleteIsCalled()
         {
             yield return null;
 
             bool isDone = false;
             _serialTasks1.onComplete += () => isDone = true;
 
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
+            _serialTasks1.Add(_iterable1);
+            _serialTasks1.Add(_iterable2);
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
+            _serialTasks1.RunOnScheduler(new SyncRunner());
 
-            Assert.IsTrue(_iterable1.AllRight && _iterable2.AllRight &&
-                          _iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime && isDone);
+            Assert.IsTrue(_iterable1.AllRight);
+            Assert.IsTrue(_iterable2.AllRight);
+            Assert.IsTrue(isDone);
+            Assert.LessOrEqual(_iterable1.endOfExecutionTime, _iterable2.endOfExecutionTime);
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTasksAreExecutedInParallelAndOnCompleteIsCalled()
+        {
+            yield return null;
+
+            bool onCompleteIsCalled = false;
+
+            Enumerator _task1 = new Enumerator(2);
+            Enumerator _task2 = new Enumerator(3);
+            Enumerator _task3 = new Enumerator(4);
+
+            _parallelTasks1.onComplete += () =>
+                                          {
+                                              onCompleteIsCalled = true;
+                                          };
+
+            _parallelTasks1.Add(_task1);
+            _parallelTasks1.Add(_task2);
+            _parallelTasks1.Add(_task3);
+
+            int count = 0;
+
+            while (_parallelTasks1.MoveNext() == true)
+            {
+                yield return null;
+                
+                count++;
+                if (count <= 2)
+                    Assert.AreEqual(_task1.iterations, count);
+                
+                if (count <= 3)
+                    Assert.AreEqual(_task2.iterations, count);
+                
+                Assert.AreEqual(_task3.iterations, count);
+            }
+
+            Assert.True(_task1.AllRight);
+            Assert.True(_task2.AllRight);
+            Assert.True(onCompleteIsCalled);
         }
 
         [UnityTest]
@@ -66,26 +113,13 @@ namespace Test
         {
             yield return null;
 
-            _serialTasks1.Add(_iterable1.GetEnumerator());
+            _serialTasks1.Add(_iterable1);
             _serialTasks1.Add(BreakIt());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
+            _serialTasks1.Add(_iterable2);
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
+            _serialTasks1.RunOnScheduler(new SyncRunner());
 
             Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
-        }
-        
-        [UnityTest]
-        public IEnumerator TestEnumerableAreExecutedInParallel()
-        {
-            yield return null;
-
-            _parallelTasks1.onComplete += () => { Assert.That(_iterable1.AllRight && _iterable2.AllRight); };
-
-            _parallelTasks1.Add(_iterable1.GetEnumerator());
-            _parallelTasks1.Add(_iterable2.GetEnumerator());
-
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
         }
         
         [UnityTest]
@@ -109,53 +143,18 @@ namespace Test
         {
             yield return null;
 
-            Enumerable _task1 = new Enumerable(2);
-            Enumerable _task2 = new Enumerable(3);
+            Enumerator _task1 = new Enumerator(2);
+            Enumerator _task2 = new Enumerator(3);
 
             _serialTasks1.onComplete += () => Assert.That(_task1.AllRight && _task2.AllRight, Is.True);
 
-            _serialTasks1.Add(_task1.GetEnumerator());
-            _serialTasks1.Add(_task2.GetEnumerator());
+            _serialTasks1.Add(_task1);
+            _serialTasks1.Add(_task2);
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
+            _serialTasks1.RunOnScheduler(new SyncRunner());
         }
 
-        [UnityTest]
-        public IEnumerator TestTasksAreExecutedInParallel()
-        {
-            yield return null;
-
-            Enumerable _task1 = new Enumerable(2);
-            Enumerable _task2 = new Enumerable(3);
-
-            _parallelTasks1.onComplete += () => Assert.That(_task1.AllRight && _task2.AllRight, Is.True);
-
-            _parallelTasks1.Add(_task1.GetEnumerator());
-            _parallelTasks1.Add(_task2.GetEnumerator());
-
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
-        }
         
-        [UnityTest]
-        public IEnumerator TestExtension()
-        {
-            yield return null;
-
-            SerialContinuation().RunOnScheduler(new SyncRunner());
-        }
-
-        IEnumerator SerialContinuation()
-        {
-            bool parallelTasks1Done = false;
-
-            _parallelTasks1.Add(_iterable2.GetEnumerator());
-            _parallelTasks1.Add(_iterable1.GetEnumerator());
-
-            yield return _parallelTasks1;
-
-            Assert.That(_parallelTasks1.isRunning, Is.False);
-        }
-
         [UnityTest]
         public IEnumerator TestParallelTasksAreExecutedInSerial()
         {
@@ -164,16 +163,16 @@ namespace Test
             bool parallelTasks1Done = false;
             bool parallelTasks2Done = false;
 
-            _parallelTasks1.Add(_iterable1.GetEnumerator());
-            _parallelTasks1.Add(_iterable2.GetEnumerator());
+            _parallelTasks1.Add(_iterable1);
+            _parallelTasks1.Add(_iterable2);
             _parallelTasks1.onComplete += () =>
                                           {
                                               Assert.That(parallelTasks2Done, Is.False);
                                               parallelTasks1Done = true;
                                           };
 
-            _parallelTasks2.Add(_iterable1.GetEnumerator());
-            _parallelTasks2.Add(_iterable2.GetEnumerator());
+            _parallelTasks2.Add(_iterable1);
+            _parallelTasks2.Add(_iterable2);
             _parallelTasks2.onComplete += () =>
                                           {
                                               Assert.That(parallelTasks1Done, Is.True);
@@ -184,7 +183,7 @@ namespace Test
             _serialTasks1.Add(_parallelTasks2);
             _serialTasks1.onComplete += () => { Assert.That(parallelTasks1Done && parallelTasks2Done); };
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _serialTasks1);
+            _serialTasks1.RunOnScheduler(new SyncRunner());
         }
         
         [UnityTest]
@@ -195,23 +194,23 @@ namespace Test
             int test1 = 0;
             int test2 = 0;
 
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
+            _serialTasks1.Add(_iterable1);
+            _serialTasks1.Add(_iterable2);
             _serialTasks1.onComplete += () =>
                                         {
                                             test1++;
                                             test2++;
                                         };
 
-            _serialTasks2.Add(_iterable1.GetEnumerator());
-            _serialTasks2.Add(_iterable2.GetEnumerator());
+            _serialTasks2.Add(_iterable1);
+            _serialTasks2.Add(_iterable2);
             _serialTasks2.onComplete += () => { test2++; };
 
             _parallelTasks1.Add(_serialTasks1);
             _parallelTasks1.Add(_serialTasks2);
             _parallelTasks1.onComplete += () => Assert.That((test1 == 1) && (test2 == 2), Is.True);
 
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+            _parallelTasks1.RunOnScheduler(new SyncRunner());
         }
 
         [UnityTest]
@@ -230,7 +229,7 @@ namespace Test
             _parallelTasks1.Add(new TimeoutEnumerator());
 
             DateTime then = DateTime.Now;
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+            _parallelTasks1.RunOnScheduler(new SyncRunner(2000));
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
@@ -250,83 +249,114 @@ namespace Test
             _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
             _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
             _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
+            _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
 
             DateTime then = DateTime.Now;
-            _taskRunner.RunOnScheduler(new SyncRunner(), _parallelTasks1);
+            _parallelTasks1.RunOnScheduler(new SyncRunner(4000));
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
         }
+
+        [UnityTest]
+        public IEnumerator TestParallelWithMixedYield()
+        {
+            yield return null;
+
+            using (var runner = new UpdateMonoRunner("test"))
+            {
+                var enumerator = new Enumerator(1);
+                _parallelTasks1.Add(enumerator);
+                var enumerator1 = new Enumerator(2);
+                _parallelTasks1.Add(enumerator1);
+                var enumerator2 = new Enumerator(3);
+                _parallelTasks1.Add(enumerator2);
+                var enumerator3 = new Enumerator(4);
+                _parallelTasks1.Add(enumerator3);
+                var enumerator4 = new Enumerator(5);
+                _parallelTasks1.Add(enumerator4);
+                var enumerator5 = new Enumerator(6);
+                _parallelTasks1.Add(enumerator5);
+
+                _parallelTasks1.RunOnScheduler(runner);
+
+                var runnerBehaviour = runner._go.GetComponent<RunnerBehaviourUpdate>();
+
+                Assert.IsFalse(enumerator.AllRight);
+                Assert.IsFalse(enumerator1.AllRight);
+                Assert.IsFalse(enumerator2.AllRight);
+                Assert.IsFalse(enumerator3.AllRight);
+                Assert.IsFalse(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsFalse(enumerator1.AllRight);
+                Assert.IsFalse(enumerator2.AllRight);
+                Assert.IsFalse(enumerator3.AllRight);
+                Assert.IsFalse(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsTrue(enumerator1.AllRight);
+                Assert.IsFalse(enumerator2.AllRight);
+                Assert.IsFalse(enumerator3.AllRight);
+                Assert.IsFalse(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsTrue(enumerator1.AllRight);
+                Assert.IsTrue(enumerator2.AllRight);
+                Assert.IsFalse(enumerator3.AllRight);
+                Assert.IsFalse(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsTrue(enumerator1.AllRight);
+                Assert.IsTrue(enumerator2.AllRight);
+                Assert.IsTrue(enumerator3.AllRight);
+                Assert.IsFalse(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsTrue(enumerator1.AllRight);
+                Assert.IsTrue(enumerator2.AllRight);
+                Assert.IsTrue(enumerator3.AllRight);
+                Assert.IsTrue(enumerator4.AllRight);
+                Assert.IsFalse(enumerator5.AllRight);
+                runnerBehaviour.Update();
+                Assert.IsTrue(enumerator.AllRight);
+                Assert.IsTrue(enumerator1.AllRight);
+                Assert.IsTrue(enumerator2.AllRight);
+                Assert.IsTrue(enumerator3.AllRight);
+                Assert.IsTrue(enumerator4.AllRight);
+                Assert.IsTrue(enumerator5.AllRight);
+            }
+        }
         
-        [UnityTest]
-        public IEnumerator TestPromisesExceptionHandler()
+        IEnumerator SerialContinuation()
         {
-            yield return null;
+            bool parallelTasks1Done = false;
 
-            bool allDone = false;
+            _parallelTasks1.Add(_iterable2);
+            _parallelTasks1.Add(_iterable1);
 
-            //this must never happen
-            _serialTasks1.onComplete += () =>
-                                        {
-                                            allDone = true;
-                                            Assert.That(false);
-                                        };
+            yield return _parallelTasks1;
 
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterableWithException.GetEnumerator()); //will throw an exception
-
-            bool hasBeenCalled = false;
-            try
-            {
-                _reusableTaskRoutine.SetEnumerator(_serialTasks1).SetScheduler(new SyncRunner()).Start
-                    (e =>
-                     {
-                         Assert.That(allDone, Is.False);
-                         hasBeenCalled = true;
-                     }
-                    ); //will catch the exception
-            }
-            catch
-            {
-                Assert.That(hasBeenCalled == true);
-            }
+            Assert.That(_parallelTasks1.isRunning, Is.False);
         }
-
-        [UnityTest]
-        public IEnumerator TestPromisesCancellation()
-        {
-            yield return null;
-
-            bool allDone  = false;
-            bool testDone = false;
-
-            _serialTasks1.onComplete += () =>
-                                        {
-                                            allDone = true;
-                                            Assert.That(false);
-                                        };
-
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
-
-            //this time we will make the task run on another thread
-            _reusableTaskRoutine.SetScheduler(new MultiThreadRunner("TestPromisesCancellation"))
-                                .SetEnumerator(_serialTasks1).Start
-                                     (null, () =>
-                                            {
-                                                testDone = true;
-                                                Assert.That(allDone, Is.False);
-                                            });
-            _reusableTaskRoutine.Stop();
-
-            while (testDone == false) ;
-        }
-
         
         IEnumerator TestSerialTwice()
         {
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
+            _serialTasks1.Add(_iterable1);
+            _serialTasks1.Add(_iterable2);
 
             yield return _serialTasks1;
 
@@ -335,8 +365,8 @@ namespace Test
 
             _iterable1.Reset();
             _iterable2.Reset();
-            _serialTasks1.Add(_iterable1.GetEnumerator());
-            _serialTasks1.Add(_iterable2.GetEnumerator());
+            _serialTasks1.Add(_iterable1);
+            _serialTasks1.Add(_iterable2);
 
             yield return _serialTasks1;
 
@@ -346,23 +376,26 @@ namespace Test
         
         IEnumerator BreakIt()
         {
-            yield return Break.It;
+            yield return Break.AndStop;
         }
 
-        
-        TaskRunner   _taskRunner;
-        ITaskRoutine _reusableTaskRoutine;
- 
-        SerialTaskCollection                                   _serialTasks1;
-        SerialTaskCollection _serialTasks2;
+        IEnumerator Count()
+        {
+            yield return InnerCount(); //this won't yield a frame, only yield return null yields to the next iteration
+        }
 
+        IEnumerator InnerCount()
+        {
+            yield return null;
+        }
 
-        ParallelTaskCollection                                 _parallelTasks1;
+        SerialTaskCollection   _serialTasks1;
+        SerialTaskCollection   _serialTasks2;
+        ParallelTaskCollection _parallelTasks1;
         ParallelTaskCollection _parallelTasks2;
 
-        Enumerable _iterable1;
-        Enumerable _iterable2;
-        Enumerable _iterableWithException;
-        Enumerable _iterable3;
+        Enumerator _iterable1;
+        Enumerator _iterable2;
+        ITaskRoutine _reusableTaskRoutine;
     }
 }

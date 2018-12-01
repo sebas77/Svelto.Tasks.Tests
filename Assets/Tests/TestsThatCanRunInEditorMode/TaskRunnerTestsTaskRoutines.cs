@@ -8,66 +8,45 @@ using UnityEngine.TestTools;
 
 namespace Test
 {
+    /// <summary>
+    /// TaskRoutines enable more advanced feature of Svelto.Tasks, like a promises like behaviour and allow explicit
+    /// management of memory.
+    /// </summary>
+     
     [TestFixture]
     public class TaskRunnerTestsTaskRoutines
     {
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new Enumerable(10000);
-            _iterable3 = new Enumerable(2000);
+            _iterable1 = new Enumerator(10000);
             
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
-                                             .SetScheduler(new SyncRunner()); //the taskroutine will stall the thread because it runs on the SyncScheduler
+            //preallocate a task routine and reusing it is the normal pattern
+            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new SyncRunner()); 
         }
         
         [UnityTest]
         public IEnumerator TestMultithreadWitTaskRoutines()
         {
             yield return null;
+            
+            //you can test an resettable enumerator once
+            _reusableTaskRoutine.SetEnumerator(_iterable1);
 
             using (var runner = new MultiThreadRunner("TestMultithread"))
             {
-                _iterable1.Reset();
-
-                _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
-
                 var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
-
-                while (continuator.MoveNext()) ;
-
-                Assert.That(_iterable1.AllRight == true);
-
-                _iterable1.Reset();
-
-                _reusableTaskRoutine.SetEnumerator(_iterable1.GetEnumerator());
-
-                continuator = _reusableTaskRoutine.Start();
-
-                while (continuator.MoveNext()) ;
-
-                Assert.That(_iterable1.AllRight == true);
-            }
-        }
-        
-        [UnityTest]
-        public IEnumerator TestSimpleTaskRoutineStartStart()
-        {
-            yield return null;
-
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart"))
-            {
-                ValueObject result = new ValueObject();
-
-                var taskRoutine = _reusableTaskRoutine
-                                 .SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
-                taskRoutine.Start();
-                yield return null;
-                var continuator = taskRoutine.Start();
 
                 while (continuator.MoveNext()) yield return null;
 
-                Assert.That(result.counter, Is.EqualTo(1));
+                Assert.That(_iterable1.AllRight == true);
+
+                continuator = _reusableTaskRoutine.Start(); //another start will reset the enumerator
+                Assert.That(_iterable1.AllRight == false); //did it reset?
+
+                while (continuator.MoveNext()) yield return null;
+
+                Assert.That(_iterable1.AllRight == true);
             }
         }
         
@@ -75,25 +54,26 @@ namespace Test
         public IEnumerator TestSimpleTaskRoutineRestartsWithProvider()
         {
             yield return null;
-
+            
             ValueObject result = new ValueObject();
 
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
+            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart"))
             {
-                var continuator = _reusableTaskRoutine.SetScheduler(runner)
-                                                      .SetEnumerator(SimpleEnumeratorLong(result)).Start();
-                Assert.That(continuator.completed == false, "can't be completed");
-                continuator =
-                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result)).Start();
+                var taskRoutine = _reusableTaskRoutine
+                                 .SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
+                
+                taskRoutine.Start(); 
+                yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
+                var continuator = taskRoutine.Start();
 
-                while (continuator.MoveNext()) yield return null;
+                while (continuator.MoveNext()) yield return null; //now increment
+
+                Assert.That(result.counter, Is.EqualTo(1)); 
             }
-
-            Assert.That(result.counter, Is.EqualTo(1));
         }
-
+        
         [UnityTest]
-        public IEnumerator TestSimpleTaskRoutineStopStartWithProvider()
+        public IEnumerator TestSimpleTaskRoutineStopsStartsWithProvider()
         {
             yield return null;
 
@@ -101,19 +81,22 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
             {
+                bool isCallbackCalled = false;
+                
                 var continuator = _reusableTaskRoutine.SetScheduler(runner)
-                                                      .SetEnumerator(SimpleEnumeratorLong(result)).Start();
+                                                      .SetEnumeratorProvider(() => SimpleEnumerator(result))
+                                                      .Start(onStop: () => isCallbackCalled = true);
 
                 Assert.That(continuator.completed == false, "can't be completed");
                 _reusableTaskRoutine.Stop();
 
-                Thread.Sleep(500); //let's be sure it's completed
+                Thread.Sleep(500); //let's be sure the runner has the time to complete it
 
                 Assert.That(continuator.completed == true, "must be completed");
+                Assert.True(isCallbackCalled);
+                
 
-                continuator =
-                    _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result))
-                                        .Start();
+                continuator = _reusableTaskRoutine.Start();
 
                 while (continuator.MoveNext()) yield return null;
             }
@@ -122,47 +105,50 @@ namespace Test
         }
         
         [UnityTest]
-        public IEnumerator TestSimpleTaskRoutineStopStart()
-        {
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStart"))
-            {
-                ValueObject result = new ValueObject();
-
-                var taskRoutine = _reusableTaskRoutine.SetScheduler(runner).SetEnumerator(SimpleEnumerator(result));
-
-                taskRoutine.Start();
-                taskRoutine.Stop();
-                taskRoutine.SetEnumerator(SimpleEnumerator(result));
-
-                var continuator = taskRoutine.Start();
-
-                while (continuator.MoveNext()) yield return null;
-
-                Assert.That(result.counter == 1);
-            }
-        }
-        
-        [UnityTest]
-        public IEnumerator TestStopStartTaskRoutine()
+        public IEnumerator TestExceptionsAreCaughtByTaskRoutines()
         {
             yield return null;
 
             using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
             {
+                bool isCallbackCalled = false;
                 _reusableTaskRoutine.SetScheduler(runner);
                 _reusableTaskRoutine.SetEnumerator(TestWithThrow());
-                _reusableTaskRoutine.Start();
-                _reusableTaskRoutine
-                   .Stop(); //although it's running in another thread, thanks to the waiting, it should be able to stop in time
-
-                _reusableTaskRoutine.SetScheduler(new SyncRunner());
-                var enumerator = TestWithoutThrow();
-                var continuator = _reusableTaskRoutine.SetEnumerator(enumerator)
-                                                      .Start(); //test routine can be reused with another enumerator
-
+                
+                var continuator = _reusableTaskRoutine.Start(onFail: (e) => isCallbackCalled = true);
                 while (continuator.MoveNext()) yield return null;
 
-                Assert.That((int) enumerator.Current, Is.EqualTo(1));
+                Assert.True(isCallbackCalled);
+            }
+        }
+        
+        [UnityTest]
+        public IEnumerator TestPauseAndResume()
+        {
+            yield return null;
+            
+            _reusableTaskRoutine.SetEnumerator(_iterable1);
+
+            using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
+            {
+                var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
+
+                DateTime then = DateTime.Now.AddSeconds(2);
+
+                while (continuator.MoveNext() && DateTime.Now > then)
+                {
+                    yield return null;
+                    
+                    _reusableTaskRoutine.Pause();
+                }
+                
+                Assert.That(_iterable1.AllRight == false);
+                
+                _reusableTaskRoutine.Resume();
+                
+                while (continuator.MoveNext()) yield return null;
+
+                Assert.That(_iterable1.AllRight == true);
             }
         }
         
@@ -173,11 +159,6 @@ namespace Test
             throw new Exception();
         }
 
-        IEnumerator TestWithoutThrow()
-        {
-            yield return 1;
-        }
-        
         IEnumerator SimpleEnumerator(ValueObject result)
         {
             yield return new WaitForSecondsEnumerator(1);
@@ -185,14 +166,7 @@ namespace Test
             Interlocked.Increment(ref result.counter);
         }
         
-        IEnumerator SimpleEnumeratorLong(ValueObject result)
-        {
-            yield return new WaitForSecondsEnumerator(10);
-        }
-
         ITaskRoutine _reusableTaskRoutine;
-
-        Enumerable _iterable1;
-        Enumerable _iterable3;
+        Enumerator   _iterable1;
     }
 }

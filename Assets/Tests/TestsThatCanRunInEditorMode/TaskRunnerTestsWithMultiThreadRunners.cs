@@ -14,7 +14,7 @@ namespace Test
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new Enumerable(10000);
+            _iterable1 = new Enumerator(10000);
         }
         
         [UnityTest]
@@ -24,7 +24,7 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
             {
-                var task = _iterable1.GetEnumerator().RunOnScheduler(runner);
+                var task = _iterable1.RunOnScheduler(runner);
 
                 while (task.MoveNext()) ;
 
@@ -34,7 +34,7 @@ namespace Test
 
                 _iterable1.Reset();
 
-                task = _iterable1.GetEnumerator().RunOnScheduler(runner);
+                task = _iterable1.RunOnScheduler(runner);
 
                 while (task.MoveNext()) ;
 
@@ -49,19 +49,17 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestMultithreadIntervaled", 1))
             {
+                var iterable1 = new Enumerator(2000);
                 ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
-                taskRoutine.SetEnumerator(_iterable1.GetEnumerator()).SetScheduler(runner);
+                taskRoutine.SetEnumerator(iterable1).SetScheduler(runner);
 
                 DateTime now = DateTime.Now;
-
                 taskRoutine.Start().Complete();
-
                 var seconds = (DateTime.Now - now).TotalSeconds;
 
                 //2000 iteration * 1ms = 2 seconds
-
                 Assert.That((int) seconds, Is.EqualTo(2));
-                Assert.IsTrue(_iterable1.AllRight);
+                Assert.IsTrue(iterable1.AllRight);
             }
         }
         
@@ -81,7 +79,7 @@ namespace Test
                 test.Add(new WaitEnumerator(token));
                 test.Add(new WaitEnumerator(token));
 
-                test.RunOnScheduler(new MultiThreadRunner("test", true, false));
+                test.RunOnScheduler(new MultiThreadRunner("test", true));
                 DateTime now = DateTime.Now;
                 yield return null;
 
@@ -164,7 +162,7 @@ namespace Test
             {
                 _iterable1.Reset();
 
-                var continuator = _iterable1.GetEnumerator().RunOnScheduler(runner);
+                var continuator = _iterable1.RunOnScheduler(runner);
 
                 while (continuator.MoveNext()) yield return null;
 
@@ -208,6 +206,6 @@ namespace Test
             Interlocked.Increment(ref result.counter);
         }
         
-        Enumerable _iterable1;
+        Enumerator _iterable1;
     }
 }

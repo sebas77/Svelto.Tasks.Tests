@@ -21,8 +21,6 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
 	public IEnumerator TestHandlingInstructionsToUnity() 
     {
-        // Use the Assert class to test conditions.
-        // yield to skip a frame
         var task = UnityHandle().Run();
 
         while (task.MoveNext())
@@ -107,13 +105,13 @@ public class TestsThatCanRunOnlyInPlayMode
     public IEnumerator TestUnityWait()
     {
         ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
-        taskRoutine.SetEnumeratorProvider(new WaitForSecondsU().GetEnumerator).SetScheduler(new UpdateMonoRunner("test"));
+        taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator).SetScheduler(new CoroutineMonoRunner("test"));
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
 
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
-        Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
     
     [UnityTest]
@@ -121,25 +119,28 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
         ParallelTaskCollection pt = new ParallelTaskCollection();
-        pt.Add(new WaitForSecondsU().GetEnumerator());
-        pt.Add(new WaitForSecondsU().GetEnumerator());
+        pt.Add(new WaitForSecondsUnity().GetEnumerator());
+        pt.Add(new WaitForSecondsUnity().GetEnumerator());
         taskRoutine.SetEnumerator(pt).SetScheduler(new UpdateMonoRunner("test"));
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
 
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
-        Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+        Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
     
-    public class WaitForSecondsU : IEnumerable
+    /// <summary>
+    /// This is just for testing purpose, you should never
+    /// yield YieldInstrucitons as they are inefficient and they work only with the CoroutineMonoRunner
+    /// </summary>
+    public class WaitForSecondsUnity : IEnumerable
     {
         public IEnumerator GetEnumerator()
         {
-            yield return new WaitForSecondsRealtime(1);
+            yield return new YieldInstructionEnumerator(new WaitForSeconds(1));
         }
     }
-
         
     [UnityTest]
     public IEnumerator TaskWithEnumeratorProviderMustStopAndRestart()
@@ -241,7 +242,7 @@ public class TestsThatCanRunOnlyInPlayMode
     }
 
     [UnityTest]
-    public IEnumerator TaskWithWaitForSecondsMustRestartImmediately()
+    public IEnumerator TaskWithUnityYieldInstructionMustRestartImmediately()
     {
         var valueRef = new ValueRef();
         using (var runner = new CoroutineMonoRunner("test"))
@@ -459,7 +460,7 @@ public class TestsThatCanRunOnlyInPlayMode
         while (counter++ < 3)
         {
             frame = Time.frameCount;
-            yield return new WaitForEndOfFrame();
+            yield return new YieldInstructionEnumerator(new WaitForEndOfFrame());
             if (frame == Time.frameCount)
                 throw new Exception();
         }
@@ -469,11 +470,11 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         DateTime now = DateTime.Now;
 
-        yield return new WaitForSeconds(2);
+        yield return new YieldInstructionEnumerator(new WaitForSeconds(2));
 
         var seconds = (DateTime.Now - now).Seconds;
 
-        Assert.That(seconds == 2);
+        Assert.That(seconds, Is.InRange(1.9, 2.1));
     }
 
     IEnumerator Continuation()
@@ -543,7 +544,7 @@ public class TestsThatCanRunOnlyInPlayMode
     
     IEnumerator UnityWaitEnumerator(ValueRef valueRef)
     {
-        yield return new WaitForSeconds(2);
+        yield return new YieldInstructionEnumerator(new WaitForSeconds(2));
 
         valueRef.isDone = true;
     }

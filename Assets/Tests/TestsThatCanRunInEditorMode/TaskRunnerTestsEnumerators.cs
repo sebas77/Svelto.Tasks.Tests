@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -20,7 +21,7 @@ namespace Test
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new Enumerable(10000);
+            _iterable1 = new Enumerator(10000);
         }
 
         /// <summary>
@@ -33,7 +34,7 @@ namespace Test
         {
             yield return null;
 
-            _iterable1.GetEnumerator().RunOnScheduler(new SyncRunner());
+            _iterable1.RunOnScheduler(new SyncRunner());
 
             Assert.That(_iterable1.AllRight, Is.True);
         }
@@ -119,6 +120,34 @@ namespace Test
             
             Assert.That(gameLoop2.Current, Is.EqualTo(2));
         }
+        
+        [Test]
+        public void TestCoroutineMonoRunnerStartsTheFirstIterationImmediately()
+        {
+            var testFirstInstruction = TestFirstInstruction();
+            testFirstInstruction.RunOnScheduler(StandardSchedulers.coroutineScheduler);
+            
+            Assert.That(testFirstInstruction.Current, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        public IEnumerator TestPooledTasksAllocate0()
+        {
+            Assert.Inconclusive();
+            yield break;
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTaskRoutinesAllocate0WhenReused()
+        {
+            Assert.Inconclusive();
+            yield break;
+        }
+
+        static IEnumerator TestFirstInstruction()
+        {
+            yield return 1;
+        }
 
         static IEnumerator GameLoop()
         {
@@ -150,14 +179,13 @@ namespace Test
         {
             //initialization phase, for example you can precreate reusable enumerators or taskroutines
             //to avoid runtime allocations
-            int i = 0;
-            var smartFunctionEnumerator = new SmartFunctionEnumerator(() => ExitTest(ref i));
+            var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest);
 
             //start a loop, you can actually start multiple loops with different conditions so that
             //you can wait for specific states to be valid before to start the real loop 
             yield return smartFunctionEnumerator;
             yield return smartFunctionEnumerator; //it can be reused differently than a compiler generated iterator block
-            yield return i; //boxiiiiiiiing there are better way to do this, but it's ok if performance is not a problem
+            yield return (smartFunctionEnumerator as IEnumerator<int>).Current; //boxiiiiiiiing there are better way to do this, but it's ok if performance is not a problem
         }
 
         /// <summary>
@@ -245,7 +273,7 @@ namespace Test
             yield return i; //careful it will be boxed;
         }
         
-        Enumerable        _iterable1;
+        Enumerator        _iterable1;
     }
 }
 #endif

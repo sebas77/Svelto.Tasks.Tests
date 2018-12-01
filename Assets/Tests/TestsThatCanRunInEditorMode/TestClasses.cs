@@ -3,13 +3,11 @@ using System.Collections;
 using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Chain;
-using UnityEngine;
 
 namespace Test
 {
     class ServiceTask : IServiceTask
     {
-        //ITask Implementation
         public bool isDone { get; private set; }
 
         public ServiceTask()
@@ -17,7 +15,6 @@ namespace Test
             isDone = false;
         }
 
-        //ITask Implementation
         public void Execute()
         {
             _delayTimer = new System.Timers.Timer
@@ -112,19 +109,35 @@ namespace Test
         public bool disposed { get; private set; }
     }
 
-    class Enumerable : IEnumerable
+    class Enumerator : IEnumerator
     {
         public long endOfExecutionTime { get; private set; }
-
         public bool AllRight
         {
             get { return iterations == totalIterations; }
         }
 
-        public Enumerable(int niterations)
+        public Enumerator(int niterations)
         {
             iterations      = 0;
             totalIterations = niterations;
+        }
+        
+        public bool MoveNext()
+        {
+            if (totalIterations < 0)
+                throw new Exception("can't handle this");
+
+            if (iterations < totalIterations)
+            {
+                ++iterations;
+
+                return true;
+            }
+            
+            endOfExecutionTime = DateTime.Now.Ticks;
+
+            return false;
         }
 
         public void Reset()
@@ -132,25 +145,12 @@ namespace Test
             iterations = 0;
         }
 
-        public IEnumerator GetEnumerator()
-        {
-            if (totalIterations < 0)
-                throw new Exception("can't handle this");
-
-            while (iterations < totalIterations)
-            {
-                iterations++;
-
-                yield return null;
-            }
-
-            endOfExecutionTime = DateTime.Now.Ticks;
-        }
-
+        public object Current { get; }
+        
         readonly int totalIterations;
         public   int iterations;
     }
-
+    
     class SimpleEnumeratorClassRefTime : IEnumerator
     {
         ValueObject _val;
@@ -191,9 +191,7 @@ namespace Test
         }
 
         public void Reset()
-        {
-
-        }
+        {}
 
         public object Current { get; }
     }
@@ -205,8 +203,6 @@ namespace Test
 
     class WaitEnumerator : IEnumerator
     {
-        Token _token;
-
         public WaitEnumerator(Token token, int time = 2)
         {
             _token  = token;
@@ -232,9 +228,6 @@ namespace Test
             get { return null; }
         }
 
-        DateTime _future;
-        int _time;
-
         public bool MoveNext()
         {
             if (_future <= DateTime.UtcNow)
@@ -247,6 +240,10 @@ namespace Test
 
             return true;
         }
+        
+        DateTime _future;
+        int      _time;
+        Token    _token;
     }
 
     public class SlowTask : IEnumerator
@@ -267,7 +264,6 @@ namespace Test
         }
 
         public void Reset()
-        {
-        }
+        {}
     }
 }
