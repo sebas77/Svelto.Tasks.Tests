@@ -1,7 +1,7 @@
 using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
-using Svelto.Tasks.Services.Enumerators;
+using Svelto.Tasks.Enumerators;
 using UnityEngine.TestTools;
 
 namespace Test
