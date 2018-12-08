@@ -12,6 +12,19 @@ namespace Test
     /// TaskRoutines enable more advanced feature of Svelto.Tasks, like a promises like behaviour and allow explicit
     /// management of memory.
     /// </summary>
+    ///
+    /// Restart a task with compiled generated IEnumerator
+    /// Restart a task with IEnumerator class
+    /// Restart a task after SetEnumerator has been called (this must be still coded, as it must reset some values)
+    /// Restart a task just restarted (pendingRestart == true)
+    /// /// test pending coroutine wrapper
+    /// /// test pause and resume tasks
+    /// /// test stopping tasks
+    /// /// test stopping runner 
+    /// test pause and reusme runner
+   /// 
+    /// /// Start a taskroutine twice with different compiler generated enumerators and variants
+
      
     [TestFixture]
     public class TaskRunnerTestsTaskRoutines
@@ -93,8 +106,7 @@ namespace Test
                 Thread.Sleep(500); //let's be sure the runner has the time to complete it
 
                 Assert.That(continuator.completed == true, "must be completed");
-                Assert.True(isCallbackCalled);
-                
+                Assert.True(isCallbackCalled);               
 
                 continuator = _reusableTaskRoutine.Start();
 

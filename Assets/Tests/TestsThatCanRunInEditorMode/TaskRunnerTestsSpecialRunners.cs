@@ -51,6 +51,8 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeBoundMonoRunner()
         {
+            yield return null;
+            
             var frames = 0;
 
             using (var timeBoundMonoRunner = new TimeBoundMonoRunner("timebound", 200))
@@ -79,6 +81,8 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeSlicedMonoRunner()
         {
+            yield return null;
+            
             var frames = 0;
 
             using (var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 2000))
@@ -120,9 +124,11 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeSlicedMonoRunnerSliced()
         {
+            yield return null;
+            
             var frames = 0;
 
-            using (var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced", 2))
+            using (var timeSlicedMonoRunner = new TimeSlicedMonoRunner("timesliced2", 2))
             {
                 ValueObject val        = new ValueObject();
                 var         yieldBreak = TimeSlicedYieldNormal(val);

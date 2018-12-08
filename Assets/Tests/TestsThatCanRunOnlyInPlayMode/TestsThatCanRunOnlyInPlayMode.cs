@@ -4,6 +4,7 @@ using System.Collections;
 using System;
 using System.Threading;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Parallelism;
 using Svelto.Tasks.Unity;
 using UnityEngine;
@@ -121,7 +122,7 @@ public class TestsThatCanRunOnlyInPlayMode
         ParallelTaskCollection pt = new ParallelTaskCollection();
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
-        taskRoutine.SetEnumerator(pt).SetScheduler(new UpdateMonoRunner("test"));
+        taskRoutine.SetEnumerator(pt).SetScheduler(new UpdateMonoRunner("test1"));
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;

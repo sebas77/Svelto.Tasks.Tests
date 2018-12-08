@@ -6,7 +6,11 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
+using Svelto.Tasks.Unity.Internal;
 using UnityEngine.TestTools;
+using UnityEngine.TestTools.Constraints;
+using Is = UnityEngine.TestTools.Constraints.Is;
 
 namespace Test
 {
@@ -16,12 +20,51 @@ namespace Test
     ///  TaskRoutines should be exploited to enable advanced features. 
     /// </summary>
     [TestFixture]
-    public class TaskRunnerTestsWithSimpleEnumerators
+    public class TaskRunnerTestsWithPooledTasks
     {
         [SetUp]
         public void Setup()
         {
             _iterable1 = new Enumerator(10000);
+        }
+        
+        [Test]
+        public void TestPooledTaskMemoryUsage()
+        {
+            WaitForSecondsEnumerator enumerator = new WaitForSecondsEnumerator(0.1f);
+            
+            var syncRunner = new SyncRunner();
+            enumerator.RunOnScheduler(syncRunner);
+
+            Assert.That(() =>
+                        {
+                            enumerator.RunOnScheduler(syncRunner);
+                        }, Is.Not.AllocatingGCMemory());
+        }
+        
+        [UnityTest]
+        public IEnumerator TestContinuatorSimple()
+        {
+            yield return null;
+
+            //careful, runners can be garbage collected if they are not referenced somewhere and the
+            //framework does not keep a reference
+            using (var updateMonoRunner = new UpdateMonoRunner("update"))
+            {
+                var cont = new Enumerator(1).RunOnScheduler(updateMonoRunner);
+                
+                Assert.That(cont.MoveNext, Is.True);
+
+                var runnerBehaviour = updateMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
+                
+                runnerBehaviour.Update();
+
+                Assert.That(cont.MoveNext, Is.True);
+
+                runnerBehaviour.Update();
+
+                Assert.That(cont.MoveNext, Is.False);
+            }
         }
 
         /// <summary>
@@ -130,13 +173,6 @@ namespace Test
             Assert.That(testFirstInstruction.Current, Is.EqualTo(1));
         }
 
-        [UnityTest]
-        public IEnumerator TestPooledTasksAllocate0()
-        {
-            Assert.Inconclusive();
-            yield break;
-        }
-        
         [UnityTest]
         public IEnumerator TestTaskRoutinesAllocate0WhenReused()
         {
