@@ -266,4 +266,29 @@ namespace Test
         public void Reset()
         {}
     }
+    
+    public struct SlowTaskStruct : IEnumerator
+    {
+        readonly DateTime      _then;
+
+        public object Current
+        {
+            get { return null; }
+        }
+
+        public SlowTaskStruct(int seconds):this()
+        {
+            _then = DateTime.Now.AddSeconds(seconds);
+        }
+
+        public bool MoveNext()
+        {
+            if (DateTime.Now < _then)
+                return true;
+            return false;
+        }
+
+        public void Reset()
+        {}
+    }
 }

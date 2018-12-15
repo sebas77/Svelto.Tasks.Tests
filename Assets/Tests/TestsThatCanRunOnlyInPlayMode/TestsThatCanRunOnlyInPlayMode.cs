@@ -350,6 +350,7 @@ public class TestsThatCanRunOnlyInPlayMode
             var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                                          taskRoutine.SetEnumeratorProvider(() => LongTermEnumerator());
             taskRoutine.Start();
+            yield return null;
             taskRoutine.Start();
             taskRoutine.Start();
             taskRoutine.Start();

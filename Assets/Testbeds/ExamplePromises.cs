@@ -44,7 +44,7 @@ namespace Test.Editor
                 task.Start(OnFail);
         }
 
-        void OnFail(PausableTaskException obj)
+        void OnFail(SveltoTaskException obj)
         {
             Debug.LogError("tsk tsk");
         }
@@ -119,9 +119,9 @@ namespace Test.Editor
 
             IEnumerator PrintProgress(UnityWebRequest wWW)
             {
-                while (wWW.isDone == false)
+               // while (wWW.isDone == false)
                 {
-                    Debug.Log(wWW.downloadProgress);
+                 //   Debug.Log(wWW.downloadProgress);
 
                     yield return null;
                 }

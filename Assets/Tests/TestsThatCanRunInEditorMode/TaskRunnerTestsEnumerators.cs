@@ -7,7 +7,6 @@ using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Unity;
-using Svelto.Tasks.Unity.Internal;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
@@ -55,13 +54,11 @@ namespace Test
                 
                 Assert.That(cont.MoveNext, Is.True);
 
-                var runnerBehaviour = updateMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
-                
-                runnerBehaviour.Update();
+                updateMonoRunner.Step();
 
                 Assert.That(cont.MoveNext, Is.True);
 
-                runnerBehaviour.Update();
+                updateMonoRunner.Step();
 
                 Assert.That(cont.MoveNext, Is.False);
             }

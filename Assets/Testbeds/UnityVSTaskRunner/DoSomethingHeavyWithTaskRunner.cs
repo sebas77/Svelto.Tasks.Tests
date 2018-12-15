@@ -12,8 +12,7 @@ namespace Test.Editor.UnityVSTaskRunner
             _transform = this.transform;
 
             _task = TaskRunner.Instance.AllocateNewTaskRoutine();
-            _task.
-                                              SetEnumeratorProvider(UpdateIt2);
+            _task.SetEnumeratorProvider(UpdateIt2);
         }
 
         void OnEnable() 

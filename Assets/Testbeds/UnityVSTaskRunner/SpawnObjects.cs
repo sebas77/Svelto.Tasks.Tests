@@ -75,11 +75,11 @@ namespace Test.Editor.UnityVSTaskRunner
                     text.text = "Unity coroutine Enabled";
                 else
                     text.text = "TaskRunner coroutine Enabled";
+                
+                text2.text =
+                    Svelto.Tasks.StandardSchedulers.coroutineScheduler.numberOfRunningTasks.
+                           ToString();
             }
-
-            text2.text =
-                Svelto.Tasks.StandardSchedulers.coroutineScheduler.numberOfRunningTasks.
-                       ToString();
         }
 
         GameObject parent1;

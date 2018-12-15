@@ -190,7 +190,7 @@ namespace Test
             Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
         }
 
-        IEnumerator crazyEnumerator(ValueObject result, IRunner runner)
+        IEnumerator crazyEnumerator(ValueObject result, IRunner<IEnumerator> runner)
         {
             yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
             yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);

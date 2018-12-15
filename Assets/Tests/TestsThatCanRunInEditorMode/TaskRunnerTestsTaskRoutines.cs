@@ -4,7 +4,11 @@ using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.TestTools.Constraints;
+using Is = UnityEngine.TestTools.Constraints.Is;
+
 
 namespace Test
 {
@@ -33,6 +37,27 @@ namespace Test
         public void Setup()
         {
             _iterable1 = new Enumerator(10000);
+        }
+
+        [Test]
+        public void TestPooledTaskMemoryUsage()
+        {
+            var syncRunner = new SyncRunner<SlowTaskStruct>(2000);
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine(syncRunner);
+            
+            task.SetEnumerator(new SlowTaskStruct(1));
+            task.Start();
+
+            Assert.That(() =>
+                        {
+                            task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.Start();}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.Start();}, Is.Not.AllocatingGCMemory());
+
         }
         
         [UnityTest]
