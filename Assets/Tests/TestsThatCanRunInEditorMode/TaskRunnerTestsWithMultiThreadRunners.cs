@@ -50,8 +50,8 @@ namespace Test
             using (var runner = new MultiThreadRunner("TestMultithreadIntervaled", 1))
             {
                 var iterable1 = new Enumerator(2000);
-                ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
-                taskRoutine.SetEnumerator(iterable1).SetScheduler(runner);
+                var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                taskRoutine.SetEnumerator(iterable1);
 
                 DateTime now = DateTime.Now;
                 taskRoutine.Start().Complete();
@@ -142,9 +142,9 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("MT"))
             {
-                ITaskRoutine routine = TaskRunner.Instance.AllocateNewTaskRoutine();
+                var routine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
 
-                routine.SetEnumerator(YieldMultiThreadedParallelTaskCollection()).SetScheduler(runner);
+                routine.SetEnumerator(YieldMultiThreadedParallelTaskCollection());
 
                 var continuator = routine.Start();
 

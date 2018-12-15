@@ -30,7 +30,7 @@ namespace Test
             _iterable1             = new Enumerator(10000);
             _iterable2             = new Enumerator(5000);
             
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new SyncRunner());
+            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new SyncRunner());
         }
         
         [UnityTest]
@@ -127,7 +127,8 @@ namespace Test
         {
             yield return null;
 
-            _reusableTaskRoutine.SetEnumerator(TestSerialTwice()).Start();
+            _reusableTaskRoutine.SetEnumerator(TestSerialTwice());
+                                _reusableTaskRoutine.Start();
         }
         
         [UnityTest]
@@ -396,6 +397,6 @@ namespace Test
 
         Enumerator _iterable1;
         Enumerator _iterable2;
-        ITaskRoutine _reusableTaskRoutine;
+        ITaskRoutine<IEnumerator> _reusableTaskRoutine;
     }
 }

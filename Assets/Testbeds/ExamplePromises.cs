@@ -30,16 +30,18 @@ namespace Test.Editor
         // Use this for initialization
         void Start()
         {
-            TaskRunner.Instance.AllocateNewTaskRoutine().
-                       SetEnumerator(RunTasks(0.1f)).Start(onStop: OnStop);
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine();
+            task.SetEnumerator(RunTasks(0.1f));
+            task.Start(onStop: OnStop);
         }
 
         void OnStop()
         {
             Debug.LogWarning("oh oh, did't happen on time, let's try again");
 
-            TaskRunner.Instance.AllocateNewTaskRoutine().
-                       SetEnumerator(RunTasks(1000)).Start(OnFail);
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine();
+            task.SetEnumerator(RunTasks(1000));
+                task.Start(OnFail);
         }
 
         void OnFail(PausableTaskException obj)
