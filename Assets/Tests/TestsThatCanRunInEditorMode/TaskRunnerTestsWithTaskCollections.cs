@@ -30,7 +30,7 @@ namespace Test
             _iterable1             = new Enumerator(10000);
             _iterable2             = new Enumerator(5000);
             
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new SyncRunner());
+            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new SyncRunner());
         }
         
         [UnityTest]
@@ -127,7 +127,8 @@ namespace Test
         {
             yield return null;
 
-            _reusableTaskRoutine.SetEnumerator(TestSerialTwice()).Start();
+            _reusableTaskRoutine.SetEnumerator(TestSerialTwice());
+                                _reusableTaskRoutine.Start();
         }
         
         [UnityTest]
@@ -288,50 +289,48 @@ namespace Test
 
                 _parallelTasks1.RunOnScheduler(runner);
 
-                var runnerBehaviour = runner._go.GetComponent<RunnerBehaviourUpdate>();
-
                 Assert.IsFalse(enumerator.AllRight);
                 Assert.IsFalse(enumerator1.AllRight);
                 Assert.IsFalse(enumerator2.AllRight);
                 Assert.IsFalse(enumerator3.AllRight);
                 Assert.IsFalse(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsFalse(enumerator1.AllRight);
                 Assert.IsFalse(enumerator2.AllRight);
                 Assert.IsFalse(enumerator3.AllRight);
                 Assert.IsFalse(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsTrue(enumerator1.AllRight);
                 Assert.IsFalse(enumerator2.AllRight);
                 Assert.IsFalse(enumerator3.AllRight);
                 Assert.IsFalse(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsTrue(enumerator1.AllRight);
                 Assert.IsTrue(enumerator2.AllRight);
                 Assert.IsFalse(enumerator3.AllRight);
                 Assert.IsFalse(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsTrue(enumerator1.AllRight);
                 Assert.IsTrue(enumerator2.AllRight);
                 Assert.IsTrue(enumerator3.AllRight);
                 Assert.IsFalse(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsTrue(enumerator1.AllRight);
                 Assert.IsTrue(enumerator2.AllRight);
                 Assert.IsTrue(enumerator3.AllRight);
                 Assert.IsTrue(enumerator4.AllRight);
                 Assert.IsFalse(enumerator5.AllRight);
-                runnerBehaviour.Update();
+                runner.Step();
                 Assert.IsTrue(enumerator.AllRight);
                 Assert.IsTrue(enumerator1.AllRight);
                 Assert.IsTrue(enumerator2.AllRight);
@@ -343,8 +342,6 @@ namespace Test
         
         IEnumerator SerialContinuation()
         {
-            bool parallelTasks1Done = false;
-
             _parallelTasks1.Add(_iterable2);
             _parallelTasks1.Add(_iterable1);
 
@@ -396,6 +393,6 @@ namespace Test
 
         Enumerator _iterable1;
         Enumerator _iterable2;
-        ITaskRoutine _reusableTaskRoutine;
+        ITaskRoutine<IEnumerator> _reusableTaskRoutine;
     }
 }

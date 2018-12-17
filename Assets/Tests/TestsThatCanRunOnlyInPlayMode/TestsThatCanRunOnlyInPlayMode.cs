@@ -66,7 +66,8 @@ public class TestsThatCanRunOnlyInPlayMode
         
         using (var runner = new MultiThreadRunner("tighttest"))
         {
-            var taskroutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).SetEnumerator(iterable2);
+            var taskroutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                                        taskroutine.SetEnumerator(iterable2);
             yield return taskroutine.Start();
 
             Assert.That(true);
@@ -76,8 +77,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TaskWithEnumeratorMustStopAndRestart()
     {
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.updateScheduler).SetEnumerator
-            (_iterable1);
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.updateScheduler);
+        task.SetEnumerator(_iterable1);
             
         bool done = false;
 
@@ -105,8 +106,10 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWait()
     {
-        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
-        taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator).SetScheduler(new CoroutineMonoRunner("test"));
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new CoroutineMonoRunner("test"));
+        taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator);
+
+        
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
@@ -118,11 +121,11 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWaitInParallel()
     {
-        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine();
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new UpdateMonoRunner("test1"));
         ParallelTaskCollection pt = new ParallelTaskCollection();
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
-        taskRoutine.SetEnumerator(pt).SetScheduler(new UpdateMonoRunner("test1"));
+        taskRoutine.SetEnumerator(pt);
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
@@ -146,7 +149,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TaskWithEnumeratorProviderMustStopAndRestart()
     {
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.coroutineScheduler);
+            task.
             SetEnumeratorProvider(() => SubEnumerator(1));
             
         bool done = false;
@@ -179,7 +183,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TaskWithCompilerEnumeratorProviderCannotRestart()
     {
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.coroutineScheduler);
+        task.
             SetEnumerator(SubEnumerator(1));
             
         bool done = false;
@@ -210,7 +215,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TaskWithCompilerEnumeratorProviderCanRestartIfEnumeratorIsSetAgain()
     {
-        var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.coroutineScheduler).
+        var task = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.coroutineScheduler);
+        task.
             SetEnumerator(SubEnumerator(1));
             
         bool done = false;
@@ -248,7 +254,8 @@ public class TestsThatCanRunOnlyInPlayMode
         var valueRef = new ValueRef();
         using (var runner = new CoroutineMonoRunner("test"))
         {
-            var task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner)
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                task
                                  .SetEnumeratorProvider(() => UnityWaitEnumerator(valueRef));
 
             bool stopped = false;
@@ -340,9 +347,10 @@ public class TestsThatCanRunOnlyInPlayMode
             
         using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
         {
-            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
-                                         SetEnumeratorProvider(() => LongTermEnumerator());
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                                         taskRoutine.SetEnumeratorProvider(() => LongTermEnumerator());
             taskRoutine.Start();
+            yield return null;
             taskRoutine.Start();
             taskRoutine.Start();
             taskRoutine.Start();
@@ -361,7 +369,8 @@ public class TestsThatCanRunOnlyInPlayMode
             
         using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
         {
-            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+            taskRoutine.
                                          SetEnumeratorProvider(() => LongTermEnumerator());
             int test = 0;
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
@@ -384,7 +393,8 @@ public class TestsThatCanRunOnlyInPlayMode
             
         using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
         {
-            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+            taskRoutine.
                                          SetEnumeratorProvider(() => LongTermEnumeratorUnity());
             taskRoutine.Start();
             taskRoutine.Start();
@@ -405,7 +415,8 @@ public class TestsThatCanRunOnlyInPlayMode
             
         using (var runner = new UpdateMonoRunner("TestSimpleTaskRoutineStartStart"))
         {
-            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+            taskRoutine.
                                          SetEnumeratorProvider(() => LongTermEnumeratorUnity());
             int test        = 0;
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
@@ -429,7 +440,8 @@ public class TestsThatCanRunOnlyInPlayMode
         {
             ValueObject result = new ValueObject();
 
-            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).
+            var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+            taskRoutine.
                                          SetEnumeratorProvider(() => SimpleEnumerator(result));
 
             var continuation = taskRoutine.Start();

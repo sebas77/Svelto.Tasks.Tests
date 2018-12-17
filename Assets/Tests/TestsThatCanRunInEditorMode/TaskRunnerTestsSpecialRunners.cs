@@ -28,19 +28,17 @@ namespace Test
                 for (int i = 0; i < 16; i++)
                     new SimpleEnumeratorClassRef(val).RunOnScheduler(staggeredMonoRunner);
 
-                var runnerBehaviour = staggeredMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
-                
                 Assert.That(staggeredMonoRunner.numberOfQueuedTasks, Is.EqualTo(16));
-                runnerBehaviour.Update();
+                staggeredMonoRunner.Step();
 
                 Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(12));
-                runnerBehaviour.Update();
+                staggeredMonoRunner.Step();
 
                 Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(8));
-                runnerBehaviour.Update();
+                staggeredMonoRunner.Step();
 
                 Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(4));
-                runnerBehaviour.Update();
+                staggeredMonoRunner.Step();
 
                 Assert.That(staggeredMonoRunner.numberOfRunningTasks, Is.EqualTo(0));
 
@@ -61,15 +59,13 @@ namespace Test
                 for (int i = 0; i < 32; i++)
                     new SimpleEnumeratorClassRefTime(val).RunOnScheduler(timeBoundMonoRunner);
 
-                var runnerBehaviour = timeBoundMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
-
                 frames++;
-                runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
+                timeBoundMonoRunner.Step();
 
                 while (timeBoundMonoRunner.numberOfRunningTasks > 0)
                 {
                     frames++;
-                    runnerBehaviour.Update();
+                    timeBoundMonoRunner.Step();
                     yield return null;
                 }
 
@@ -97,18 +93,16 @@ namespace Test
                 var yieldBreak3 = TimeSlicedYield(val);
                 yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
 
-                var runnerBehaviour = timeSlicedMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
-
                 DateTime then = DateTime.Now;
 
                 frames++;
-                runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
+                timeSlicedMonoRunner.Step(); //first iteration of the runner so that the tasks are filled
 
                 while (timeSlicedMonoRunner.numberOfRunningTasks > 0)
                 {
                     frames++;
                     val.counter++;
-                    runnerBehaviour.Update();
+                    timeSlicedMonoRunner.Step();
                     yield return null;
                 }
 
@@ -140,16 +134,14 @@ namespace Test
                 var yieldBreak3 = TimeSlicedYieldNormal(val);
                 yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
 
-                var runnerBehaviour = timeSlicedMonoRunner._go.GetComponent<RunnerBehaviourUpdate>();
-
                 frames++;
-                runnerBehaviour.Update(); //first iteration of the runner so that the tasks are filled
+                timeSlicedMonoRunner.Step(); //first iteration of the runner so that the tasks are filled
 
                 while (timeSlicedMonoRunner.numberOfRunningTasks > 0)
                 {
                     frames++;
                     val.counter++;
-                    runnerBehaviour.Update();
+                    timeSlicedMonoRunner.Step();
                     yield return null;
                 }
 

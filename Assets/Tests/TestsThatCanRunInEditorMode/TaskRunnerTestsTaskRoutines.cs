@@ -4,7 +4,11 @@ using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.TestTools.Constraints;
+using Is = UnityEngine.TestTools.Constraints.Is;
+
 
 namespace Test
 {
@@ -33,9 +37,27 @@ namespace Test
         public void Setup()
         {
             _iterable1 = new Enumerator(10000);
+        }
+
+        [Test]
+        public void TestPooledTaskMemoryUsage()
+        {
+            var syncRunner = new SyncRunner<SlowTaskStruct>(2000);
+            var task = TaskRunner.Instance.AllocateNewTaskRoutine(syncRunner);
             
-            //preallocate a task routine and reusing it is the normal pattern
-            _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new SyncRunner()); 
+            task.SetEnumerator(new SlowTaskStruct(1));
+            task.Start();
+
+            Assert.That(() =>
+                        {
+                            task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.Start();}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
+            Assert.That(() =>
+                        {   task.Start();}, Is.Not.AllocatingGCMemory());
+
         }
         
         [UnityTest]
@@ -51,12 +73,12 @@ namespace Test
         {
             yield return null;
             
-            //you can test an resettable enumerator once
-            _reusableTaskRoutine.SetEnumerator(_iterable1);
 
             using (var runner = new MultiThreadRunner("TestMultithread"))
             {
-                var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
+                var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                _reusableTaskRoutine.SetEnumerator(_iterable1);
+                var continuator = _reusableTaskRoutine.Start();
 
                 while (continuator.MoveNext()) yield return null;
 
@@ -123,8 +145,9 @@ namespace Test
             {
                 bool isCallbackCalled = false;
                 
-                var continuator = _reusableTaskRoutine.SetScheduler(runner)
-                                                      .SetEnumeratorProvider(() => SimpleEnumerator(result))
+                var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
+                var continuator = _reusableTaskRoutine
                                                       .Start(onStop: () => isCallbackCalled = true);
 
                 Assert.That(continuator.completed == false, "can't be completed");
@@ -150,8 +173,8 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
             {
+                var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 bool isCallbackCalled = false;
-                _reusableTaskRoutine.SetScheduler(runner);
                 _reusableTaskRoutine.SetEnumerator(TestWithThrow());
                 
                 var continuator = _reusableTaskRoutine.Start(onFail: (e) => isCallbackCalled = true);
@@ -166,11 +189,11 @@ namespace Test
         {
             yield return null;
             
-            _reusableTaskRoutine.SetEnumerator(_iterable1);
-
             using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
             {
-                var continuator = _reusableTaskRoutine.SetScheduler(runner).Start();
+                var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                _reusableTaskRoutine.SetEnumerator(_iterable1);
+                var continuator = _reusableTaskRoutine.Start();
 
                 DateTime then = DateTime.Now.AddSeconds(2);
 
@@ -205,7 +228,6 @@ namespace Test
             Interlocked.Increment(ref result.counter);
         }
         
-        ITaskRoutine _reusableTaskRoutine;
         Enumerator   _iterable1;
     }
 }

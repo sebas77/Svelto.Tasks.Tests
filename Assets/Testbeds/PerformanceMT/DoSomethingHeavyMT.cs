@@ -8,11 +8,11 @@ namespace PerformanceMT
     {
         Vector2 direction;
 
-        ITaskRoutine taskRoutine;
+        ITaskRoutine<IEnumerator> taskRoutine;
         
         void Start()
         {
-            taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.updateScheduler);
+            taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.updateScheduler);
             CalculateAndShowNumber().RunOnScheduler(StandardSchedulers.multiThreadScheduler);
             direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
         }
@@ -27,7 +27,8 @@ namespace PerformanceMT
 
                 long result = (long)enumerator.Current * 333;
 
-                yield return taskRoutine.SetEnumerator(SetColor(result)).Start(); //yep the thread will wait for this other task to finish on the mainThreadScheduler
+                taskRoutine.SetEnumerator(SetColor(result));
+                yield return taskRoutine.Start(); //yep the thread will wait for this other task to finish on the mainThreadScheduler
             }
         }
 

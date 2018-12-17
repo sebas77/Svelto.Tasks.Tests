@@ -61,6 +61,6 @@ namespace Test
         ServiceTask          _task1;
         ServiceTask          _task2;
         SerialTaskCollection _serialTasks1;
-        ITaskRoutine         _reusableTaskRoutine;
+        ITaskRoutine<IEnumerator>         _reusableTaskRoutine;
     }
 }

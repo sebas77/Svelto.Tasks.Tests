@@ -13,7 +13,7 @@ namespace Test.Editor
 
         int i;
     
-        ITaskRoutine _taskRountine;
+        ITaskRoutine<IEnumerator> _taskRountine;
         bool         _paused;
 
         ParallelTaskCollection pt = new ParallelTaskCollection();
@@ -27,7 +27,8 @@ namespace Test.Editor
         // Use this for initialization
         void Start () 
         {
-            _taskRountine = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(ResetTaskAndRun); //The Task routine is pooled! You could have used Start directly, but you need to use SetEnumeratorProvider if you want restart the TaskRoutine later
+            _taskRountine = TaskRunner.Instance.AllocateNewTaskRoutine();
+                _taskRountine.SetEnumeratorProvider(ResetTaskAndRun); //The Task routine is pooled! You could have used Start directly, but you need to use SetEnumeratorProvider if you want restart the TaskRoutine later
             _taskRountine.Start();
         }
 
