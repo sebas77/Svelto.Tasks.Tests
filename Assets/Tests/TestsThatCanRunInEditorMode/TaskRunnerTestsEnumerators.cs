@@ -174,11 +174,25 @@ namespace Test
         }
 
         [UnityTest]
-        public IEnumerator TestTaskRoutinesAllocate0WhenReused()
+        public IEnumerator TestEnumeratorStartingFromEnumeratorIndipendently()
         {
-            Assert.Inconclusive();
-            yield break;
+            yield return null;
+
+            using (var runner = new MultiThreadRunner("test"))
+            {
+                NestedEnumerator(runner).RunOnScheduler(runner);
+            }
         }
+
+        static IEnumerator NestedEnumerator(MultiThreadRunner runner)
+        {
+            yield return null;
+            
+            new WaitForSecondsEnumerator(0.1f).RunOnScheduler(runner);
+
+            yield return null;
+        }
+
 
         static IEnumerator TestFirstInstruction()
         {
@@ -223,7 +237,7 @@ namespace Test
             yield return smartFunctionEnumerator; //it can be reused differently than a compiler generated iterator block
             yield return (smartFunctionEnumerator as IEnumerator<int>).Current; //boxiiiiiiiing there are better way to do this, but it's ok if performance is not a problem
         }
-
+        
         /// <summary>
         /// it will be called until i >= 2
         /// </summary>

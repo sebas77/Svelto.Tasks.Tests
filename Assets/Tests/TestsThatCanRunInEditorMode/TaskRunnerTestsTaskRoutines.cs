@@ -39,6 +39,14 @@ namespace Test
         }
         
         [UnityTest]
+        public IEnumerator TestTaskRoutinesAllocate0WhenReused()
+        {
+            Assert.Inconclusive();
+            yield break;
+        }
+
+        
+        [UnityTest]
         public IEnumerator TestMultithreadWitTaskRoutines()
         {
             yield return null;
@@ -68,20 +76,39 @@ namespace Test
         {
             yield return null;
             
-            ValueObject result = new ValueObject();
+            var result = new ValueObject();
 
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart"))
             {
-                var taskRoutine = _reusableTaskRoutine
-                                 .SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
+                var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
+                        .SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
                 
-                taskRoutine.Start(); 
+                taskRoutine.Start();
                 yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
-                var continuator = taskRoutine.Start();
+                var continuation = taskRoutine.Start();
 
-                while (continuator.MoveNext()) yield return null; //now increment
+                while (continuation.MoveNext())
+                        yield return null; //now increment
 
-                Assert.That(result.counter, Is.EqualTo(1)); 
+                Assert.That(result.counter, Is.EqualTo(1));
+
+                taskRoutine.Start();
+                yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
+                continuation = taskRoutine.Start();
+
+                while (continuation.MoveNext())
+                    yield return null; //now increment
+                
+                Assert.That(result.counter, Is.EqualTo(2));
+                
+                taskRoutine.Start();
+                yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
+                continuation = taskRoutine.Start();
+
+                while (continuation.MoveNext())
+                    yield return null; //now increment
+
+                Assert.That(result.counter, Is.EqualTo(3));
             }
         }
         
