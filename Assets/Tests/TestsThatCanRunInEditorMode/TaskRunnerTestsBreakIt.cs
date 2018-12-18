@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Unity;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -31,7 +33,7 @@ namespace Test
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
-            Assert.AreEqual(severalTasksParent.Current, 10);
+            Assert.AreEqual((int)severalTasksParent.Current, 10);
         }
         
         [UnityTest]
@@ -44,39 +46,41 @@ namespace Test
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
-            Assert.AreNotEqual(severalTasksParent.Current, 10);
+            Assert.AreNotEqual((int)severalTasksParent.Current, 10);
         }
         
-        IEnumerator SeveralTasksParent()
+        IEnumerator<TaskContract?> SeveralTasksParent()
         {
-            yield return SeveralTasks();
+            yield return SeveralTasks().Continue();
 
             yield return 10;
         }
         
-        IEnumerator SeveralTasks()
+        IEnumerator<TaskContract?> SeveralTasks()
         {
-            yield return _iterable1;
+            yield return _iterable1.Continue();
 
             yield break;
 
-            yield return _iterable2;
+#pragma warning disable 162
+            yield return _iterable2.Continue();
+#pragma warning restore 162
         }
         
-        IEnumerator SeveralTasksParentBreak()
+        IEnumerator<TaskContract?> SeveralTasksParentBreak()
         {
-            yield return SeveralTasksBreak();
+            yield return SeveralTasksBreak().Continue();
 
             yield return 10;
         }
         
-        IEnumerator SeveralTasksBreak()
+        IEnumerator<TaskContract?> SeveralTasksBreak()
         {
-            yield return _iterable1;
+            yield return _iterable1.Continue();
 
             yield return Break.It;
 
-            yield return _iterable2;
+            yield return _iterable2.Continue();
         }
         
         Enumerator _iterable1;

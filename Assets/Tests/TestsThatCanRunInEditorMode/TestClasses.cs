@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Chain;
+using Svelto.Tasks.Unity;
 
 namespace Test
 {
@@ -68,8 +70,15 @@ namespace Test
             throw new NotImplementedException();
         }
 
-        public object      Current { get; }
+        public TaskContract? Current
+        {
+            get { return null; }
+        }
+
+        object IEnumerator.Current { get; }
         public ValueObject token   { get; set; }
+        public void Dispose()
+        {}
     }
 
     class ValueObject
@@ -77,7 +86,7 @@ namespace Test
         public int counter;
     }
 
-    public class TimeoutEnumerator : IEnumerator, IDisposable
+    public class TimeoutEnumerator : IEnumerator<TaskContract?>
     {
         public TimeoutEnumerator()
         {
@@ -97,7 +106,15 @@ namespace Test
         public void Reset()
         {}
 
-        public object Current { get; private set; }
+        public TaskContract? Current
+        {
+            get { return null; }
+        }
+
+        object IEnumerator.Current
+        {
+            get { return this.Current; }
+        }
 
         readonly DateTime _then;
 
@@ -109,7 +126,7 @@ namespace Test
         public bool disposed { get; private set; }
     }
 
-    class Enumerator : IEnumerator
+    class Enumerator : IEnumerator<TaskContract?>
     {
         public long endOfExecutionTime { get; private set; }
         public bool AllRight
@@ -145,13 +162,18 @@ namespace Test
             iterations = 0;
         }
 
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
         public object Current { get; }
         
         readonly int totalIterations;
         public   int iterations;
+
+        public void Dispose()
+        {}
     }
     
-    class SimpleEnumeratorClassRefTime : IEnumerator
+    class SimpleEnumeratorClassRefTime : IEnumerator<TaskContract?>
     {
         ValueObject _val;
 
@@ -172,10 +194,14 @@ namespace Test
 
         }
 
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
         public object Current { get; }
+        public void Dispose()
+        {}
     }
 
-    class SimpleEnumeratorClassRef : IEnumerator
+    class SimpleEnumeratorClassRef : IEnumerator<TaskContract?>
     {
         ValueObject _val;
 
@@ -193,7 +219,11 @@ namespace Test
         public void Reset()
         {}
 
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
         public object Current { get; }
+        public void Dispose()
+        {}
     }
 
     class Token
@@ -201,7 +231,7 @@ namespace Test
         public int count;
     }
 
-    class WaitEnumerator : IEnumerator
+    class WaitEnumerator : IEnumerator<TaskContract?>
     {
         public WaitEnumerator(Token token, int time = 2)
         {
@@ -222,6 +252,8 @@ namespace Test
             if (_token != null)
             _token.count = 0;
         }
+
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
 
         public object Current
         {
@@ -244,9 +276,13 @@ namespace Test
         DateTime _future;
         int      _time;
         Token    _token;
+
+        public void Dispose()
+        {
+        }
     }
 
-    public class SlowTask : IEnumerator
+    public class SlowTask : IEnumerator<TaskContract?>
     {
         DateTime      _then;
         public object Current { get; private set; }
@@ -265,9 +301,16 @@ namespace Test
 
         public void Reset()
         {}
+
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
+        public void Dispose()
+        {
+            
+        }
     }
     
-    public struct SlowTaskStruct : IEnumerator
+    public struct SlowTaskStruct : IEnumerator<TaskContract?>
     {
         readonly DateTime      _then;
 
@@ -290,5 +333,11 @@ namespace Test
 
         public void Reset()
         {}
+
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
+        public void Dispose()
+        {
+        }
     }
 }

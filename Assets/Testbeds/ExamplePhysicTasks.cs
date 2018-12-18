@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 namespace Test.Editor
@@ -24,7 +26,7 @@ namespace Test.Editor
             StandardSchedulers.physicScheduler.StopAllCoroutines();
         }
 
-        IEnumerator PrintTime()
+        IEnumerator<TaskContract?> PrintTime()
         {
             var timeNow = DateTime.Now;
             while (true)

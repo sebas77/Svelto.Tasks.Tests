@@ -1,6 +1,7 @@
-﻿using System.Collections;
+﻿using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 public class CheckAllocation : MonoBehaviour
@@ -12,7 +13,7 @@ public class CheckAllocation : MonoBehaviour
 		UpdateIT().Run();
 	}
 
-	IEnumerator UpdateIT()
+	IEnumerator<TaskContract?> UpdateIT()
 	{
 		var waitForSecondsEnumerator = new WaitForSecondsEnumerator(0.1f);
 		var syncRunner = new SyncRunner();

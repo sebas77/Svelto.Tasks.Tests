@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -36,7 +37,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
         while (continuation.MoveNext() == true) yield return null;
         
-        Assert.That(enumerator.Current, Is.EqualTo(100));
+        Assert.That((int)enumerator.Current, Is.EqualTo(100));
     }
     
     [UnityTest]
@@ -106,7 +107,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWait()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new CoroutineMonoRunner("test"));
+        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new CoroutineMonoRunner("test"));
         taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator);
 
         
@@ -121,7 +122,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWaitInParallel()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new UpdateMonoRunner("test1"));
+        ITaskRoutine taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new UpdateMonoRunner("test1"));
         ParallelTaskCollection pt = new ParallelTaskCollection();
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
@@ -134,18 +135,6 @@ public class TestsThatCanRunOnlyInPlayMode
         Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
     
-    /// <summary>
-    /// This is just for testing purpose, you should never
-    /// yield YieldInstrucitons as they are inefficient and they work only with the CoroutineMonoRunner
-    /// </summary>
-    public class WaitForSecondsUnity : IEnumerable
-    {
-        public IEnumerator GetEnumerator()
-        {
-            yield return new YieldInstructionEnumerator(new WaitForSeconds(1));
-        }
-    }
-        
     [UnityTest]
     public IEnumerator TaskWithEnumeratorProviderMustStopAndRestart()
     {
@@ -453,7 +442,7 @@ public class TestsThatCanRunOnlyInPlayMode
     }
     
      
-    IEnumerator LongTermEnumerator()
+    IEnumerator<TaskContract?> LongTermEnumerator()
     {
         int frame;
         int counter = 0;
@@ -466,31 +455,31 @@ public class TestsThatCanRunOnlyInPlayMode
         }
     }
     
-    IEnumerator LongTermEnumeratorUnity()
+    IEnumerator<TaskContract?> LongTermEnumeratorUnity()
     {
         int frame;
         int counter = 0;
         while (counter++ < 3)
         {
             frame = Time.frameCount;
-            yield return new YieldInstructionEnumerator(new WaitForEndOfFrame());
+            yield return new YieldInstructionEnumerator(new WaitForEndOfFrame()).Continue();
             if (frame == Time.frameCount)
                 throw new Exception();
         }
     }
     
-    IEnumerator UnityHandle()
+    IEnumerator<TaskContract?> UnityHandle()
     {
         DateTime now = DateTime.Now;
 
-        yield return new YieldInstructionEnumerator(new WaitForSeconds(2));
+        yield return new YieldInstructionEnumerator(new WaitForSeconds(2)).Continue();
 
         var seconds = (DateTime.Now - now).Seconds;
 
         Assert.That(seconds, Is.InRange(1.9, 2.1));
     }
 
-    IEnumerator Continuation()
+    IEnumerator<TaskContract?> Continuation()
     {
         var frame = Time.frameCount;
         int i     = 0;
@@ -507,7 +496,7 @@ public class TestsThatCanRunOnlyInPlayMode
         yield return i;
     }
     
-    IEnumerator SimpleEnumerator(ValueObject result)
+    IEnumerator<TaskContract?> SimpleEnumerator(ValueObject result)
     {
         var frame = Time.frameCount;
         yield return null;
@@ -522,7 +511,7 @@ public class TestsThatCanRunOnlyInPlayMode
         public int counter;
     }
 
-    class WaitEnumerator:IEnumerator
+    class WaitEnumerator:IEnumerator<TaskContract?>
     {
         Token _token;
 
@@ -537,6 +526,8 @@ public class TestsThatCanRunOnlyInPlayMode
             _future      = DateTime.UtcNow.AddSeconds(2);
             _token.count = 0;
         }
+
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
 
         public object Current { get { return null; } }
 
@@ -553,16 +544,20 @@ public class TestsThatCanRunOnlyInPlayMode
 
             return true;
         }
+
+        public void Dispose()
+        {
+        }
     }
     
-    IEnumerator UnityWaitEnumerator(ValueRef valueRef)
+    IEnumerator<TaskContract?> UnityWaitEnumerator(ValueRef valueRef)
     {
-        yield return new YieldInstructionEnumerator(new WaitForSeconds(2));
+        yield return new YieldInstructionEnumerator(new WaitForSeconds(2)).Continue();
 
         valueRef.isDone = true;
     }
     
-    IEnumerator SubEnumerator(int i)
+    IEnumerator<TaskContract?> SubEnumerator(int i)
     {
         _hasReset = true;
         var count = i + 10;
@@ -583,3 +578,4 @@ public class TestsThatCanRunOnlyInPlayMode
     Enumerator _iterable1;
     bool _hasReset;
 }
+

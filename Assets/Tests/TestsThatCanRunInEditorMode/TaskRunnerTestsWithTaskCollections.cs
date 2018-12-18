@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -340,22 +341,22 @@ namespace Test
             }
         }
         
-        IEnumerator SerialContinuation()
+        IEnumerator<TaskContract?> SerialContinuation()
         {
             _parallelTasks1.Add(_iterable2);
             _parallelTasks1.Add(_iterable1);
 
-            yield return _parallelTasks1;
+            yield return _parallelTasks1.Continue();
 
             Assert.That(_parallelTasks1.isRunning, Is.False);
         }
         
-        IEnumerator TestSerialTwice()
+        IEnumerator<TaskContract?> TestSerialTwice()
         {
             _serialTasks1.Add(_iterable1);
             _serialTasks1.Add(_iterable2);
 
-            yield return _serialTasks1;
+            yield return _serialTasks1.Continue();
 
             Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime),
                         Is.True);
@@ -365,25 +366,15 @@ namespace Test
             _serialTasks1.Add(_iterable1);
             _serialTasks1.Add(_iterable2);
 
-            yield return _serialTasks1;
+            yield return _serialTasks1.Continue();
 
             Assert.That(_iterable1.AllRight && _iterable2.AllRight && (_iterable1.endOfExecutionTime <= _iterable2.endOfExecutionTime),
                         Is.True);
         }
         
-        IEnumerator BreakIt()
+        IEnumerator<TaskContract?> BreakIt()
         {
             yield return Break.AndStop;
-        }
-
-        IEnumerator Count()
-        {
-            yield return InnerCount(); //this won't yield a frame, only yield return null yields to the next iteration
-        }
-
-        IEnumerator InnerCount()
-        {
-            yield return null;
         }
 
         SerialTaskCollection   _serialTasks1;
@@ -393,6 +384,6 @@ namespace Test
 
         Enumerator _iterable1;
         Enumerator _iterable2;
-        ITaskRoutine<IEnumerator> _reusableTaskRoutine;
+        ITaskRoutine _reusableTaskRoutine;
     }
 }

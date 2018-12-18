@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -49,14 +51,14 @@ namespace Test.Editor
             Debug.LogError("tsk tsk");
         }
 
-        IEnumerator RunTasks(float timeout)
+        IEnumerator<TaskContract?> RunTasks(float timeout)
         {
             var enumerator = GetURLAsynchronously();
 
             //wait for one second (simulating async load) 
-            yield return enumerator;
+            yield return enumerator.Continue();
         
-            string url = (enumerator.Current as ValueObject<string>).target as string;
+            string url = (string) enumerator.Current.Value.reference;
 
             var parallelTasks = new ParallelTaskCollection();
 
@@ -64,29 +66,29 @@ namespace Test.Editor
             parallelTasks.Add(BreakOnTimeOut(timeout));
             parallelTasks.Add(new LoadSomething(new UnityWebRequest(url)).GetEnumerator());
 
-            yield return parallelTasks;
+            yield return parallelTasks.Continue();
 
-            if (parallelTasks.Current.breakIt == Break.It)
+            if ((Break)parallelTasks.Current == Break.It)
             {
                 yield return Break.AndStop;
 
                 throw new Exception("should never get here");
             }
 
-            yield return new WaitForSecondsEnumerator(2);
+            yield return new WaitForSecondsEnumerator(2).Continue();
         }
 
-        IEnumerator GetURLAsynchronously()
+        IEnumerator<TaskContract?> GetURLAsynchronously()
         {
-            yield return new WaitForSecondsEnumerator(1); //well not real reason to wait, let's assume we were running a web service
+            yield return new WaitForSecondsEnumerator(1).Continue(); //well not real reason to wait, let's assume we were running a web service
 
-            yield return new ValueObject<string>("http://download.thinkbroadband.com/5MB.zip");
+            yield return new TaskContract("http://download.thinkbroadband.com/5MB.zip");
         }
 
-        IEnumerator BreakOnTimeOut(float timeout) 
+        IEnumerator<TaskContract?> BreakOnTimeOut(float timeout) 
         {
             var time = DateTime.Now;
-            yield return new WaitForSecondsEnumerator(timeout);
+            yield return new WaitForSecondsEnumerator(timeout).Continue();
             Debug.Log("time passed: " + (DateTime.Now - time).TotalMilliseconds);
 
             yield return Break.It;
@@ -96,18 +98,18 @@ namespace Test.Editor
             //once hit
         }
 
-        class LoadSomething : IEnumerable
+        class LoadSomething : IEnumerable<TaskContract?>
         {
             public LoadSomething(UnityWebRequest wWW)
             {
                 this.wWW = wWW;
             }
 
-            public IEnumerator GetEnumerator()
+            public IEnumerator<TaskContract?> GetEnumerator()
             {
                 Debug.Log("download started");
 
-                yield return new ParallelTaskCollection(new [] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) });
+                yield return new ParallelTaskCollection(new[] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) }).Continue();
 
                 foreach (string s in wWW.GetResponseHeaders().Values)
                     Debug.Log(s);
@@ -117,17 +119,21 @@ namespace Test.Editor
                 throw new Exception("Dayyym");
             }
 
-            IEnumerator PrintProgress(UnityWebRequest wWW)
+            IEnumerator<TaskContract?> PrintProgress(UnityWebRequest wWW)
             {
-               // while (wWW.isDone == false)
+                while (wWW.isDone == false)
                 {
-                 //   Debug.Log(wWW.downloadProgress);
+                    Debug.Log(wWW.downloadProgress);
 
                     yield return null;
                 }
             }
 
             UnityWebRequest wWW;
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks.Unity;
 using Svelto.Tasks.Unity.Internal;
@@ -108,10 +109,10 @@ namespace Test
 
                 Assert.That((DateTime.Now - then).TotalMilliseconds < 1900);
                 Assert.That(frames, Is.EqualTo(1));
-                Assert.That(yieldBreak.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak1.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak2.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak3.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak1.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak2.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak3.Current, Is.EqualTo(100));
             }
         }
         
@@ -146,14 +147,14 @@ namespace Test
                 }
 
                 Assert.That(frames, Is.GreaterThan(1));
-                Assert.That(yieldBreak.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak1.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak2.Current, Is.EqualTo(100));
-                Assert.That(yieldBreak3.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak1.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak2.Current, Is.EqualTo(100));
+                Assert.That((int)yieldBreak3.Current, Is.EqualTo(100));
             }
         }
 
-        IEnumerator TimeSlicedYield(ValueObject val)
+        IEnumerator<TaskContract?> TimeSlicedYield(ValueObject val)
         {
             int i = 0;
             while (++i < 100)
@@ -170,7 +171,7 @@ namespace Test
             yield return i;
         }
         
-        IEnumerator TimeSlicedYieldNormal(ValueObject val)
+        IEnumerator<TaskContract?> TimeSlicedYieldNormal(ValueObject val)
         {
             int i = 0;
             while (++i < 100)

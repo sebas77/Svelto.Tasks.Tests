@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -52,13 +54,13 @@ namespace Test.Editor
             pt.Run();
         }
 	
-        IEnumerator Print(string i)
+        IEnumerator<TaskContract?> Print(string i)
         {
             Debug.Log(i);
             yield return null;
         }
 	
-        IEnumerator DoSomethingAsynchonously()  //this can be awfully slow, I suppose it is synched with the frame rate
+        IEnumerator<TaskContract?> DoSomethingAsynchonously()  //this can be awfully slow, I suppose it is synched with the frame rate
         {
             for (i = 0; i < 500; i++)
                 yield return i; //it will continue on the next frame
@@ -66,11 +68,11 @@ namespace Test.Editor
             Debug.Log("index " + i);
         }
 	
-        IEnumerator WWWTest()
+        IEnumerator<TaskContract?> WWWTest()
         {
             UnityWebRequest www = new UnityWebRequest("www.google.com");
 		
-            yield return new UnityWebRequestEnumerator(www);
+            yield return new UnityWebRequestEnumerator(www).Continue();
 		
             Debug.Log("www done:" + www.GetResponseHeaders());
         }

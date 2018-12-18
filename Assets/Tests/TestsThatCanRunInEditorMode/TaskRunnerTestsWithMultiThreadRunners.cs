@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Unity;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -105,7 +107,7 @@ namespace Test
                 int i = 0;
                 while (i++ < 20)
                 {
-                    var continuationWrapper = crazyEnumerator(result, runner).RunOnScheduler(new SyncRunner());
+                    var continuationWrapper = crazyEnumerator(result, runner).RunOnScheduler(runner);
 
                     while (continuationWrapper.MoveNext() == true)
                         yield return null;
@@ -170,11 +172,8 @@ namespace Test
             }
         }
 
-        [UnityTest]
-        public IEnumerator YieldMultiThreadedParallelTaskCollection()
+        public IEnumerator<TaskContract?> YieldMultiThreadedParallelTaskCollection()
         {
-            yield return null;
-
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             var parallelMultiThread = new MultiThreadedParallelTaskCollection();
@@ -182,7 +181,7 @@ namespace Test
             parallelMultiThread.Add(new SlowTask());
             parallelMultiThread.Add(new SlowTask());
 
-            yield return parallelMultiThread;
+            yield return parallelMultiThread.Continue();
 
             sw.Stop();
 
@@ -190,7 +189,7 @@ namespace Test
             Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
         }
 
-        IEnumerator crazyEnumerator(ValueObject result, IRunner<IEnumerator> runner)
+        IEnumerator<TaskContract?> crazyEnumerator(ValueObject result, IRunner<IEnumerator<TaskContract?>> runner)
         {
             yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
             yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
@@ -199,7 +198,7 @@ namespace Test
             yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
         }
         
-        IEnumerator SimpleEnumeratorFast(ValueObject result)
+        IEnumerator<TaskContract?> SimpleEnumeratorFast(ValueObject result)
         {
             yield return null;
 

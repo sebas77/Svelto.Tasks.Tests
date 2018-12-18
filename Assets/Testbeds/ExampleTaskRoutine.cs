@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -13,7 +15,7 @@ namespace Test.Editor
 
         int i;
     
-        ITaskRoutine<IEnumerator> _taskRountine;
+        ITaskRoutine _taskRountine;
         bool         _paused;
 
         ParallelTaskCollection pt = new ParallelTaskCollection();
@@ -32,7 +34,7 @@ namespace Test.Editor
             _taskRountine.Start();
         }
 
-        IEnumerator ResetTaskAndRun() //this is the suggested why to reset complicated tasks
+        IEnumerator<TaskContract?> ResetTaskAndRun() //this is the suggested why to reset complicated tasks
         {
             st.Clear();
             pt.Clear();
@@ -56,18 +58,18 @@ namespace Test.Editor
             return pt;
         }
 
-        IEnumerator Print(string i)
+        IEnumerator<TaskContract?> Print(string i)
         {
             Debug.Log(i);
 
             yield return null;
         }
 
-        IEnumerator WWWTest()
+        IEnumerator<TaskContract?> WWWTest()
         {
             UnityWebRequest www = new UnityWebRequest("http://download.thinkbroadband.com/5MB.zip");
         
-            yield return new UnityWebRequestEnumerator(www);
+            yield return new UnityWebRequestEnumerator(www).Continue();
         
             Debug.Log("www done:" + www.GetResponseHeaders().ToString());
         }

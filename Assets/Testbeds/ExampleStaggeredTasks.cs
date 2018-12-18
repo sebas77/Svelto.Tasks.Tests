@@ -1,10 +1,10 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Svelto.Tasks.Unity;
 
 public class ExampleStaggeredTasks : MonoBehaviour 
 {
-    private const int MaxTasksPerFrame = 3;
+	const int MaxTasksPerFrame = 3;
     [TextArea]
     public string Notes = "This example shows how to run tasks spreaded over several frames.";
 
@@ -25,9 +25,10 @@ public class ExampleStaggeredTasks : MonoBehaviour
         _runner.StopAllCoroutines();
     }
 
-    IEnumerator PrintFrame()
+    IEnumerator<TaskContract?> PrintFrame()
 	{
         Debug.Log(Time.frameCount);
+        
         yield break;
 	}
 }

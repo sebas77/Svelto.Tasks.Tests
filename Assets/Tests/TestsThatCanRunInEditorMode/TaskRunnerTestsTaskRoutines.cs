@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading;
+using JetBrains.Annotations;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
@@ -214,16 +217,17 @@ namespace Test
             }
         }
         
-        IEnumerator TestWithThrow()
+        IEnumerator<TaskContract?> TestWithThrow()
         {
-            yield return new WaitForSecondsEnumerator(0.1f);
+            yield return new WaitForSecondsEnumerator(0.1f).Continue();
 
             throw new Exception();
         }
 
-        IEnumerator SimpleEnumerator(ValueObject result)
+        [CanBeNull]
+        IEnumerator<TaskContract?> SimpleEnumerator(ValueObject result)
         {
-            yield return new WaitForSecondsEnumerator(1);
+            yield return new WaitForSecondsEnumerator(1).Continue();
 
             Interlocked.Increment(ref result.counter);
         }

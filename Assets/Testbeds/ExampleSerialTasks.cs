@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -33,29 +35,29 @@ namespace Test.Editor
             TaskRunner.Instance.Run(st);
         }
 	
-        IEnumerator Print(int i)
+        IEnumerator<TaskContract?> Print(int i)
         {
             Debug.Log(i);
             yield return null;
         }
 	
-        IEnumerator DoSomethingAsynchonously(float time)
+        IEnumerator<TaskContract?> DoSomethingAsynchonously(float time)
         {
-            yield return new WaitForSeconds(time);
+            yield return new WaitForSecondsEnumerator(time).Continue();
 		
             Debug.Log("waited " + time);
         }
 	
-        IEnumerator WWWTest()
+        IEnumerator<TaskContract?> WWWTest()
         {
             UnityWebRequest www = new UnityWebRequest("www.google.com");
 		
-            yield return new UnityWebRequestEnumerator(www);
+            yield return new UnityWebRequestEnumerator(www).Continue();
 		
             Debug.Log("www done:" + www.GetResponseHeaders());
         }
 
-        IEnumerator WaitForSecondsTest()
+        IEnumerator<TaskContract?> WaitForSecondsTest()
         {
             int counter = 0;
             while (counter < 2)
@@ -63,7 +65,7 @@ namespace Test.Editor
                 Debug.Log("TestTwice Loop: Time " + Time.time + " C: " + counter);
                 counter++;
 
-                yield return new WaitForSeconds(1f);
+                yield return new WaitForSecondsEnumerator(1f).Continue();
             }
         }
     }

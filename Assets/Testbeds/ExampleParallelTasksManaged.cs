@@ -1,27 +1,33 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Test.Editor
 {
-    class LoadSomething : IEnumerable
+    class LoadSomething : IEnumerable<TaskContract?>
     {
         public LoadSomething(UnityWebRequest wWW)
         {
             this.wWW = wWW;
         }
 
-        public IEnumerator GetEnumerator()
+        public IEnumerator<TaskContract?> GetEnumerator()
         {
-            yield return new UnityWebRequestEnumerator(wWW);
+            yield return new UnityWebRequestEnumerator(wWW).Continue();
 
             foreach (var s in wWW.GetResponseHeaders())
                 Debug.Log(s);
         }
 
         UnityWebRequest wWW;
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 
     public class ExampleParallelTasksManaged : MonoBehaviour 
@@ -68,18 +74,18 @@ namespace Test.Editor
             st.Run();
         }
 
-        IEnumerator UnityAsyncOperationsMustNotBreakTheParallelism()
+        IEnumerator<TaskContract?> UnityAsyncOperationsMustNotBreakTheParallelism()
         {
             Debug.Log("start async operation");
             var res = Resources.LoadAsync("image.jpg");
-            yield return res;
+            yield return new AsyncOperationEnumerator(res).Continue();
             Debug.Log("end async operation " + res.progress);
         }
 
-        IEnumerator UnityYieldInstructionsMustNotBreakTheParallelism()
+        IEnumerator<TaskContract?> UnityYieldInstructionsMustNotBreakTheParallelism()
         {
             Debug.Log("start yield instruction");
-            yield return new WaitForSeconds(2);
+            yield return new WaitForSecondsEnumerator(2).Continue();
             Debug.Log("end yield instruction");
         }
 
@@ -100,7 +106,7 @@ namespace Test.Editor
                 }
         }
 
-        IEnumerator Print(string i)
+        IEnumerator<TaskContract?> Print(string i)
         {
             Debug.Log(i);
 

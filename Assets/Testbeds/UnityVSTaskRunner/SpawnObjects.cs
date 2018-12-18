@@ -26,8 +26,8 @@ namespace Test.Editor.UnityVSTaskRunner
             parent1.transform.parent = this.transform;
             parent1.SetActive(false);
 
-            Material matYellow = new Material(Shader.Find("Standard"));
-            Material matRed = new Material(Shader.Find("Standard"));
+            Material matYellow = new Material(Shader.Find("Legacy Shaders/Diffuse"));
+            Material matRed = new Material(Shader.Find("Legacy Shaders/Diffuse"));
 
             matYellow.color = Color.yellow;
             matRed.color = Color.red;

@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 namespace PerformanceMT
@@ -8,7 +10,7 @@ namespace PerformanceMT
     {
         Vector2 direction;
 
-        ITaskRoutine<IEnumerator> taskRoutine;
+        ITaskRoutine taskRoutine;
         
         void Start()
         {
@@ -17,13 +19,13 @@ namespace PerformanceMT
             direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
         }
 
-        IEnumerator CalculateAndShowNumber() //this will run on another thread
+        IEnumerator<TaskContract?> CalculateAndShowNumber() //this will run on another thread
         {
             while (true)
             {
-                IEnumerator enumerator = FindPrimeNumber((rnd1.Next() % 1000));
+                var enumerator = FindPrimeNumber((rnd1.Next() % 1000));
 
-                yield return enumerator;
+                yield return enumerator.Continue();
 
                 long result = (long)enumerator.Current * 333;
 
@@ -32,7 +34,7 @@ namespace PerformanceMT
             }
         }
 
-        IEnumerator SetColor(long result)
+        IEnumerator<TaskContract?> SetColor(long result)
         {
             GetComponent<Renderer>().material.color = new Color((result % 255) / 255f, ((result * result) % 255) / 255f, ((result / 44) % 255) / 255f);
 
@@ -49,7 +51,7 @@ namespace PerformanceMT
             transform.Translate(direction);
         }
 
-        public IEnumerator FindPrimeNumber(int n)
+        public IEnumerator<TaskContract?> FindPrimeNumber(int n)
         {
             int count = 0;
             long a = 2;

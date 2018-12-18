@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 namespace Test.Editor.UnityVSTaskRunner
@@ -20,7 +22,7 @@ namespace Test.Editor.UnityVSTaskRunner
             _task.Start();
         }
       
-        IEnumerator UpdateIt2()
+        IEnumerator<TaskContract?> UpdateIt2()
         {
             while (true) 
             {
@@ -37,6 +39,6 @@ namespace Test.Editor.UnityVSTaskRunner
 
         Vector3 _direction;
         Transform _transform;
-        Svelto.Tasks.ITaskRoutine<IEnumerator> _task;
+        Svelto.Tasks.ITaskRoutine _task;
     }
 }
