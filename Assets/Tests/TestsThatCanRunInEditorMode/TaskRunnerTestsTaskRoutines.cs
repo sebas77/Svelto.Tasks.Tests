@@ -102,8 +102,8 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart"))
             {
-                var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine()
-                        .SetScheduler(runner).SetEnumeratorProvider(() => SimpleEnumerator(result));
+                var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                taskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
                 
                 taskRoutine.Start();
                 yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
