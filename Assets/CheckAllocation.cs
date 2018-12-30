@@ -6,11 +6,10 @@ using UnityEngine;
 
 public class CheckAllocation : MonoBehaviour
 {
-
 	// Use this for initialization
 	void Start()
 	{
-		UpdateIT().Run();
+		UpdateIT().Start();
 	}
 
 	IEnumerator<TaskContract?> UpdateIT()
@@ -19,7 +18,7 @@ public class CheckAllocation : MonoBehaviour
 		var syncRunner = new SyncRunner();
 		while (true)
 		{
-			yield return waitForSecondsEnumerator.RunOnScheduler(syncRunner);
+//			yield return waitForSecondsEnumerator.Run(syncRunner);
 			
 			yield return null;
 		}

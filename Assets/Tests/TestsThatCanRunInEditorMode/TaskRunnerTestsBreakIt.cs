@@ -1,3 +1,4 @@
+#if later
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
@@ -29,7 +30,7 @@ namespace Test
             yield return null;
 
             var severalTasksParent = SeveralTasksParent();
-            severalTasksParent.RunOnScheduler(new SyncRunner());
+            severalTasksParent.Run(new SyncRunner());
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
@@ -42,7 +43,7 @@ namespace Test
             yield return null;
 
             var severalTasksParent = SeveralTasksParentBreak();
-            severalTasksParent.RunOnScheduler(new SyncRunner());
+            severalTasksParent.Run(new SyncRunner());
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
@@ -87,3 +88,4 @@ namespace Test
         Enumerator _iterable2;
     }
 }
+#endif

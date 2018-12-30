@@ -1,4 +1,5 @@
-﻿using UnityEngine.TestTools;
+﻿#if later
+using UnityEngine.TestTools;
 using NUnit.Framework;
 using System.Collections;
 using System;
@@ -47,7 +48,7 @@ public class TestsThatCanRunOnlyInPlayMode
         {
             DateTime now = DateTime.Now;
 
-            var task = _iterable1.RunOnScheduler(runner);
+            var task = _iterable1.Run(runner);
 
             while (task.MoveNext())
                 yield return null;
@@ -579,3 +580,4 @@ public class TestsThatCanRunOnlyInPlayMode
     bool _hasReset;
 }
 
+#endif

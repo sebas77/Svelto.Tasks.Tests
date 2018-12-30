@@ -1,9 +1,9 @@
+#if later
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks.Unity;
-using Svelto.Tasks.Unity.Internal;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -27,7 +27,7 @@ namespace Test
             {
                 ValueObject val = new ValueObject();
                 for (int i = 0; i < 16; i++)
-                    new SimpleEnumeratorClassRef(val).RunOnScheduler(staggeredMonoRunner);
+                    new SimpleEnumeratorClassRef(val).Run(staggeredMonoRunner);
 
                 Assert.That(staggeredMonoRunner.numberOfQueuedTasks, Is.EqualTo(16));
                 staggeredMonoRunner.Step();
@@ -58,7 +58,7 @@ namespace Test
             {
                 ValueObject val = new ValueObject();
                 for (int i = 0; i < 32; i++)
-                    new SimpleEnumeratorClassRefTime(val).RunOnScheduler(timeBoundMonoRunner);
+                    new SimpleEnumeratorClassRefTime(val).Run(timeBoundMonoRunner);
 
                 frames++;
                 timeBoundMonoRunner.Step();
@@ -86,13 +86,13 @@ namespace Test
             {
                 ValueObject val        = new ValueObject();
                 var         yieldBreak = TimeSlicedYield(val);
-                yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak.Run(timeSlicedMonoRunner);
                 var yieldBreak1 = TimeSlicedYield(val);
-                yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak1.Run(timeSlicedMonoRunner);
                 var yieldBreak2 = TimeSlicedYield(val);
-                yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak2.Run(timeSlicedMonoRunner);
                 var yieldBreak3 = TimeSlicedYield(val);
-                yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak3.Run(timeSlicedMonoRunner);
 
                 DateTime then = DateTime.Now;
 
@@ -127,13 +127,13 @@ namespace Test
             {
                 ValueObject val        = new ValueObject();
                 var         yieldBreak = TimeSlicedYieldNormal(val);
-                yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak.Run(timeSlicedMonoRunner);
                 var yieldBreak1 = TimeSlicedYieldNormal(val);
-                yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak1.Run(timeSlicedMonoRunner);
                 var yieldBreak2 = TimeSlicedYieldNormal(val);
-                yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak2.Run(timeSlicedMonoRunner);
                 var yieldBreak3 = TimeSlicedYieldNormal(val);
-                yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak3.Run(timeSlicedMonoRunner);
 
                 frames++;
                 timeSlicedMonoRunner.Step(); //first iteration of the runner so that the tasks are filled
@@ -187,3 +187,5 @@ namespace Test
         }
     }
 }
+
+#endif

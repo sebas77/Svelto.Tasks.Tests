@@ -1,9 +1,11 @@
+#if later
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Internal;
 using Svelto.Tasks.Parallelism;
 using Svelto.Tasks.Unity;
 using UnityEngine.TestTools;
@@ -26,7 +28,7 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
             {
-                var task = _iterable1.RunOnScheduler(runner);
+                var task = _iterable1.Run(runner);
 
                 while (task.MoveNext()) ;
 
@@ -36,7 +38,7 @@ namespace Test
 
                 _iterable1.Reset();
 
-                task = _iterable1.RunOnScheduler(runner);
+                task = _iterable1.Run(runner);
 
                 while (task.MoveNext()) ;
 
@@ -81,7 +83,7 @@ namespace Test
                 test.Add(new WaitEnumerator(token));
                 test.Add(new WaitEnumerator(token));
 
-                test.RunOnScheduler(new MultiThreadRunner("test", true));
+                test.Run(new MultiThreadRunner("test", true));
                 DateTime now = DateTime.Now;
                 yield return null;
 
@@ -107,7 +109,7 @@ namespace Test
                 int i = 0;
                 while (i++ < 20)
                 {
-                    var continuationWrapper = crazyEnumerator(result, runner).RunOnScheduler(runner);
+                    var continuationWrapper = crazyEnumerator(result, runner).Run(runner);
 
                     while (continuationWrapper.MoveNext() == true)
                         yield return null;
@@ -164,7 +166,7 @@ namespace Test
             {
                 _iterable1.Reset();
 
-                var continuator = _iterable1.RunOnScheduler(runner);
+                var continuator = _iterable1.Run(runner);
 
                 while (continuator.MoveNext()) yield return null;
 
@@ -189,13 +191,13 @@ namespace Test
             Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
         }
 
-        IEnumerator<TaskContract?> crazyEnumerator(ValueObject result, IRunner<IEnumerator<TaskContract?>> runner)
+        IEnumerator<TaskContract?> crazyEnumerator(ValueObject result, IRunner runner) 
         {
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).Run(runner);
+            yield return SimpleEnumeratorFast(result).Run(runner);
+            yield return SimpleEnumeratorFast(result).Run(runner);
+            yield return SimpleEnumeratorFast(result).Run(runner);
+            yield return SimpleEnumeratorFast(result).Run(runner);
         }
         
         IEnumerator<TaskContract?> SimpleEnumeratorFast(ValueObject result)
@@ -208,3 +210,4 @@ namespace Test
         Enumerator _iterable1;
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if later
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -43,7 +44,7 @@ namespace Test
             _parallelTasks1.Add(BreakIt());
             _parallelTasks1.Add(_iterable2);
 
-            _parallelTasks1.RunOnScheduler(new SyncRunner());
+            _parallelTasks1.Run(new SyncRunner());
 
             Assert.That(_iterable1.AllRight == false && _iterable1.iterations == 1); 
             Assert.That(_iterable2.AllRight == false && _iterable2.iterations == 0);
@@ -60,7 +61,7 @@ namespace Test
             _serialTasks1.Add(_iterable1);
             _serialTasks1.Add(_iterable2);
 
-            _serialTasks1.RunOnScheduler(new SyncRunner());
+            _serialTasks1.Run(new SyncRunner());
 
             Assert.IsTrue(_iterable1.AllRight);
             Assert.IsTrue(_iterable2.AllRight);
@@ -118,7 +119,7 @@ namespace Test
             _serialTasks1.Add(BreakIt());
             _serialTasks1.Add(_iterable2);
 
-            _serialTasks1.RunOnScheduler(new SyncRunner());
+            _serialTasks1.Run(new SyncRunner());
 
             Assert.That(_iterable1.AllRight == true && _iterable2.AllRight == false);
         }
@@ -137,7 +138,7 @@ namespace Test
         {
             yield return null;
 
-            TaskRunner.Instance.RunOnScheduler(new SyncRunner(), SerialContinuation());
+            TaskRunner.Instance.Run(new SyncRunner(), SerialContinuation());
         }
         
         [UnityTest]
@@ -153,7 +154,7 @@ namespace Test
             _serialTasks1.Add(_task1);
             _serialTasks1.Add(_task2);
 
-            _serialTasks1.RunOnScheduler(new SyncRunner());
+            _serialTasks1.Run(new SyncRunner());
         }
 
         
@@ -185,7 +186,7 @@ namespace Test
             _serialTasks1.Add(_parallelTasks2);
             _serialTasks1.onComplete += () => { Assert.That(parallelTasks1Done && parallelTasks2Done); };
 
-            _serialTasks1.RunOnScheduler(new SyncRunner());
+            _serialTasks1.Run(new SyncRunner());
         }
         
         [UnityTest]
@@ -212,7 +213,7 @@ namespace Test
             _parallelTasks1.Add(_serialTasks2);
             _parallelTasks1.onComplete += () => Assert.That((test1 == 1) && (test2 == 2), Is.True);
 
-            _parallelTasks1.RunOnScheduler(new SyncRunner());
+            _parallelTasks1.Run(new SyncRunner());
         }
 
         [UnityTest]
@@ -231,7 +232,7 @@ namespace Test
             _parallelTasks1.Add(new TimeoutEnumerator());
 
             DateTime then = DateTime.Now;
-            _parallelTasks1.RunOnScheduler(new SyncRunner(2000));
+            _parallelTasks1.Run(new SyncRunner(2000));
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
             Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
@@ -262,10 +263,10 @@ namespace Test
             _parallelTasks1.Add(new WaitForSecondsEnumerator(1));
 
             DateTime then = DateTime.Now;
-            _parallelTasks1.RunOnScheduler(new SyncRunner(4000));
+            _parallelTasks1.Run(new SyncRunner(4000));
 
             var totalSeconds = (DateTime.Now - then).TotalSeconds;
-            Assert.That(totalSeconds, Is.InRange(1.0, 1.1));
+            Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
         }
 
         [UnityTest]
@@ -288,7 +289,7 @@ namespace Test
                 var enumerator5 = new Enumerator(6);
                 _parallelTasks1.Add(enumerator5);
 
-                _parallelTasks1.RunOnScheduler(runner);
+                _parallelTasks1.Run(runner);
 
                 Assert.IsFalse(enumerator.AllRight);
                 Assert.IsFalse(enumerator1.AllRight);
@@ -384,6 +385,7 @@ namespace Test
 
         Enumerator _iterable1;
         Enumerator _iterable2;
-        ITaskRoutine _reusableTaskRoutine;
+        ITaskRoutine<IEnumerator<TaskContract?>> _reusableTaskRoutine;
     }
 }
+#endif

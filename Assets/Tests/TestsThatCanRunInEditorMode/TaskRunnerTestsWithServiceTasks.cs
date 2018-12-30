@@ -1,3 +1,4 @@
+#if later
 using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
@@ -55,7 +56,7 @@ namespace Test
             _serialTasks1.Add(new ServiceEnumerator(_task1));
             _serialTasks1.Add(new ServiceEnumerator(_task2));
             
-            _serialTasks1.RunOnScheduler(new SyncRunner(3000));
+            _serialTasks1.Run(new SyncRunner(3000));
         }
 
         ServiceTask          _task1;
@@ -64,3 +65,4 @@ namespace Test
         ITaskRoutine<IEnumerator>         _reusableTaskRoutine;
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if later
 using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
@@ -37,7 +38,7 @@ namespace Test
             _parallelTasks1.onComplete +=
                 () => Assert.That(_vo.counter, Is.EqualTo(4));
 
-            _parallelTasks1.RunOnScheduler(new SyncRunner());
+            _parallelTasks1.Run(new SyncRunner());
         }
         
         
@@ -51,3 +52,4 @@ namespace Test
         ValueObject _vo;
     }
 }
+#endif
