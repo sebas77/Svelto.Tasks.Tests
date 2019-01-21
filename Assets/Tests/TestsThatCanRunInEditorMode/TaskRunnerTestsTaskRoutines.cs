@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
@@ -40,6 +41,7 @@ namespace Test
         }
 
         [Test]
+        [Conditional("PROFILER")]
         public void TestPooledTaskMemoryUsage()
         {
             var syncRunner = new SyncRunner<SlowTaskStruct>(2000);
@@ -51,10 +53,6 @@ namespace Test
             Assert.That(() =>
                         {
                             task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
-            Assert.That(() =>
-                        {   task.Start();}, Is.Not.AllocatingGCMemory());
-            Assert.That(() =>
-                        {   task.SetEnumerator(new SlowTaskStruct(1));}, Is.Not.AllocatingGCMemory());
             Assert.That(() =>
                         {   task.Start();}, Is.Not.AllocatingGCMemory());
 
@@ -147,8 +145,7 @@ namespace Test
                 
                 var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
-                var continuator = _reusableTaskRoutine
-                                                      .Start(onStop: () => isCallbackCalled = true);
+                var continuator = _reusableTaskRoutine.Start(onStop: () => isCallbackCalled = true);
 
                 Assert.That(continuator.completed == false, "can't be completed");
                 _reusableTaskRoutine.Stop();

@@ -52,8 +52,8 @@ namespace Test
             _task1.OnComplete(() => { test1Done = true; });
             _task2.OnComplete(() => { Assert.True(test1Done); });
 
-            _serialTasks1.Add(new ServiceEnumerator(_task1));
-            _serialTasks1.Add(new ServiceEnumerator(_task2));
+            _serialTasks1.Add(new TaskServiceEnumerator(_task1));
+            _serialTasks1.Add(new TaskServiceEnumerator(_task2));
             
             _serialTasks1.RunOnScheduler(new SyncRunner(3000));
         }

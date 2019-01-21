@@ -292,7 +292,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest] 
     public IEnumerator TestStopMultiThreadParallelTask()
     {
-        var test = new MultiThreadedParallelTaskCollection(4, false);
+        var test = new MultiThreadedParallelTaskCollection("test", 4, true);
 
         Token token = new Token();
         bool done = false;
@@ -315,7 +315,7 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]  
     public IEnumerator TestMultiThreadParallelTaskReset()
     {
-        var test = new MultiThreadedParallelTaskCollection(4, false);
+        var test = new MultiThreadedParallelTaskCollection("test", 4, false);
         
         Token token = new Token();
 

@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -28,6 +29,7 @@ namespace Test
         }
         
         [Test]
+        [Conditional("PROFILER")]
         public void TestPooledTaskMemoryUsage()
         {
             WaitForSecondsEnumerator enumerator = new WaitForSecondsEnumerator(0.1f);
@@ -95,21 +97,6 @@ namespace Test
             Assert.That(subEnumerator.Current, Is.EqualTo(10));
         }
         
-        /// <summary>
-        /// implementation of disposable enumerator will call Dispose once the task is done
-        /// </summary>
-        /// <returns></returns>
-        [UnityTest]
-        public IEnumerator TestUltraDisposableEnumerator()
-        {
-            yield return null;
-
-            var timeoutEnumerator = new TimeoutEnumerator();
-            timeoutEnumerator.RunOnScheduler(new SyncRunner(2000));
-
-            Assert.That(timeoutEnumerator.disposed, Is.True);
-        }
-
         /// <summary>
         /// Svelto tasks allows to yield enumerators from inside other enumerators allowing more complex
         /// sequence of actions

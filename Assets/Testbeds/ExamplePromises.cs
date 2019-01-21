@@ -107,7 +107,12 @@ namespace Test.Editor
             {
                 Debug.Log("download started");
 
-                yield return new ParallelTaskCollection(new [] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) });
+                yield return new ParallelTaskCollection("test",
+                                                        new[]
+                                                        {
+                                                            new UnityWebRequestEnumerator(wWW),
+                                                            PrintProgress(wWW)
+                                                        });
 
                 foreach (string s in wWW.GetResponseHeaders().Values)
                     Debug.Log(s);
