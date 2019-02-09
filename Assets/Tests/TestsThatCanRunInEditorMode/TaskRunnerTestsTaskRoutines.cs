@@ -1,13 +1,10 @@
-#if later
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Threading;
-using JetBrains.Annotations;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
-using Svelto.Tasks.Unity;
+using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
 using Is = UnityEngine.TestTools.Constraints.Is;
@@ -75,9 +72,9 @@ namespace Test
         public IEnumerator TestMultithreadWitTaskRoutines()
         {
             yield return null;
-            
 
-            using (var runner = new MultiThreadRunner("TestMultithread"))
+
+            var runner = new MultiThreadRunner("TestMultithread");
             {
                 var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 _reusableTaskRoutine.SetEnumerator(_iterable1);
@@ -94,6 +91,7 @@ namespace Test
 
                 Assert.That(_iterable1.AllRight == true);
             }
+            runner.Dispose();
         }
         
         [UnityTest]
@@ -103,7 +101,7 @@ namespace Test
             
             var result = new ValueObject();
 
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart"))
+            var runner = new MultiThreadRunner("TestSimpleTaskRoutineStartStart");
             {
                 var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 taskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
@@ -135,6 +133,7 @@ namespace Test
 
                 Assert.That(result.counter, Is.EqualTo(3));
             }
+            runner.Dispose();
         }
         
         [UnityTest]
@@ -144,7 +143,7 @@ namespace Test
 
             ValueObject result = new ValueObject();
 
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
+            var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider");
             {
                 bool isCallbackCalled = false;
                 
@@ -165,6 +164,8 @@ namespace Test
 
                 while (continuator.MoveNext()) yield return null;
             }
+            
+            runner.Dispose();
 
             Assert.That(result.counter, Is.EqualTo(1));
         }
@@ -174,7 +175,7 @@ namespace Test
         {
             yield return null;
 
-            using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
+            var runner = new MultiThreadRunner("TestStopStartTaskRoutine");
             {
                 var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 bool isCallbackCalled = false;
@@ -185,14 +186,15 @@ namespace Test
 
                 Assert.True(isCallbackCalled);
             }
+            runner.Dispose();
         }
         
         [UnityTest]
         public IEnumerator TestPauseAndResume()
         {
             yield return null;
-            
-            using (var runner = new MultiThreadRunner("TestStopStartTaskRoutine"))
+
+            var runner = new MultiThreadRunner("TestStopStartTaskRoutine");
             {
                 var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 _reusableTaskRoutine.SetEnumerator(_iterable1);
@@ -215,19 +217,19 @@ namespace Test
 
                 Assert.That(_iterable1.AllRight == true);
             }
+            runner.Dispose();
         }
         
-        IEnumerator<TaskContract?> TestWithThrow()
+        IEnumerator TestWithThrow()
         {
-            yield return new WaitForSecondsEnumerator(0.1f).Continue();
+            yield return new WaitForSecondsEnumerator(0.1f);
 
             throw new Exception();
         }
 
-        [CanBeNull]
-        IEnumerator<TaskContract?> SimpleEnumerator(ValueObject result)
+        IEnumerator SimpleEnumerator(ValueObject result)
         {
-            yield return new WaitForSecondsEnumerator(1).Continue();
+            yield return new WaitForSecondsEnumerator(1);
 
             Interlocked.Increment(ref result.counter);
         }
@@ -235,4 +237,3 @@ namespace Test
         Enumerator   _iterable1;
     }
 }
-#endif

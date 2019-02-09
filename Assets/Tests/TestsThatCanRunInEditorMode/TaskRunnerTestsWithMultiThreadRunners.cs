@@ -1,13 +1,9 @@
-#if later
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
-using Svelto.Tasks.Internal;
 using Svelto.Tasks.Parallelism;
-using Svelto.Tasks.Unity;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -28,7 +24,7 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
             {
-                var task = _iterable1.Run(runner);
+                var task = _iterable1.RunOnScheduler(runner);
 
                 while (task.MoveNext()) ;
 
@@ -38,7 +34,7 @@ namespace Test
 
                 _iterable1.Reset();
 
-                task = _iterable1.Run(runner);
+                task = _iterable1.RunOnScheduler(runner);
 
                 while (task.MoveNext()) ;
 
@@ -72,8 +68,8 @@ namespace Test
         {
             yield return null;
 
-            using (var test = new MultiThreadedParallelTaskCollection("test", 8, false))
-            {
+            var test = new MultiThreadedParallelTaskCollection("test", 4, false);
+            
                 bool done = false;
                 test.onComplete += () => done = true;
                 Token token = new Token();
@@ -83,7 +79,8 @@ namespace Test
                 test.Add(new WaitEnumerator(token));
                 test.Add(new WaitEnumerator(token));
 
-                test.Run(new MultiThreadRunner("test", true));
+                var multiThreadRunner = new MultiThreadRunner("test", true);
+                test.RunOnScheduler(multiThreadRunner);
                 DateTime now = DateTime.Now;
                 yield return null;
 
@@ -96,7 +93,9 @@ namespace Test
                 Assert.Less(totalSeconds, 2.1);
                 Assert.That(done, Is.True);
                 Assert.AreEqual(4, token.count);
-            }
+            
+                test.Dispose();
+                multiThreadRunner.Dispose();
         }
         
         [UnityTest]
@@ -104,17 +103,18 @@ namespace Test
         {
             ValueObject result = new ValueObject();
 
-            using (var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider"))
+            var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider");
             {
                 int i = 0;
                 while (i++ < 20)
                 {
-                    var continuationWrapper = crazyEnumerator(result, runner).Run(runner);
+                    var continuationWrapper = crazyEnumerator(result, runner);
 
                     while (continuationWrapper.MoveNext() == true)
                         yield return null;
                 }
             }
+            runner.Dispose();
 
             Assert.That(result.counter, Is.EqualTo(100));
         }
@@ -124,7 +124,7 @@ namespace Test
         {
             yield return null;
 
-            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 3, false);
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 2, true);
 
             parallelMultiThread.Add(new SlowTask());
             parallelMultiThread.Add(new SlowTask());
@@ -132,6 +132,7 @@ namespace Test
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             parallelMultiThread.Complete();
+            parallelMultiThread.Dispose();
 
             sw.Stop();
 
@@ -144,7 +145,7 @@ namespace Test
         {
             yield return null;
 
-            using (var runner = new MultiThreadRunner("MT"))
+            var runner = new MultiThreadRunner("MT");
             {
                 var routine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
 
@@ -154,6 +155,7 @@ namespace Test
 
                 while (continuator.MoveNext() == true) yield return null;
             }
+            runner.Dispose();
         }
         
         [UnityTest]
@@ -162,28 +164,33 @@ namespace Test
         {
             yield return null;
 
-            using (var runner = new MultiThreadRunner("TestMultithread"))
-            {
+            var runner = new MultiThreadRunner("TestMultithread");
+            
                 _iterable1.Reset();
 
-                var continuator = _iterable1.Run(runner);
+                var continuator = _iterable1.RunOnScheduler(runner);
 
                 while (continuator.MoveNext()) yield return null;
 
                 Assert.That(_iterable1.AllRight == true);
-            }
+            
+                runner.Dispose();
+                
         }
 
-        public IEnumerator<TaskContract?> YieldMultiThreadedParallelTaskCollection()
+        [UnityTest]
+        public IEnumerator YieldMultiThreadedParallelTaskCollection()
         {
+            yield return null;
+
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 2, true);
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 2, false);
 
             parallelMultiThread.Add(new SlowTask());
             parallelMultiThread.Add(new SlowTask());
 
-            yield return parallelMultiThread.Continue();
+            yield return parallelMultiThread;
 
             sw.Stop();
 
@@ -191,16 +198,16 @@ namespace Test
             Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
         }
 
-        IEnumerator<TaskContract?> crazyEnumerator(ValueObject result, IRunner runner) 
+        IEnumerator crazyEnumerator(ValueObject result, IRunner<IEnumerator> runner)
         {
-            yield return SimpleEnumeratorFast(result).Run(runner);
-            yield return SimpleEnumeratorFast(result).Run(runner);
-            yield return SimpleEnumeratorFast(result).Run(runner);
-            yield return SimpleEnumeratorFast(result).Run(runner);
-            yield return SimpleEnumeratorFast(result).Run(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
         }
         
-        IEnumerator<TaskContract?> SimpleEnumeratorFast(ValueObject result)
+        IEnumerator SimpleEnumeratorFast(ValueObject result)
         {
             yield return null;
 
@@ -210,4 +217,3 @@ namespace Test
         Enumerator _iterable1;
     }
 }
-#endif
