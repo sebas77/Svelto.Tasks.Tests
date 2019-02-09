@@ -72,7 +72,7 @@ namespace Test
         {
             yield return null;
 
-            using (var test = new MultiThreadedParallelTaskCollection())
+            using (var test = new MultiThreadedParallelTaskCollection("test", 8, false))
             {
                 bool done = false;
                 test.onComplete += () => done = true;
@@ -124,7 +124,7 @@ namespace Test
         {
             yield return null;
 
-            var parallelMultiThread = new MultiThreadedParallelTaskCollection();
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 3, false);
 
             parallelMultiThread.Add(new SlowTask());
             parallelMultiThread.Add(new SlowTask());
@@ -178,7 +178,7 @@ namespace Test
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            var parallelMultiThread = new MultiThreadedParallelTaskCollection();
+            var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 2, true);
 
             parallelMultiThread.Add(new SlowTask());
             parallelMultiThread.Add(new SlowTask());

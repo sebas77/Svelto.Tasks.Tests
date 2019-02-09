@@ -529,7 +529,7 @@ PlayerSettings:
   scriptingBackend:
     Android: 0
     Metro: 1
-    Standalone: 1
+    Standalone: 0
     WP8: 2
     WebGL: 1
     iOS: 0
