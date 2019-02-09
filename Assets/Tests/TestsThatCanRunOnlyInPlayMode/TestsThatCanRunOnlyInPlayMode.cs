@@ -1,4 +1,5 @@
-﻿﻿using UnityEngine.TestTools;
+﻿#if later
+﻿using UnityEngine.TestTools;
 using NUnit.Framework;
 using System.Collections;
 using System;
@@ -585,3 +586,4 @@ public class TestsThatCanRunOnlyInPlayMode
     Enumerator _iterable1;
     bool _hasReset;
 }
+#endif

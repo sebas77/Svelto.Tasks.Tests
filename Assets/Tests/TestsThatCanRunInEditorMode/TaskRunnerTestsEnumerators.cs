@@ -1,3 +1,4 @@
+#if later
 #if !NETFX_CORE
 
 using System;
@@ -316,4 +317,5 @@ namespace Test
         Enumerator        _iterable1;
     }
 }
+#endif
 #endif
