@@ -293,7 +293,7 @@ namespace Test
                 var continuator1 = enumerator1.RunOnScheduler(runner);
                 var continuator2 = enumerator2.RunOnScheduler(runner);
 
-                while (continuator1.completed == false || continuator2.completed == false)
+                while (continuator1.MoveNext() == true || continuator2.MoveNext() == true)
                     yield return null;
 
                 i = (int)enumerator1.Current + (int)enumerator2.Current;
