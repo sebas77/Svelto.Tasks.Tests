@@ -24,7 +24,7 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         var task = UnityHandle().Run();
 
-        while (task.MoveNext())
+        while ((task as IEnumerator).MoveNext())
             yield return null;
     }
 
@@ -34,7 +34,7 @@ public class TestsThatCanRunOnlyInPlayMode
         var enumerator = Continuation();
         var continuation = enumerator.Run();
 
-        while (continuation.MoveNext() == true) yield return null;
+        while ((continuation as IEnumerator).MoveNext() == true) yield return null;
         
         Assert.That(enumerator.Current, Is.EqualTo(100));
     }
@@ -48,7 +48,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
             var task = _iterable1.RunOnScheduler(runner);
 
-            while (task.MoveNext())
+            while ((task as IEnumerator).MoveNext())
                 yield return null;
 
             var seconds = (DateTime.Now - now).Seconds;
@@ -358,7 +358,7 @@ public class TestsThatCanRunOnlyInPlayMode
             taskRoutine.Start();
             var continuator = taskRoutine.Start();
                 
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -378,10 +378,10 @@ public class TestsThatCanRunOnlyInPlayMode
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
             yield return null;
             taskRoutine.Stop();
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             var continuator2 = taskRoutine.Start();
             Assert.That(test, Is.EqualTo(1));
-            while (continuator2.MoveNext()) yield return null;
+            while ((continuator2 as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -404,7 +404,7 @@ public class TestsThatCanRunOnlyInPlayMode
             taskRoutine.Start();
             var continuator = taskRoutine.Start();
                 
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -424,10 +424,10 @@ public class TestsThatCanRunOnlyInPlayMode
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
             yield return null;
             taskRoutine.Stop();
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             var continuator2 = taskRoutine.Start();
             Assert.That(test, Is.EqualTo(1));
-            while (continuator2.MoveNext()) yield return null;
+            while ((continuator2 as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -448,7 +448,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
             var continuation = taskRoutine.Start();
                 
-            while (continuation.MoveNext()) yield return null;
+            while ((continuation as IEnumerator).MoveNext()) yield return null;
 
             Assert.That(result.counter, Is.EqualTo(1));
         }

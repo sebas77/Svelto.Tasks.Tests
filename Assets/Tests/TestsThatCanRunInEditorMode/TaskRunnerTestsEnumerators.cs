@@ -34,12 +34,12 @@ namespace Test
             
             var syncRunner = new MultiThreadRunner("test");
             var runOnScheduler = enumerator.RunOnScheduler(syncRunner);
-            while (runOnScheduler.MoveNext() == true) yield return null;
+            while ((runOnScheduler as IEnumerator).MoveNext() == true) yield return null;
 
             Assert.That(() =>
                         {
                             var continuationWrapper = enumerator.RunOnScheduler(syncRunner);
-                            while (continuationWrapper.MoveNext() == true);
+                            while ((continuationWrapper as IEnumerator).MoveNext() == true);
                         }, Is.Not.AllocatingGCMemory());
             
             syncRunner.Dispose();
@@ -56,15 +56,15 @@ namespace Test
             {
                 var cont = new Enumerator(1).RunOnScheduler(updateMonoRunner);
                 
-                Assert.That(cont.MoveNext, Is.True);
+                Assert.That((cont as IEnumerator).MoveNext(), Is.True);
 
                 updateMonoRunner.Step();
 
-                Assert.That(cont.MoveNext, Is.True);
+                Assert.That((cont as IEnumerator).MoveNext(), Is.True);
 
                 updateMonoRunner.Step();
 
-                Assert.That(cont.MoveNext, Is.False);
+                Assert.That((cont as IEnumerator).MoveNext(), Is.False);
             }
         }
 
@@ -293,7 +293,7 @@ namespace Test
                 var continuator1 = enumerator1.RunOnScheduler(runner);
                 var continuator2 = enumerator2.RunOnScheduler(runner);
 
-                while (continuator1.completed == false || continuator2.completed == false)
+                while ((continuator1 as IEnumerator).MoveNext() == true || (continuator2 as IEnumerator).MoveNext() == true)
                     yield return null;
 
                 i = (int)enumerator1.Current + (int)enumerator2.Current;
