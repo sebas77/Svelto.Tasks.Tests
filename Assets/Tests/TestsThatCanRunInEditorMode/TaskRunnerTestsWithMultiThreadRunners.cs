@@ -27,7 +27,7 @@ namespace Test
             {
                 var task = _iterable1.RunOnScheduler(runner);
 
-                while (task.MoveNext()) ;
+                while ((task as IEnumerator).MoveNext()) ;
 
                 Assert.That(_iterable1.AllRight == true);
 
@@ -37,7 +37,7 @@ namespace Test
 
                 task = _iterable1.RunOnScheduler(runner);
 
-                while (task.MoveNext()) ;
+                while ((task as IEnumerator).MoveNext()) ;
 
                 Assert.That(_iterable1.AllRight == true);
             }
@@ -55,7 +55,7 @@ namespace Test
                 taskRoutine.SetEnumerator(iterable1);
 
                 DateTime now = DateTime.Now;
-                taskRoutine.Start().Complete();
+                (taskRoutine.Start() as IEnumerator).Complete();
                 var seconds = (DateTime.Now - now).TotalSeconds;
 
                 //2000 iteration * 1ms = 2 seconds
@@ -154,7 +154,7 @@ namespace Test
 
                 var continuator = routine.Start();
 
-                while (continuator.MoveNext() == true) yield return null;
+                while ((continuator as IEnumerator).MoveNext() == true) yield return null;
             }
             runner.Dispose();
         }
@@ -171,7 +171,7 @@ namespace Test
 
                 var continuator = _iterable1.RunOnScheduler(runner);
 
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
 
                 Assert.That(_iterable1.AllRight == true);
             
@@ -192,6 +192,8 @@ namespace Test
             parallelMultiThread.Add(new SlowTask());
 
             yield return parallelMultiThread;
+            
+            parallelMultiThread.Dispose();
 
             sw.Stop();
 

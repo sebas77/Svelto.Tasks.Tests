@@ -25,7 +25,7 @@ public class TestsThatCanRunOnlyInPlayMode
     {
         var task = UnityHandle().Run();
 
-        while (task.MoveNext())
+        while ((task as IEnumerator).MoveNext())
             yield return null;
     }
 
@@ -35,7 +35,7 @@ public class TestsThatCanRunOnlyInPlayMode
         var enumerator = Continuation();
         var continuation = enumerator.Run();
 
-        while (continuation.MoveNext() == true) yield return null;
+        while ((continuation as IEnumerator).MoveNext() == true) yield return null;
         
         Assert.That(enumerator.Current, Is.EqualTo(100));
     }
@@ -49,7 +49,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
             var task = _iterable1.RunOnScheduler(runner);
 
-            while (task.MoveNext())
+            while ((task as IEnumerator).MoveNext())
                 yield return null;
 
             var seconds = (DateTime.Now - now).Seconds;
@@ -107,14 +107,15 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWait()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new CoroutineMonoRunner("test"));
+        var coroutineMonoRunner = new CoroutineMonoRunner("test1");
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(coroutineMonoRunner);
         taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator);
 
         
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
-
+        coroutineMonoRunner.Dispose();
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
         Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
@@ -122,7 +123,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWaitInParallel()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new UpdateMonoRunner("test1"));
+        var updateMonoRunner = new UpdateMonoRunner("test1");
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(updateMonoRunner);
         ParallelTaskCollection pt = new ParallelTaskCollection();
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
@@ -130,7 +132,7 @@ public class TestsThatCanRunOnlyInPlayMode
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
-
+        updateMonoRunner.Dispose();
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
         Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
@@ -248,12 +250,29 @@ public class TestsThatCanRunOnlyInPlayMode
 
         Assert.That(_hasReset == true);
     }
+    
+    [Test]
+    public void TestCoroutineMonoRunnerStartsTheFirstIterationImmediately()
+    {
+        var testFirstInstruction = TestFirstInstruction();
+        var runner               = new CoroutineMonoRunner("test4");
+        testFirstInstruction.RunOnScheduler(runner);
+        runner.Dispose();
+            
+        Assert.That(testFirstInstruction.Current, Is.EqualTo(1));
+    }
+    
+    static IEnumerator TestFirstInstruction()
+    {
+        yield return 1;
+    }
+
 
     [UnityTest]
     public IEnumerator TaskWithUnityYieldInstructionMustRestartImmediately()
     {
         var valueRef = new ValueRef();
-        using (var runner = new CoroutineMonoRunner("test"))
+        using (var runner = new CoroutineMonoRunner("test3"))
         {
             var task = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 task
@@ -359,7 +378,7 @@ public class TestsThatCanRunOnlyInPlayMode
             taskRoutine.Start();
             var continuator = taskRoutine.Start();
                 
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -379,10 +398,10 @@ public class TestsThatCanRunOnlyInPlayMode
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
             yield return null;
             taskRoutine.Stop();
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             var continuator2 = taskRoutine.Start();
             Assert.That(test, Is.EqualTo(1));
-            while (continuator2.MoveNext()) yield return null;
+            while ((continuator2 as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -405,7 +424,7 @@ public class TestsThatCanRunOnlyInPlayMode
             taskRoutine.Start();
             var continuator = taskRoutine.Start();
                 
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -425,10 +444,10 @@ public class TestsThatCanRunOnlyInPlayMode
             var continuator = taskRoutine.Start(onStop:() => OnStop(ref test));
             yield return null;
             taskRoutine.Stop();
-            while (continuator.MoveNext()) yield return null;
+            while ((continuator as IEnumerator).MoveNext()) yield return null;
             var continuator2 = taskRoutine.Start();
             Assert.That(test, Is.EqualTo(1));
-            while (continuator2.MoveNext()) yield return null;
+            while ((continuator2 as IEnumerator).MoveNext()) yield return null;
             
             Assert.Pass();
         }
@@ -449,7 +468,7 @@ public class TestsThatCanRunOnlyInPlayMode
 
             var continuation = taskRoutine.Start();
                 
-            while (continuation.MoveNext()) yield return null;
+            while ((continuation as IEnumerator).MoveNext()) yield return null;
 
             Assert.That(result.counter, Is.EqualTo(1));
         }

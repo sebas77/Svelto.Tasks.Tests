@@ -273,7 +273,7 @@ namespace Test
         {
             yield return null;
 
-            using (var runner = new UpdateMonoRunner("test"))
+            using (var runner = new UpdateMonoRunner("test2"))
             {
                 var enumerator = new Enumerator(1);
                 _parallelTasks1.Add(enumerator);

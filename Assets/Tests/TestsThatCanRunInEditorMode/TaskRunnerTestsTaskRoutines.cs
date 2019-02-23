@@ -81,14 +81,14 @@ namespace Test
                 _reusableTaskRoutine.SetEnumerator(_iterable1);
                 var continuator = _reusableTaskRoutine.Start();
 
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
 
                 Assert.That(_iterable1.AllRight == true);
 
                 continuator = _reusableTaskRoutine.Start(); //another start will reset the enumerator
                 Assert.That(_iterable1.AllRight == false); //did it reset?
 
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
 
                 Assert.That(_iterable1.AllRight == true);
             }
@@ -111,7 +111,7 @@ namespace Test
                 yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
                 var continuation = taskRoutine.Start();
 
-                while (continuation.MoveNext())
+                while ((continuation as IEnumerator).MoveNext())
                         yield return null; //now increment
 
                 Assert.That(result.counter, Is.EqualTo(1));
@@ -120,7 +120,7 @@ namespace Test
                 yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
                 continuation = taskRoutine.Start();
 
-                while (continuation.MoveNext())
+                while ((continuation as IEnumerator).MoveNext())
                     yield return null; //now increment
                 
                 Assert.That(result.counter, Is.EqualTo(2));
@@ -129,7 +129,7 @@ namespace Test
                 yield return null; //since the enumerator waits for 1 second, it shouldn't have the time to increment
                 continuation = taskRoutine.Start();
 
-                while (continuation.MoveNext())
+                while ((continuation as IEnumerator).MoveNext())
                     yield return null; //now increment
 
                 Assert.That(result.counter, Is.EqualTo(3));
@@ -138,7 +138,7 @@ namespace Test
         }
         
         [UnityTest]
-        public IEnumerator TestSimpleTaskRoutineStopsStartsWithProvider()
+        public IEnumerator TestSimpleTaskRoutineStopsStartsWithProviderAndWaiting()
         {
             yield return null;
 
@@ -153,17 +153,56 @@ namespace Test
                 var continuator = _reusableTaskRoutine
                                                       .Start(onStop: () => isCallbackCalled = true);
 
-                Assert.That(continuator.completed == false, "can't be completed");
+                Assert.That((continuator as IEnumerator).MoveNext() == true, "can't be completed");
                 _reusableTaskRoutine.Stop();
 
                 Thread.Sleep(500); //let's be sure the runner has the time to complete it
 
-                Assert.That(continuator.completed == true, "must be completed");
+                Assert.That((continuator as IEnumerator).MoveNext() == false, "must be completed");
                 Assert.True(isCallbackCalled);               
 
                 continuator = _reusableTaskRoutine.Start();
 
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
+            }
+            
+            runner.Dispose();
+
+            Assert.That(result.counter, Is.EqualTo(1));
+        }
+        
+        [UnityTest]
+        public IEnumerator TestSimpleTaskRoutineStopsStartsWithProviderForPending()
+        {
+            yield return null;
+
+            ValueObject result = new ValueObject();
+
+            var runner = new MultiThreadRunner("TestSimpleTaskRoutineStopStartWithProvider");
+            {
+                int index = 0;
+                
+                var _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
+                _reusableTaskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
+                var continuator = _reusableTaskRoutine
+                   .Start(onStop: () => Interlocked.Add(ref index, 1));
+
+                Assert.That((continuator as IEnumerator).MoveNext() == true, "can't be completed");
+
+                runner.isPaused = true;
+                _reusableTaskRoutine.Stop();
+
+                Assert.That((continuator as IEnumerator).MoveNext() == true, "can't be completed");
+
+                continuator = _reusableTaskRoutine.Start(onStop: () => Interlocked.Add(ref index, 1));
+                
+                runner.isPaused = false;
+
+                while (index == 0) yield return null;
+
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
+            
+                Assert.True(index == 1); //on stop is called only if explicitly stopped
             }
             
             runner.Dispose();
@@ -183,7 +222,7 @@ namespace Test
                 _reusableTaskRoutine.SetEnumerator(TestWithThrow());
                 
                 var continuator = _reusableTaskRoutine.Start(onFail: (e) => isCallbackCalled = true);
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
 
                 Assert.True(isCallbackCalled);
             }
@@ -203,7 +242,7 @@ namespace Test
 
                 DateTime then = DateTime.Now.AddSeconds(2);
 
-                while (continuator.MoveNext() && DateTime.Now > then)
+                while ((continuator as IEnumerator).MoveNext() && DateTime.Now > then)
                 {
                     yield return null;
                     
@@ -214,7 +253,7 @@ namespace Test
                 
                 _reusableTaskRoutine.Resume();
                 
-                while (continuator.MoveNext()) yield return null;
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
 
                 Assert.That(_iterable1.AllRight == true);
             }
