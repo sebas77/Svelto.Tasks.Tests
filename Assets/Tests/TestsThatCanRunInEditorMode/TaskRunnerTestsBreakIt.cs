@@ -25,10 +25,10 @@ namespace Test
         [UnityTest]
         public IEnumerator TestThatAStandardBreakBreaksTheCurrentTaskOnly()
         {
-            yield return null;
+            yield return Yield.It;
 
             var severalTasksParent = SeveralTasksParent();
-            severalTasksParent.RunOnScheduler(new SyncRunner());
+            severalTasksParent.RunOn(new SyncRunner());
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
@@ -38,24 +38,24 @@ namespace Test
         [UnityTest]
         public IEnumerator TestThatABreakItBreaksTheWholeExecution()
         {
-            yield return null;
+            yield return Yield.It;
 
             var severalTasksParent = SeveralTasksParentBreak();
-            severalTasksParent.RunOnScheduler(new SyncRunner());
+            severalTasksParent.RunOn(new SyncRunner());
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight); 
             Assert.AreNotEqual(severalTasksParent.Current, 10);
         }
         
-        IEnumerator SeveralTasksParent()
+         IEnumerator<TaskContract> SeveralTasksParent()
         {
             yield return SeveralTasks();
 
             yield return 10;
         }
         
-        IEnumerator SeveralTasks()
+         IEnumerator<TaskContract> SeveralTasks()
         {
             yield return _iterable1;
 
@@ -66,14 +66,14 @@ namespace Test
 #pragma warning restore 162
         }
         
-        IEnumerator SeveralTasksParentBreak()
+         IEnumerator<TaskContract> SeveralTasksParentBreak()
         {
             yield return SeveralTasksBreak();
 
             yield return 10;
         }
         
-        IEnumerator SeveralTasksBreak()
+         IEnumerator<TaskContract> SeveralTasksBreak()
         {
             yield return _iterable1;
 

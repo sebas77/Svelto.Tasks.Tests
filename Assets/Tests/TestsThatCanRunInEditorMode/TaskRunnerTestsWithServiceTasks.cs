@@ -22,7 +22,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestSingleITaskExecution()
         {
-            yield return null;
+            yield return Yield.It;
 
             _task1.Execute();
 
@@ -34,7 +34,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestSingleTaskExecutionCallsOnComplete()
         {
-            yield return null;
+            yield return Yield.It;
 
             _task1.OnComplete(() => Assert.That(_task1.isDone, Is.True));
 
@@ -46,7 +46,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTask1IsExecutedBeforeTask2()
         {
-            yield return null;
+            yield return Yield.It;
 
             bool test1Done = false;
 
@@ -56,7 +56,7 @@ namespace Test
             _serialTasks1.Add(new TaskServiceEnumerator(_task1));
             _serialTasks1.Add(new TaskServiceEnumerator(_task2));
             
-            _serialTasks1.RunOnScheduler(new SyncRunner(3000));
+            _serialTasks1.RunOn(new SyncRunner(3000));
         }
 
         ServiceTask          _task1;

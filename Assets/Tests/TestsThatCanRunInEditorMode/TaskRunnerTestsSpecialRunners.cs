@@ -19,7 +19,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestStaggeredMonoRunner()
         {
-            yield return null;
+            yield return Yield.It;
 
             //careful, runners can be garbage collected if they are not referenced somewhere and the
             //framework does not keep a reference
@@ -27,7 +27,7 @@ namespace Test
             {
                 ValueObject val = new ValueObject();
                 for (int i = 0; i < 16; i++)
-                    new SimpleEnumeratorClassRef(val).RunOnScheduler(staggeredMonoRunner);
+                    new SimpleEnumeratorClassRef(val).RunOn(staggeredMonoRunner);
 
                 Assert.That(staggeredMonoRunner.numberOfQueuedTasks, Is.EqualTo(16));
                 staggeredMonoRunner.Step();
@@ -50,7 +50,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeBoundMonoRunner()
         {
-            yield return null;
+            yield return Yield.It;
             
             var frames = 0;
 
@@ -58,7 +58,7 @@ namespace Test
             {
                 ValueObject val = new ValueObject();
                 for (int i = 0; i < 32; i++)
-                    new SimpleEnumeratorClassRefTime(val).RunOnScheduler(timeBoundMonoRunner);
+                    new SimpleEnumeratorClassRefTime(val).RunOn(timeBoundMonoRunner);
 
                 frames++;
                 timeBoundMonoRunner.Step();
@@ -67,7 +67,7 @@ namespace Test
                 {
                     frames++;
                     timeBoundMonoRunner.Step();
-                    yield return null;
+                    yield return Yield.It;
                 }
 
                 Assert.That(frames, Is.InRange(15,16)); //time based tests are not great
@@ -78,7 +78,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeSlicedMonoRunner()
         {
-            yield return null;
+            yield return Yield.It;
             
             var frames = 0;
 
@@ -86,13 +86,13 @@ namespace Test
             {
                 ValueObject val        = new ValueObject();
                 var         yieldBreak = TimeSlicedYield(val);
-                yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak.RunOn(timeSlicedMonoRunner);
                 var yieldBreak1 = TimeSlicedYield(val);
-                yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak1.RunOn(timeSlicedMonoRunner);
                 var yieldBreak2 = TimeSlicedYield(val);
-                yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak2.RunOn(timeSlicedMonoRunner);
                 var yieldBreak3 = TimeSlicedYield(val);
-                yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak3.RunOn(timeSlicedMonoRunner);
 
                 DateTime then = DateTime.Now;
 
@@ -104,7 +104,7 @@ namespace Test
                     frames++;
                     val.counter++;
                     timeSlicedMonoRunner.Step();
-                    yield return null;
+                    yield return Yield.It;
                 }
 
                 Assert.That((DateTime.Now - then).TotalMilliseconds < 1900);
@@ -119,7 +119,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestTimeSlicedMonoRunnerSliced()
         {
-            yield return null;
+            yield return Yield.It;
             
             var frames = 0;
 
@@ -127,13 +127,13 @@ namespace Test
             {
                 ValueObject val        = new ValueObject();
                 var         yieldBreak = TimeSlicedYieldNormal(val);
-                yieldBreak.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak.RunOn(timeSlicedMonoRunner);
                 var yieldBreak1 = TimeSlicedYieldNormal(val);
-                yieldBreak1.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak1.RunOn(timeSlicedMonoRunner);
                 var yieldBreak2 = TimeSlicedYieldNormal(val);
-                yieldBreak2.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak2.RunOn(timeSlicedMonoRunner);
                 var yieldBreak3 = TimeSlicedYieldNormal(val);
-                yieldBreak3.RunOnScheduler(timeSlicedMonoRunner);
+                yieldBreak3.RunOn(timeSlicedMonoRunner);
 
                 frames++;
                 timeSlicedMonoRunner.Step(); //first iteration of the runner so that the tasks are filled
@@ -143,7 +143,7 @@ namespace Test
                     frames++;
                     val.counter++;
                     timeSlicedMonoRunner.Step();
-                    yield return null;
+                    yield return Yield.It;
                 }
 
                 Assert.That(frames, Is.GreaterThan(1));
@@ -154,7 +154,7 @@ namespace Test
             }
         }
 
-        IEnumerator TimeSlicedYield(ValueObject val)
+         IEnumerator<TaskContract> TimeSlicedYield(ValueObject val)
         {
             int i = 0;
             while (++i < 100)
@@ -163,7 +163,7 @@ namespace Test
                 while (++j < 100)
                 {
                     var frame = val.counter;
-                    yield return null;
+                    yield return Yield.It;
                     if (frame != val.counter) throw new Exception("must always finish before next iteration");
                 }
             }
@@ -171,7 +171,7 @@ namespace Test
             yield return i;
         }
         
-        IEnumerator TimeSlicedYieldNormal(ValueObject val)
+         IEnumerator<TaskContract> TimeSlicedYieldNormal(ValueObject val)
         {
             int i = 0;
             while (++i < 100)
@@ -179,7 +179,7 @@ namespace Test
                 int j = 0;
                 while (++j < 100)
                 {
-                    yield return null;
+                    yield return Yield.It;
                 }
             }
 

@@ -1,78 +1,11 @@
-#if later
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
-using Svelto.Tasks.Chain;
 
 namespace Test
 {
-    class ServiceTask : IServiceTask
-    {
-        public bool isDone { get; private set; }
-
-        public ServiceTask()
-        {
-            isDone = false;
-        }
-
-        public void Execute()
-        {
-            _delayTimer = new System.Timers.Timer
-            {
-                Interval = 1000,
-                Enabled  = true
-            };
-            _delayTimer.Elapsed += _delayTimer_Elapsed;
-            _delayTimer.Start();
-        }
-
-        public void OnComplete(Action action)
-        {
-            _onComplete += action;
-        }
-
-        void _delayTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            isDone = true;
-            if (_onComplete != null)
-                _onComplete();
-
-            _delayTimer.Stop();
-            _delayTimer = null;
-        }
-
-        System.Timers.Timer _delayTimer;
-        Action              _onComplete;
-    }
-
-    class TaskChain : ITaskChain<ValueObject>
-    {
-        public bool isDone { get; private set; }
-
-        public TaskChain()
-        {
-            isDone = false;
-        }
-
-        public bool MoveNext()
-        {
-            Interlocked.Increment(ref token.counter);
-
-            isDone = true;
-
-            return false;
-        }
-
-        public void Reset()
-        {
-            throw new NotImplementedException();
-        }
-
-        public object      Current { get; }
-        public ValueObject token   { get; set; }
-    }
-
     class ValueObject
     {
         public int counter;
@@ -110,7 +43,7 @@ namespace Test
         public bool disposed { get; private set; }
     }
 
-    class Enumerator : IEnumerator
+    class Enumerator : IEnumerator<TaskContract>
     {
         public long endOfExecutionTime { get; private set; }
         public bool AllRight
@@ -146,10 +79,16 @@ namespace Test
             iterations = 0;
         }
 
+        TaskContract IEnumerator<TaskContract>.Current => throw new NotImplementedException();
+
         public object Current { get; }
         
         readonly int totalIterations;
         public   int iterations;
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
     }
     
     class SimpleEnumeratorClassRefTime : IEnumerator
@@ -293,4 +232,3 @@ namespace Test
         {}
     }
 }
-#endif

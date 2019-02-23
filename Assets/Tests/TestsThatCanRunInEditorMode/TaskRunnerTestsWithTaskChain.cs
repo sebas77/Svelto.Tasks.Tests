@@ -25,7 +25,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestSerialTasks1ExecutedInParallelWithToken()
         {
-            yield return null;
+            yield return Yield.It;
 
             _serialTasks1.Add(_taskChain1);
             _serialTasks1.Add(_taskChain1);
@@ -38,7 +38,7 @@ namespace Test
             _parallelTasks1.onComplete +=
                 () => Assert.That(_vo.counter, Is.EqualTo(4));
 
-            _parallelTasks1.RunOnScheduler(new SyncRunner());
+            _parallelTasks1.RunOn(new SyncRunner());
         }
         
         

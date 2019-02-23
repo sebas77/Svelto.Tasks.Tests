@@ -21,13 +21,13 @@ namespace Test
         [UnityTest]
         public IEnumerator TestMultithreadQuick()
         {
-            yield return null;
+            yield return Yield.It;
 
             using (var runner = new MultiThreadRunner("TestMultithreadQuick", false))
             {
-                var task = _iterable1.RunOnScheduler(runner);
+                var task = _iterable1.RunOn(runner);
 
-                while ((task as IEnumerator).MoveNext()) ;
+                while ((task).isRunning) ;
 
                 Assert.That(_iterable1.AllRight == true);
 
@@ -35,9 +35,9 @@ namespace Test
 
                 _iterable1.Reset();
 
-                task = _iterable1.RunOnScheduler(runner);
+                task = _iterable1.RunOn(runner);
 
-                while ((task as IEnumerator).MoveNext()) ;
+                while ((task).isRunning) ;
 
                 Assert.That(_iterable1.AllRight == true);
             }
@@ -46,7 +46,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestMultithreadIntervaled()
         {
-            yield return null;
+            yield return Yield.It;
 
             using (var runner = new MultiThreadRunner("TestMultithreadIntervaled", 1))
             {
@@ -55,7 +55,7 @@ namespace Test
                 taskRoutine.SetEnumerator(iterable1);
 
                 DateTime now = DateTime.Now;
-                (taskRoutine.Start() as IEnumerator).Complete();
+                (taskRoutine.Start()).Complete();
                 var seconds = (DateTime.Now - now).TotalSeconds;
 
                 //2000 iteration * 1ms = 2 seconds
@@ -67,7 +67,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestMultiThreadParallelTaskCompletes()
         {
-            yield return null;
+            yield return Yield.It;
 
             var test = new MultiThreadedParallelTaskCollection("test", 4, false);
             
@@ -81,12 +81,12 @@ namespace Test
                 test.Add(new WaitEnumerator(token));
 
                 var multiThreadRunner = new MultiThreadRunner("test", true);
-                test.RunOnScheduler(multiThreadRunner);
+                test.RunOn(multiThreadRunner);
                 DateTime now = DateTime.Now;
-                yield return null;
+                yield return Yield.It;
 
                 while (test.isRunning)
-                    yield return null;
+                    yield return Yield.It;
 
                 var totalSeconds = (DateTime.Now - now).TotalSeconds;
 
@@ -111,8 +111,8 @@ namespace Test
                 {
                     var continuationWrapper = crazyEnumerator(result, runner);
 
-                    while (continuationWrapper.MoveNext() == true)
-                        yield return null;
+                    while (continuationWrapper.isRunning == true)
+                        yield return Yield.It;
                 }
             }
             runner.Dispose();
@@ -123,7 +123,7 @@ namespace Test
         [UnityTest]
         public IEnumerator ParallelMultiThread()
         {
-            yield return null;
+            yield return Yield.It;
 
             var parallelMultiThread = new MultiThreadedParallelTaskCollection("test", 2, true);
 
@@ -144,7 +144,7 @@ namespace Test
         [UnityTest]
         public IEnumerator MultiThreadedParallelTaskCollectionRunningOnAnotherThread()
         {
-            yield return null;
+            yield return Yield.It;
 
             var runner = new MultiThreadRunner("MT");
             {
@@ -154,24 +154,24 @@ namespace Test
 
                 var continuator = routine.Start();
 
-                while ((continuator as IEnumerator).MoveNext() == true) yield return null;
+                while ((continuator).isRunning == true) yield return Yield.It;
             }
             runner.Dispose();
         }
         
         [UnityTest]
         [Timeout(1000)]
-        public IEnumerator TestNaiveEnumeratorsOnMultithreadedRunners()
+        public IEnumerator<TaskContract> TestNaiveEnumeratorsOnMultithreadedRunners()
         {
-            yield return null;
+            yield return Yield.It;
 
             var runner = new MultiThreadRunner("TestMultithread");
             
                 _iterable1.Reset();
 
-                var continuator = _iterable1.RunOnScheduler(runner);
+                var continuator = _iterable1.RunOn(runner);
 
-                while ((continuator as IEnumerator).MoveNext()) yield return null;
+                while ((continuator).isRunning) yield return Yield.It;
 
                 Assert.That(_iterable1.AllRight == true);
             
@@ -182,7 +182,7 @@ namespace Test
         [UnityTest]
         public IEnumerator YieldMultiThreadedParallelTaskCollection()
         {
-            yield return null;
+            yield return Yield.It;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -201,18 +201,18 @@ namespace Test
             Assert.That(sw.ElapsedMilliseconds, Is.AtMost(1100));
         }
 
-        IEnumerator crazyEnumerator(ValueObject result, IRunner<IEnumerator> runner)
+         IEnumerator<TaskContract> crazyEnumerator(ValueObject result, IRunner<IEnumerator> runner)
         {
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
-            yield return SimpleEnumeratorFast(result).RunOnScheduler(runner);
+            yield return SimpleEnumeratorFast(result).RunOn(runner);
+            yield return SimpleEnumeratorFast(result).RunOn(runner);
+            yield return SimpleEnumeratorFast(result).RunOn(runner);
+            yield return SimpleEnumeratorFast(result).RunOn(runner);
+            yield return SimpleEnumeratorFast(result).RunOn(runner);
         }
         
-        IEnumerator SimpleEnumeratorFast(ValueObject result)
+         IEnumerator<TaskContract> SimpleEnumeratorFast(ValueObject result)
         {
-            yield return null;
+            yield return Yield.It;
 
             Interlocked.Increment(ref result.counter);
         }
