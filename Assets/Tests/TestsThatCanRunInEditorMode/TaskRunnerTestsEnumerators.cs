@@ -35,14 +35,14 @@ namespace Test
             var syncRunner = new MultiThreadRunner("test");
             var runOnScheduler = enumerator.RunOnScheduler(syncRunner);
             while ((runOnScheduler as IEnumerator).MoveNext() == true) yield return null;
+            
+            syncRunner.Dispose();
 
             Assert.That(() =>
                         {
                             var continuationWrapper = enumerator.RunOnScheduler(syncRunner);
                             while ((continuationWrapper as IEnumerator).MoveNext() == true);
                         }, Is.Not.AllocatingGCMemory());
-            
-            syncRunner.Dispose();
         }
         
         [UnityTest]
@@ -152,17 +152,6 @@ namespace Test
             Assert.That(gameLoop2.Current, Is.EqualTo(2));
         }
         
-        [Test]
-        public void TestCoroutineMonoRunnerStartsTheFirstIterationImmediately()
-        {
-            var testFirstInstruction = TestFirstInstruction();
-            var runner = new CoroutineMonoRunner("test");
-            testFirstInstruction.RunOnScheduler(runner);
-            runner.Dispose();
-            
-            Assert.That(testFirstInstruction.Current, Is.EqualTo(1));
-        }
-
         [UnityTest]
         public IEnumerator TestEnumeratorStartingFromEnumeratorIndipendently()
         {
@@ -170,7 +159,9 @@ namespace Test
 
             using (var runner = new MultiThreadRunner("test"))
             {
-                NestedEnumerator(runner).RunOnScheduler(runner);
+                var continuator = NestedEnumerator(runner).RunOnScheduler(runner);
+
+                while ((continuator as IEnumerator).MoveNext()) yield return null;
             }
         }
 
@@ -181,12 +172,6 @@ namespace Test
             new WaitForSecondsEnumerator(0.1f).RunOnScheduler(runner);
 
             yield return null;
-        }
-
-
-        static IEnumerator TestFirstInstruction()
-        {
-            yield return 1;
         }
 
         static IEnumerator GameLoop()
@@ -290,11 +275,8 @@ namespace Test
                 //runner. The generated continuator is a new enumerator, used to spin the current runner
                 //untile the enumerators are done.
                 //In a real scenario, any compatible runner can be used.
-                var continuator1 = enumerator1.RunOnScheduler(runner);
-                var continuator2 = enumerator2.RunOnScheduler(runner);
-
-                while ((continuator1 as IEnumerator).MoveNext() == true || (continuator2 as IEnumerator).MoveNext() == true)
-                    yield return null;
+                yield return enumerator1.RunOnScheduler(runner);
+                yield return enumerator2.RunOnScheduler(runner);
 
                 i = (int)enumerator1.Current + (int)enumerator2.Current;
             }

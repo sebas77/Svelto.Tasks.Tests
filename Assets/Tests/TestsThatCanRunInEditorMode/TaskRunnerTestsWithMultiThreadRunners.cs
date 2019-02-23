@@ -191,6 +191,8 @@ namespace Test
             parallelMultiThread.Add(new SlowTask());
 
             yield return parallelMultiThread;
+            
+            parallelMultiThread.Dispose();
 
             sw.Stop();
 

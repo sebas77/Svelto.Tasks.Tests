@@ -106,14 +106,15 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWait()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new CoroutineMonoRunner("test"));
+        var coroutineMonoRunner = new CoroutineMonoRunner("test1");
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(coroutineMonoRunner);
         taskRoutine.SetEnumeratorProvider(new WaitForSecondsUnity().GetEnumerator);
 
         
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
-
+        coroutineMonoRunner.Dispose();
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
         Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
@@ -121,7 +122,8 @@ public class TestsThatCanRunOnlyInPlayMode
     [UnityTest]
     public IEnumerator TestUnityWaitInParallel()
     {
-        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(new UpdateMonoRunner("test1"));
+        var updateMonoRunner = new UpdateMonoRunner("test1");
+        ITaskRoutine<IEnumerator> taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(updateMonoRunner);
         ParallelTaskCollection pt = new ParallelTaskCollection();
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
         pt.Add(new WaitForSecondsUnity().GetEnumerator());
@@ -129,7 +131,7 @@ public class TestsThatCanRunOnlyInPlayMode
         taskRoutine.Start();
         DateTime then = DateTime.Now;
         while (taskRoutine.isRunning == true) yield return null;
-
+        updateMonoRunner.Dispose();
         var totalSeconds = (DateTime.Now - then).TotalSeconds;
         Assert.That(totalSeconds, Is.InRange(0.9, 1.1));
     }
@@ -247,12 +249,29 @@ public class TestsThatCanRunOnlyInPlayMode
 
         Assert.That(_hasReset == true);
     }
+    
+    [Test]
+    public void TestCoroutineMonoRunnerStartsTheFirstIterationImmediately()
+    {
+        var testFirstInstruction = TestFirstInstruction();
+        var runner               = new CoroutineMonoRunner("test4");
+        testFirstInstruction.RunOnScheduler(runner);
+        runner.Dispose();
+            
+        Assert.That(testFirstInstruction.Current, Is.EqualTo(1));
+    }
+    
+    static IEnumerator TestFirstInstruction()
+    {
+        yield return 1;
+    }
+
 
     [UnityTest]
     public IEnumerator TaskWithUnityYieldInstructionMustRestartImmediately()
     {
         var valueRef = new ValueRef();
-        using (var runner = new CoroutineMonoRunner("test"))
+        using (var runner = new CoroutineMonoRunner("test3"))
         {
             var task = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
                 task
