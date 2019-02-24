@@ -34,3 +34,4 @@ Logs/Packages-Update.log
 test/
 New folder/
 TestCPP/
+*.DotSettings

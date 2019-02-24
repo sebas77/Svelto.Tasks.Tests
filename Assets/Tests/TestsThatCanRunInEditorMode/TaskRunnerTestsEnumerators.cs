@@ -25,7 +25,7 @@ namespace Test
         [SetUp]
         public void Setup()
         {
-        //    _iterable1 = new Enumerator(10000);
+            _iterable1 = new Enumerator(10000);
         }
         
         [UnityTest]
@@ -37,13 +37,13 @@ namespace Test
             var RunOn = enumerator.RunOn(runner);
             while ((RunOn).isRunning == true) yield return Yield.It;
             
-            runner.Dispose();
-
             Assert.That(() =>
                         {
                             var continuationWrapper = enumerator.RunOn(runner);
                             while ((continuationWrapper).isRunning == true);
                         }, Is.Not.AllocatingGCMemory());
+            
+            runner.Dispose();
         }
         
         [UnityTest]
@@ -57,15 +57,15 @@ namespace Test
             {
                 var cont = new Enumerator(1).RunOn(updateMonoRunner);
                 
-                Assert.That((cont).isRunning, Is.True);
+                Assert.That(cont.isRunning, Is.True);
 
-                yield return null;
+                updateMonoRunner.Step();
 
-                Assert.That((cont).isRunning, Is.True);
+                Assert.That(cont.isRunning, Is.True);
 
-                yield return null;
+                updateMonoRunner.Step();
 
-                Assert.That((cont).isRunning, Is.False);
+                Assert.That(cont.isRunning, Is.False);
             }
         }
 
@@ -97,7 +97,7 @@ namespace Test
             var subEnumerator = SubEnumerator(0, 10);
             subEnumerator.RunOn(new SyncRunner());
 
-            Assert.That(subEnumerator.Current, Is.EqualTo(10));
+            Assert.That(subEnumerator.Current.ToInt(), Is.EqualTo(10));
         }
         
         /// <summary>
@@ -150,7 +150,7 @@ namespace Test
             var gameLoop2 = GameLoop2();
             gameLoop2.RunOn(new SyncRunner(4000));
             
-            Assert.That(gameLoop2.Current, Is.EqualTo(2));
+            Assert.That(gameLoop2.Current.ToInt(), Is.EqualTo(2));
         }
         
         [UnityTest]
@@ -205,13 +205,13 @@ namespace Test
         {
             //initialization phase, for example you can precreate reusable enumerators or taskroutines
             //to avoid runtime allocations
-            var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest);
+            var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
 
             //start a loop, you can actually start multiple loops with different conditions so that
             //you can wait for specific states to be valid before to start the real loop 
             yield return smartFunctionEnumerator.Continue();
             yield return smartFunctionEnumerator.Continue(); //it can be reused differently than a compiler generated iterator block
-            yield return (smartFunctionEnumerator).Current.ToInt(); 
+            yield return smartFunctionEnumerator.value;
         }
         
         /// <summary>

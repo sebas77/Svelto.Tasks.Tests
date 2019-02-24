@@ -13,9 +13,18 @@ namespace Test
 
     public class TimeoutEnumerator : IEnumerator, IDisposable
     {
+        readonly DateTime _then;
+
         public TimeoutEnumerator()
         {
             _then = DateTime.Now;
+        }
+
+        public bool disposed { get; private set; }
+
+        public void Dispose()
+        {
+            disposed = true;
         }
 
         public bool MoveNext()
@@ -29,38 +38,30 @@ namespace Test
         }
 
         public void Reset()
-        {}
-
-        public object Current { get; private set; }
-
-        readonly DateTime _then;
-
-        public void Dispose()
         {
-            disposed = true;
         }
 
-        public bool disposed { get; private set; }
+        public object Current { get; private set; }
     }
 
     class Enumerator : IEnumerator<TaskContract>
     {
-        public long endOfExecutionTime { get; private set; }
-        public bool AllRight
-        {
-            get { return iterations == totalIterations; }
-        }
+        readonly int totalIterations;
+        public   int iterations;
 
         public Enumerator(int niterations)
         {
             iterations      = 0;
             totalIterations = niterations;
         }
-        
+
+        public long endOfExecutionTime { get; private set; }
+
+        public bool AllRight => iterations == totalIterations;
+
         public bool MoveNext()
         {
-            if (totalIterations < 0)
-                throw new Exception("can't handle this");
+            if (totalIterations < 0) throw new Exception("can't handle this");
 
             if (iterations < totalIterations)
             {
@@ -68,32 +69,23 @@ namespace Test
 
                 return true;
             }
-            
+
             endOfExecutionTime = DateTime.Now.Ticks;
 
             return false;
         }
 
-        public void Reset()
-        {
-            iterations = 0;
-        }
+        public void Reset() { iterations = 0; }
 
-        TaskContract IEnumerator<TaskContract>.Current => throw new NotImplementedException();
+        public TaskContract Current => Yield.It;
+        object IEnumerator.Current  => throw new NotSupportedException();
 
-        public object Current { get; }
-        
-        readonly int totalIterations;
-        public   int iterations;
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
+        public void Dispose() { throw new NotImplementedException(); }
     }
-    
+
     class SimpleEnumeratorClassRefTime : IEnumerator
     {
-        ValueObject _val;
+        readonly ValueObject _val;
 
         public SimpleEnumeratorClassRefTime(ValueObject val)
         {
@@ -109,7 +101,6 @@ namespace Test
 
         public void Reset()
         {
-
         }
 
         public object Current { get; }
@@ -117,7 +108,7 @@ namespace Test
 
     class SimpleEnumeratorClassRef : IEnumerator
     {
-        ValueObject _val;
+        readonly ValueObject _val;
 
         public SimpleEnumeratorClassRef(ValueObject val)
         {
@@ -131,7 +122,8 @@ namespace Test
         }
 
         public void Reset()
-        {}
+        {
+        }
 
         public object Current { get; }
     }
@@ -143,13 +135,17 @@ namespace Test
 
     class WaitEnumerator : IEnumerator
     {
+        DateTime       _future;
+        readonly int   _time;
+        readonly Token _token;
+
         public WaitEnumerator(Token token, int time = 2)
         {
             _token  = token;
             _future = DateTime.UtcNow.AddSeconds(time);
-            _time = time;
+            _time   = time;
         }
-        
+
         public WaitEnumerator(int time)
         {
             _future = DateTime.UtcNow.AddSeconds(time);
@@ -158,15 +154,12 @@ namespace Test
 
         public void Reset()
         {
-            _future      = DateTime.UtcNow.AddSeconds(_time);
+            _future = DateTime.UtcNow.AddSeconds(_time);
             if (_token != null)
-            _token.count = 0;
+                _token.count = 0;
         }
 
-        public object Current
-        {
-            get { return null; }
-        }
+        public object Current => null;
 
         public bool MoveNext()
         {
@@ -180,21 +173,18 @@ namespace Test
 
             return true;
         }
-        
-        DateTime _future;
-        int      _time;
-        Token    _token;
     }
 
     public class SlowTask : IEnumerator
     {
-        DateTime      _then;
-        public object Current { get; private set; }
+        readonly DateTime _then;
 
         public SlowTask()
         {
             _then = DateTime.Now.AddSeconds(1);
         }
+
+        public object Current { get; private set; }
 
         public bool MoveNext()
         {
@@ -204,19 +194,17 @@ namespace Test
         }
 
         public void Reset()
-        {}
+        {
+        }
     }
-    
+
     public struct SlowTaskStruct : IEnumerator
     {
-        readonly DateTime      _then;
+        readonly DateTime _then;
 
-        public object Current
-        {
-            get { return null; }
-        }
+        public object Current => null;
 
-        public SlowTaskStruct(int seconds):this()
+        public SlowTaskStruct(int seconds) : this()
         {
             _then = DateTime.Now.AddSeconds(seconds);
         }
@@ -229,6 +217,7 @@ namespace Test
         }
 
         public void Reset()
-        {}
+        {
+        }
     }
 }
