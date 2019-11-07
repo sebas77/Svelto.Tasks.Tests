@@ -13,6 +13,7 @@ namespace Svelto.Tasks
     {
         public bool isStopping => _flushingOperation.stopping;
         public bool isKilled   => _flushingOperation.kill;
+        public bool hasTasks => numberOfProcessingTasks != 0;
 
         public int numberOfRunningTasks    => _coroutines.Count;
         public int numberOfQueuedTasks     => _newTaskRoutines.Count;

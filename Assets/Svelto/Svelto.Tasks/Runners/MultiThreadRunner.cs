@@ -146,10 +146,10 @@ namespace Svelto.Tasks
         }
 
         public int numberOfRunningTasks => _runnerData.Count;
-
         public int numberOfQueuedTasks => _runnerData.newTaskRoutines.Count;
-
         public int numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.Count;
+        
+        public bool hasTasks => numberOfProcessingTasks != 0;
 
         public override string ToString()
         {

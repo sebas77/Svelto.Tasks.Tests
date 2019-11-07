@@ -15,7 +15,7 @@ Temp
 /Svelto.Tasks.v11.suo
 /.idea/
 /*.csproj
-/Assets/Plugins/Svelto/**/*.meta
+/Assets/Svelto/**/*.meta
 /.vs/Svelto.Tasks/v14/*.suo
 /.vs/Svelto.Tasks/v15
 /.vs/Svelto.Tasks.Tests/v15
@@ -35,3 +35,7 @@ test/
 New folder/
 TestCPP/
 *.DotSettings
+Assets/Svelto/Svelto.Tasks/bin/
+NotUnityTests/Svelto.Tasks.Tests/Svelto.Tasks.Tests/obj/
+Assets/Svelto/Svelto.Tasks/obj/
+NotUnityTests/Svelto.Tasks.Tests/.idea/
