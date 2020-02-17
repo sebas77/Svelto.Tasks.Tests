@@ -32,17 +32,17 @@ namespace Test
         {
             WaitForSecondsEnumerator enumerator = new WaitForSecondsEnumerator(0.1f);
             
-            var syncRunner = new MultiThreadRunner("test");
-            var runOnScheduler = enumerator.RunOnScheduler(syncRunner);
+            var threadRunner = new MultiThreadRunner("test");
+            var runOnScheduler = enumerator.RunOnScheduler(threadRunner);
             while ((runOnScheduler as IEnumerator).MoveNext() == true) yield return null;
             
-            syncRunner.Dispose();
-
             Assert.That(() =>
                         {
-                            var continuationWrapper = enumerator.RunOnScheduler(syncRunner);
+                            var continuationWrapper = enumerator.RunOnScheduler(threadRunner);
                             while ((continuationWrapper as IEnumerator).MoveNext() == true);
                         }, Is.Not.AllocatingGCMemory());
+            
+            threadRunner.Dispose();
         }
         
         [UnityTest]

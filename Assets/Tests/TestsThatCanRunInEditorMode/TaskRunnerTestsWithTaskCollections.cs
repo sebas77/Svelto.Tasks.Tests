@@ -136,7 +136,7 @@ namespace Test
         {
             yield return null;
 
-            TaskRunner.Instance.RunOnScheduler(new SyncRunner(), SerialContinuation());
+            SerialContinuation().RunOnScheduler(new SyncRunner());
         }
         
         [UnityTest]

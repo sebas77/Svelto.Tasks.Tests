@@ -61,14 +61,6 @@ namespace Test
         }
         
         [UnityTest]
-        public IEnumerator TestTaskRoutinesAllocate0WhenReused()
-        {
-            Assert.Inconclusive();
-            yield break;
-        }
-
-        
-        [UnityTest]
         public IEnumerator TestMultithreadWitTaskRoutines()
         {
             yield return null;
