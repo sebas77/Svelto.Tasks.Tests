@@ -30,7 +30,7 @@ namespace Test.Editor
             st.Add(Print(5));
             st.Add(Print(6));
 
-            TaskRunner.Instance.Run(st);
+            st.Run();
         }
 	
         IEnumerator Print(int i)

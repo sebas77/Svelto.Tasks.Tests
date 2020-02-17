@@ -27,6 +27,78 @@ public class TestsThatCanRunOnlyInPlayMode
         while ((task as IEnumerator).MoveNext())
             yield return null;
     }
+    
+    [UnityTest]
+    public IEnumerator TestEarlyUpdateMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new EarlyUpdateMonoRunner("early runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestCoroutineMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new CoroutineMonoRunner("early runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestEndOfFrameMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new EndOfFrameRunner("runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestLateMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new LateMonoRunner("runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestPhysicMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new PhysicMonoRunner("runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
+    
+    [UnityTest]
+    public IEnumerator TestUpdateMonoRunner() 
+    {
+        ValueObject result = new ValueObject();
+
+        var continuation = SimpleEnumerator(result).RunOnScheduler(new UpdateMonoRunner("runner"));
+
+        while ((continuation as IEnumerator).MoveNext()) yield return null;
+
+        Assert.That(result.counter, Is.EqualTo(1));
+    }
 
     [UnityTest]
     public IEnumerator TestCoroutineRunnerYieldOneFrame()
@@ -462,8 +534,7 @@ public class TestsThatCanRunOnlyInPlayMode
             ValueObject result = new ValueObject();
 
             var taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(runner);
-            taskRoutine.
-                                         SetEnumeratorProvider(() => SimpleEnumerator(result));
+            taskRoutine.SetEnumeratorProvider(() => SimpleEnumerator(result));
 
             var continuation = taskRoutine.Start();
                 
