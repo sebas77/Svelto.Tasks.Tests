@@ -23,6 +23,10 @@ namespace Test.Editor
             public object target;
         }
 
+        void OnEnable()
+        {
+            UnityConsole.Clear();
+        }
         // Use this for initialization
         void Start()
         {
@@ -103,7 +107,7 @@ namespace Test.Editor
             {
                 Debug.Log("download started");
 
-                yield return new ParallelTaskCollection("test", new [] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) });
+                yield return new ParallelTaskCollection(new [] { new UnityWebRequestEnumerator(wWW), PrintProgress(wWW) });
 
                 foreach (string s in wWW.GetResponseHeaders().Values)
                     Debug.Log(s);

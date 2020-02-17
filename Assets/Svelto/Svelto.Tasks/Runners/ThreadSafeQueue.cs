@@ -1,17 +1,18 @@
 using System.Collections.Generic;
+using Svelto.DataStructures;
 
-namespace Svelto.DataStructures
+namespace Svelto.Tasks.Internal
 {
     public class ThreadSafeQueue<T>
     {
         public ThreadSafeQueue()
         {
-            _queue = new FasterList<T>(1);
+            _queue = new Queue<T>(1);
         }
 
         public ThreadSafeQueue(int capacity)
         {
-            _queue = new FasterList<T>(capacity);
+            _queue = new Queue<T>(capacity);
         }
 
         public void Enqueue(T item)
@@ -27,44 +28,12 @@ namespace Svelto.DataStructures
             }
         }
 
-        public ref readonly T Dequeue()
+        public T Dequeue()
         {
             _lockQ.EnterWriteLock();
             try
             {
-                return ref _queue.Dequeue();
-            }
-            finally
-            {
-                _lockQ.ExitWriteLock();
-            }
-        }
-
-        public void EnqueueAll(IEnumerable<T> ItemsToQueue)
-        {
-            _lockQ.EnterWriteLock();
-            try
-            {
-                foreach (T item in ItemsToQueue)
-                    _queue.Enqueue(item);
-            }
-            finally
-            {
-                _lockQ.ExitWriteLock();
-            }
-        }
-
-        public FasterList<T> DequeueAll()
-        {
-            FasterList<T> returnList = new FasterList<T>(_queue.Count);
-            
-            _lockQ.EnterWriteLock();
-            try
-            {
-                while (_queue.Count > 0)
-                    returnList.Add(_queue.Dequeue());
-
-                return returnList;
+                return _queue.Dequeue();
             }
             finally
             {
@@ -101,23 +70,6 @@ namespace Svelto.DataStructures
                 while (_queue.Count > 0 && originalSize - _queue.Count < count)
                     list.Add(_queue.Dequeue());
             }   
-            finally
-            {
-                _lockQ.ExitWriteLock();
-            }
-        }
-
-        public FasterList<U> DequeueAllAs<U>() where U:class
-        {
-            FasterList<U> returnList = new FasterList<U>();
-            _lockQ.EnterWriteLock();
-            try
-            {
-                while (_queue.Count > 0)
-                    returnList.Add(_queue.Dequeue() as U);
-
-                return returnList;
-            }
             finally
             {
                 _lockQ.ExitWriteLock();
@@ -200,7 +152,7 @@ namespace Svelto.DataStructures
             }
         }
         
-        readonly FasterList<T>             _queue;
+        readonly Queue<T>             _queue;
         readonly ReaderWriterLockSlimEx _lockQ = ReaderWriterLockSlimEx.Create();
     }
 }
