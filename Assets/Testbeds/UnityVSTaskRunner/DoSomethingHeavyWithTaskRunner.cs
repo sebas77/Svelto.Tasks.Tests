@@ -37,6 +37,6 @@ namespace Test.Editor.UnityVSTaskRunner
 
         Vector3 _direction;
         Transform _transform;
-        Svelto.Tasks.ITaskRoutine<IEnumerator> _task;
+        ITaskRoutine<IEnumerator> _task;
     }
 }

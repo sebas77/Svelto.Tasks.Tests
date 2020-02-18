@@ -61,6 +61,9 @@ namespace Test.Editor.UnityVSTaskRunner
             text = texts[0];
             text2 = texts[1];
             text.text = "TaskRunner coroutine Enabled";
+            text2.text =
+                Svelto.Tasks.StandardSchedulers.coroutineScheduler.numberOfRunningTasks.
+                    ToString();
         }
 
         // Update is called once per frame
