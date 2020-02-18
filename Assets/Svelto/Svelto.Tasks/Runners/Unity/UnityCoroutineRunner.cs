@@ -98,8 +98,12 @@ namespace Svelto.Tasks.Unity.Internal
                     _info.Reset();
 
                     int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
+                    
+#if TASKS_PROFILER_ENABLED
+                    Profiler.TaskProfiler.ResetDurations();
+#endif
 
-                    bool mustExit;
+                    bool mustExit = false;
                     do
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
