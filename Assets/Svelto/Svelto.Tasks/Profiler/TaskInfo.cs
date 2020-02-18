@@ -17,7 +17,17 @@ namespace Svelto.Tasks.Profiler
             get
             {
                 float sum = 0;
-                for (int i = 0; i < ITERATIONS; i++) sum += times[i];
+                var length = ITERATIONS >> 2;
+                for (int i = 0; i < length; i++)
+                {
+                    var index = i << 2;
+                    
+                    sum += times[index];
+                    sum += times[index + 1];
+                    sum += times[index + 2];
+                    sum += times[index + 3];
+                }
+
                 return sum / ITERATIONS;
             }
         }
