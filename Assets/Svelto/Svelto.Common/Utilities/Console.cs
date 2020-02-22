@@ -11,17 +11,25 @@ using System.Diagnostics;
 using System.Text;
 using Svelto.DataStructures;
 using Svelto.Utilities;
+using UnityEngine;
+using ILogger = Svelto.Utilities.ILogger;
+using LogType = Svelto.Utilities.LogType;
 
 namespace Svelto
 {
     public static class Console
     {
-        static readonly StringBuilder                                     _stringBuilder = new StringBuilder(256);
-        static readonly FasterList<DataStructures.WeakReference<ILogger>> _loggers;
+        static readonly StringBuilder  _stringBuilder = new StringBuilder(256);
+        static FasterList<DataStructures.WeakReference<ILogger>> _loggers;
 
-        static readonly ILogger _standardLogger;
+        static ILogger _standardLogger;
 
-        static Console()
+#if UNITY_2018_3_OR_NEWER
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+#else
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+#endif
+        static void Init()
         {
             _loggers = new FasterList<DataStructures.WeakReference<ILogger>>();
 

@@ -12,8 +12,8 @@ namespace PerformanceMT
         
         void Start()
         {
-            taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.updateScheduler);
-            CalculateAndShowNumber().RunOnScheduler(StandardSchedulers.multiThreadScheduler);
+            taskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine(StandardSchedulers.multiThreadScheduler);
+            CalculateAndShowNumber().RunOnScheduler(StandardSchedulers.updateScheduler);
             direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
         }
 
@@ -26,6 +26,8 @@ namespace PerformanceMT
                 yield return enumerator;
 
                 long result = (long)enumerator.Current * 333;
+
+                GetComponent<Renderer>().material.color = new Color((result % 255) / 255f, ((result * result) % 255) / 255f, ((result / 44) % 255) / 255f);
 
                 taskRoutine.SetEnumerator(SetColor(result));
                 yield return taskRoutine.Start(); //yep the thread will wait for this other task to finish on the mainThreadScheduler
