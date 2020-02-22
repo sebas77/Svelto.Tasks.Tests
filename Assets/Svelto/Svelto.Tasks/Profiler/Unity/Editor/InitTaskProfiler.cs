@@ -1,5 +1,4 @@
 #if UNITY_EDITOR && TASKS_PROFILER_ENABLED
-using UnityEditor;
 using UnityEngine;
 
 namespace Svelto.Tasks.Profiler

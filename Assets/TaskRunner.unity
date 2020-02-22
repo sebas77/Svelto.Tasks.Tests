@@ -550,8 +550,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Notes: 'This example shows the difference between using the TaskRunner and the
     Monobehaviour StartCoroutine. Press a key to switch between the two. Be sure
-    that DISABLE_DBC define is ON and PROFILER define is off to remove all the debug
-    and profiling overhead
+    that PROFILER define is ON and ENABLE_PLATFORM_PROFILER define is off to remove
+    all the debug and profiling overhead
 
 '
 --- !u!4 &1453061478
