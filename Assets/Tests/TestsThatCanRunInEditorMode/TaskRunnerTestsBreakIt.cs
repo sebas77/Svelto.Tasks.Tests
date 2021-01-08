@@ -1,5 +1,5 @@
-#if later
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using UnityEngine.TestTools;
@@ -18,8 +18,8 @@ namespace Test
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new Enumerator(10000);
-            _iterable2 = new Enumerator(10000);
+            _iterable1 = new LeanEnumerator(10000);
+            _iterable2 = new LeanEnumerator(10000);
         }
 
         [UnityTest]
@@ -27,63 +27,62 @@ namespace Test
         {
             yield return Yield.It;
 
-            var severalTasksParent = SeveralTasksParent();
-            severalTasksParent.RunOn(new SyncRunner());
+            IEnumerator<TaskContract> severalTasksParent = SeveralTasksParent();
+            severalTasksParent.Complete();
 
             Assert.True(_iterable1.AllRight);
-            Assert.False(_iterable2.AllRight); 
-            Assert.AreEqual(severalTasksParent.Current, 10);
+            Assert.False(_iterable2.AllRight);
+            Assert.AreEqual(severalTasksParent.Current.ToInt(), 10);
         }
-        
+
         [UnityTest]
         public IEnumerator TestThatABreakItBreaksTheWholeExecution()
         {
             yield return Yield.It;
 
             var severalTasksParent = SeveralTasksParentBreak();
-            severalTasksParent.RunOn(new SyncRunner());
+            severalTasksParent.Complete();
 
             Assert.True(_iterable1.AllRight);
-            Assert.False(_iterable2.AllRight); 
-            Assert.AreNotEqual(severalTasksParent.Current, 10);
+            Assert.False(_iterable2.AllRight);
+            Assert.AreNotEqual(severalTasksParent.Current.ToInt(), 10);
         }
-        
-         IEnumerator<TaskContract> SeveralTasksParent()
+
+        IEnumerator<TaskContract> SeveralTasksParent()
         {
-            yield return SeveralTasks();
+            yield return SeveralTasks().Continue();
 
             yield return 10;
         }
-        
-         IEnumerator<TaskContract> SeveralTasks()
+
+        IEnumerator<TaskContract> SeveralTasks()
         {
-            yield return _iterable1;
+            yield return _iterable1.Continue();
 
             yield break;
 
 #pragma warning disable 162
-            yield return _iterable2;
+            yield return _iterable2.Continue();
 #pragma warning restore 162
         }
-        
-         IEnumerator<TaskContract> SeveralTasksParentBreak()
+
+        IEnumerator<TaskContract> SeveralTasksParentBreak()
         {
-            yield return SeveralTasksBreak();
+            yield return SeveralTasksBreak().Continue();
 
             yield return 10;
         }
-        
-         IEnumerator<TaskContract> SeveralTasksBreak()
+
+        IEnumerator<TaskContract> SeveralTasksBreak()
         {
-            yield return _iterable1;
+            yield return _iterable1.Continue();
 
             yield return Break.It;
 
-            yield return _iterable2;
+            yield return _iterable2.Continue();
         }
-        
-        Enumerator _iterable1;
-        Enumerator _iterable2;
+
+        LeanEnumerator _iterable1;
+        LeanEnumerator _iterable2;
     }
 }
-#endif

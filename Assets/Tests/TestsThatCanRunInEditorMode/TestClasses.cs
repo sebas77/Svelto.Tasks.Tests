@@ -44,12 +44,12 @@ namespace Test
         public object Current { get; private set; }
     }
 
-    class Enumerator : IEnumerator<TaskContract>
+    class LeanEnumerator : IEnumerator<TaskContract>
     {
         readonly int totalIterations;
         public   int iterations;
 
-        public Enumerator(int niterations)
+        public LeanEnumerator(int niterations)
         {
             iterations      = 0;
             totalIterations = niterations;

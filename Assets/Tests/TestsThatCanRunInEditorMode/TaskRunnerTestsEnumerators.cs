@@ -8,10 +8,9 @@ using Svelto.Tasks.Lean;
 using Svelto.Tasks.Lean.Unity;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
-using Is = UnityEngine.TestTools.Constraints.Is;
+using Is = NUnit.Framework.Is;
 
 #if !NETFX_CORE
-
 namespace Test
 {
     /// <summary>
@@ -25,7 +24,7 @@ namespace Test
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new Enumerator(10000);
+            _iterable1 = new LeanEnumerator(10000);
         }
         
         [UnityTest]
@@ -55,7 +54,7 @@ namespace Test
             //framework does not keep a reference
             using (var updateMonoRunner = new UpdateMonoRunner("update"))
             {
-                var cont = new Enumerator(1).RunOn(updateMonoRunner);
+                var cont = new LeanEnumerator(1).RunOn(updateMonoRunner);
                 
                 Assert.That(cont.isRunning, Is.True);
 
@@ -79,7 +78,7 @@ namespace Test
         {
             yield return Yield.It;
 
-            _iterable1.RunOn(new SyncRunner());
+            _iterable1.Complete();
 
             Assert.That(_iterable1.AllRight, Is.True);
         }
@@ -95,7 +94,7 @@ namespace Test
             yield return Yield.It;
 
             var subEnumerator = SubEnumerator(0, 10);
-            subEnumerator.RunOn(new SyncRunner());
+            subEnumerator.Complete();
 
             Assert.That(subEnumerator.Current.ToInt(), Is.EqualTo(10));
         }
@@ -110,7 +109,7 @@ namespace Test
         {
             yield return Yield.It;
 
-            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).RunOn(new SyncRunner());
+            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete();
         }
         
         /// <summary>
@@ -123,7 +122,7 @@ namespace Test
             yield return Yield.It;
 
             var multiThreadRunner = new MultiThreadRunner("test");
-            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).RunOn(new SyncRunner());
+            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete();
             multiThreadRunner.Dispose();
         }
 
@@ -139,7 +138,7 @@ namespace Test
             //you would normally write GameLoop().Run() to run on the standard scheduler, which changes
             //according the platfform (on Unity the standard scheduler is the CoroutineMonoRunner, which
             //cannot run during these tests)
-            GameLoop().RunOn(new SyncRunner(4000));
+            new SyncRunner(4000).ExecuteCoroutine(GameLoop());
             
             Assert.Pass();
         }
@@ -147,8 +146,25 @@ namespace Test
         [Test]
         public void StandardUseOfEnumerators2()
         {
+            /// <summary>
+            /// since in order to avoid allocations is needed to preallocate enumerators, the SmartFunctionEnumerator
+            /// can avoid some boilerplate 
+            /// </summary>
+            static IEnumerator<TaskContract> GameLoop2()
+            {
+                //initialization phase, for example you can precreate reusable enumerators or taskroutines
+                //to avoid runtime allocations
+                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
+
+                //start a loop, you can actually start multiple loops with different conditions so that
+                //you can wait for specific states to be valid before to start the real loop 
+                yield return smartFunctionEnumerator.Continue();
+                yield return smartFunctionEnumerator.Continue(); //it can be reused differently than a compiler generated iterator block
+                yield return smartFunctionEnumerator.value;
+            }
+            
             var gameLoop2 = GameLoop2();
-            gameLoop2.RunOn(new SyncRunner(4000));
+            new SyncRunner(4000).ExecuteCoroutine(gameLoop2);
             
             Assert.That(gameLoop2.Current.ToInt(), Is.EqualTo(2));
         }
@@ -197,23 +213,6 @@ namespace Test
             }
         }
 
-        /// <summary>
-        /// since in order to avoid allocations is needed to preallocate enumerators, the SmartFunctionEnumerator
-        /// can avoid some boilerplate 
-        /// </summary>
-        static IEnumerator<TaskContract> GameLoop2()
-        {
-            //initialization phase, for example you can precreate reusable enumerators or taskroutines
-            //to avoid runtime allocations
-            var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
-
-            //start a loop, you can actually start multiple loops with different conditions so that
-            //you can wait for specific states to be valid before to start the real loop 
-            yield return smartFunctionEnumerator.Continue();
-            yield return smartFunctionEnumerator.Continue(); //it can be reused differently than a compiler generated iterator block
-            yield return smartFunctionEnumerator.value;
-        }
-        
         /// <summary>
         /// it will be called until i >= 2
         /// </summary>
@@ -296,8 +295,7 @@ namespace Test
             yield return i; //careful it will be boxed;
         }
         
-        Enumerator        _iterable1;
+        LeanEnumerator        _iterable1;
     }
-
 }
 #endif
