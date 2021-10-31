@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
-using Svelto.Tasks.Lean.Unity;
 using UnityEngine.TestTools;
 using UnityEngine.TestTools.Constraints;
 using Is = NUnit.Framework.Is;
@@ -26,25 +26,26 @@ namespace Test
         {
             _iterable1 = new LeanEnumerator(10000);
         }
-        
+
         [UnityTest]
         public IEnumerator TestPooledTaskMemoryUsage()
         {
             IEnumerator<TaskContract> enumerator = new WaitForSecondsEnumerator(0.1f);
-            
+
             var runner = new MultiThreadRunner("test");
-            var RunOn = enumerator.RunOn(runner);
-            while ((RunOn).isRunning == true) yield return Yield.It;
-            
+            var RunOn  = enumerator.RunOn(runner);
+            while ((RunOn).isRunning == true)
+                yield return Yield.It;
+
             Assert.That(() =>
-                        {
-                            var continuationWrapper = enumerator.RunOn(runner);
-                            while ((continuationWrapper).isRunning == true);
-                        }, Is.Not.AllocatingGCMemory());
-            
+            {
+                var continuationWrapper = enumerator.RunOn(runner);
+                while ((continuationWrapper).isRunning == true) ;
+            }, Is.Not.AllocatingGCMemory());
+
             runner.Dispose();
         }
-        
+
         [UnityTest]
         public IEnumerator TestContinuatorSimple()
         {
@@ -52,10 +53,10 @@ namespace Test
 
             //careful, runners can be garbage collected if they are not referenced somewhere and the
             //framework does not keep a reference
-            using (var updateMonoRunner = new UpdateMonoRunner("update"))
+            using (var updateMonoRunner = new SteppableRunner("update"))
             {
                 var cont = new LeanEnumerator(1).RunOn(updateMonoRunner);
-                
+
                 Assert.That(cont.isRunning, Is.True);
 
                 updateMonoRunner.Step();
@@ -82,7 +83,7 @@ namespace Test
 
             Assert.That(_iterable1.AllRight, Is.True);
         }
-        
+
         /// <summary>
         /// basic way to run an Enumerator using a custom Runner.
         /// This will force an allocation per run as the Enumerator is created dynamically
@@ -94,11 +95,11 @@ namespace Test
             yield return Yield.It;
 
             var subEnumerator = SubEnumerator(0, 10);
-            subEnumerator.Complete();
+            subEnumerator.Complete(10000);
 
             Assert.That(subEnumerator.Current.ToInt(), Is.EqualTo(10));
         }
-        
+
         /// <summary>
         /// Svelto tasks allows to yield enumerators from inside other enumerators allowing more complex
         /// sequence of actions
@@ -111,7 +112,7 @@ namespace Test
 
             ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete();
         }
-        
+
         /// <summary>
         /// shows how simple is to concatenate parallel and serial sequence of naive enumerators
         /// </summary>
@@ -136,13 +137,13 @@ namespace Test
         public void StandardUseOfEnumerators()
         {
             //you would normally write GameLoop().Run() to run on the standard scheduler, which changes
-            //according the platfform (on Unity the standard scheduler is the CoroutineMonoRunner, which
+            //according the platform (on Unity the standard scheduler is the CoroutineMonoRunner, which
             //cannot run during these tests)
-            new SyncRunner(4000).ExecuteCoroutine(GameLoop());
-            
+            GameLoop().Complete();
+
             Assert.Pass();
         }
-        
+
         [Test]
         public void StandardUseOfEnumerators2()
         {
@@ -162,30 +163,75 @@ namespace Test
                 yield return smartFunctionEnumerator.Continue(); //it can be reused differently than a compiler generated iterator block
                 yield return smartFunctionEnumerator.value;
             }
-            
+
             var gameLoop2 = GameLoop2();
-            new SyncRunner(4000).ExecuteCoroutine(gameLoop2);
-            
+            gameLoop2.Complete(10000);
+
             Assert.That(gameLoop2.Current.ToInt(), Is.EqualTo(2));
         }
         
+        public class SerialSteppableRunner : SyncRunner
+        {
+            public SerialSteppableRunner(string name):base(name)
+            {
+                var modifier = new SerialFlow {runnerName = name};
+                
+                UseModifier(modifier);
+            }
+        }
+        class RefHolder
+        {
+            public uint value;
+        }        
+        
+        [Test]
+        public void SerialFlowModifierRunsTasksInSerial()
+        {
+            IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
+            {
+                Assert.That(value.value == testvalue);
+                
+                yield return Yield.It;
+                value.value++;
+                yield return Yield.It;
+                value.value++;
+                yield return Yield.It;
+                value.value++;
+                
+                Assert.That(value.value == testvalue + 3);
+            }
+
+            var                   refHolder = new RefHolder();
+            SerialSteppableRunner runner    = new SerialSteppableRunner("test");
+
+            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 6, 3)
+            TestEnum(refHolder, 0).RunOn(runner);
+            TestEnum(refHolder, 6).RunOn(runner);
+            TestEnum(refHolder, 3).RunOn(runner);
+            
+            runner.ForceComplete(1000);
+            
+            Assert.That(refHolder.value, Is.EqualTo(9));
+        }
+
         [UnityTest]
-        public IEnumerator TestEnumeratorStartingFromEnumeratorIndipendently()
+        public IEnumerator TestEnumeratorStartingFromEnumeratorIndependently()
         {
             yield return Yield.It;
 
             using (var runner = new MultiThreadRunner("test"))
             {
-                var continuator = NestedEnumerator(runner).RunOn(runner);
+                var continuation = NestedEnumerator(runner).RunOn(runner);
 
-                while ((continuator).isRunning) yield return Yield.It;
+                while ((continuation).isRunning)
+                    yield return Yield.It;
             }
         }
 
         static IEnumerator<TaskContract> NestedEnumerator(MultiThreadRunner runner)
         {
             yield return Yield.It;
-            
+
             new WaitForSecondsEnumerator(0.1f).RunOn(runner);
 
             yield return Yield.It;
@@ -196,20 +242,21 @@ namespace Test
             //initialization phase, for example you can precreate reusable enumerators or taskroutines
             //to avoid runtime allocations
             var reusableEnumerator = new WaitForSecondsEnumerator(1);
-            int i = 0;
+            int i                  = 0;
 
             //start a loop, you can actually start multiple loops with different conditions so that
             //you can wait for specific states to be valid before to start the real loop 
             while (true) //usually last as long as the application run
             {
-                if (i++ > 1) yield break;
-                
+                if (i++ > 1)
+                    yield break;
+
                 yield return reusableEnumerator.Continue();
-                
+
                 reusableEnumerator.Reset();
-                
+
                 yield return Yield.It; //yield one iteration, if you forget this, will enter in an infinite loop!
-                                   //it's not mandatory but there must be at least one yield in a loop
+                //it's not mandatory but there must be at least one yield in a loop
             }
         }
 
@@ -225,7 +272,7 @@ namespace Test
                 i++;
                 return true;
             }
-            
+
             return false;
         }
 
@@ -234,7 +281,7 @@ namespace Test
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-         IEnumerator<TaskContract> ComplexEnumerator(Action<int> callback)
+        IEnumerator<TaskContract> ComplexEnumerator(Action<int> callback)
         {
             int i = 0;
             int j = 0;
@@ -244,14 +291,14 @@ namespace Test
 
                 var enumerator = SubEnumerator(i, 10); //naive enumerator! it allocates
                 yield return enumerator.Continue(); //yield until is done 
-                enumerator = SubEnumerator((int) enumerator.Current.ToInt(), 10); //naive enumerator! it allocates
+                enumerator = SubEnumerator((int)enumerator.Current.ToInt(), 10); //naive enumerator! it allocates
                 yield return enumerator.Continue(); //yield until is done 
-                i = (int) enumerator.Current.ToInt(); //careful it will be unboxed
+                i = (int)enumerator.Current.ToInt(); //careful it will be unboxed
             }
 
             callback(i);
         }
-        
+
         /// <summary>
         /// very naive implementation, it's boxing and allocation madness. Just for testing purposes
         /// this give a first glimpse to the powerful concept of Svelto Tasks continuation (running
@@ -259,7 +306,7 @@ namespace Test
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-         IEnumerator<TaskContract> MoreComplexEnumerator(Action<int> callback, MultiThreadRunner runner)
+        IEnumerator<TaskContract> MoreComplexEnumerator(Action<int> callback, MultiThreadRunner runner)
         {
             int i = 0;
             {
@@ -284,7 +331,7 @@ namespace Test
             callback(i);
         }
 
-         IEnumerator<TaskContract> SubEnumerator(int i, int total)
+        IEnumerator<TaskContract> SubEnumerator(int i, int total)
         {
             int count = i + total;
             do
@@ -294,8 +341,8 @@ namespace Test
 
             yield return i; //careful it will be boxed;
         }
-        
-        LeanEnumerator        _iterable1;
+
+        LeanEnumerator _iterable1;
     }
 }
 #endif

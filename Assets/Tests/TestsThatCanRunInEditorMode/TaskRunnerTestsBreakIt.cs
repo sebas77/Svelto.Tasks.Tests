@@ -29,23 +29,36 @@ namespace Test
 
             IEnumerator<TaskContract> severalTasksParent = SeveralTasksParent();
             severalTasksParent.Complete();
-
+            
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
             Assert.AreEqual(severalTasksParent.Current.ToInt(), 10);
         }
 
         [UnityTest]
-        public IEnumerator TestThatABreakItBreaksTheWholeExecution()
+        public IEnumerator TestThatABreakAndStopBreaksTheWholeExecution()
         {
-            yield return Yield.It;
-
             var severalTasksParent = SeveralTasksParentBreak();
             severalTasksParent.Complete();
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
             Assert.AreNotEqual(severalTasksParent.Current.ToInt(), 10);
+
+            yield break;
+        }
+        
+        [UnityTest]
+        public IEnumerator TestThatABreakItBreaksTheCurrentExecution()
+        {
+            var severalTasksParent = SeveralTasksBreakIt();
+            severalTasksParent.Complete();
+
+            Assert.True(_iterable1.AllRight);
+            Assert.False(_iterable2.AllRight);
+            Assert.AreNotEqual(severalTasksParent.Current.ToInt(), 10);
+
+            yield break;
         }
 
         IEnumerator<TaskContract> SeveralTasksParent()
@@ -77,9 +90,18 @@ namespace Test
         {
             yield return _iterable1.Continue();
 
-            yield return Break.It;
+            yield return Break.AndStop;
 
             yield return _iterable2.Continue();
+        }
+        
+        IEnumerator<TaskContract> SeveralTasksBreakIt()
+        {
+            yield return _iterable1.Continue();
+
+            yield return Break.It;
+
+            yield return 10;
         }
 
         LeanEnumerator _iterable1;
