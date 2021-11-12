@@ -25,11 +25,12 @@ namespace Svelto.Tasks
         protected BaseRunner(string name, int size = NUMBER_OF_INITIAL_COROUTINE)
         {
             _name              = name;
+            _flushingOperation = new SveltoTaskRunner<T>.FlushingOperation();
             _newTaskRoutines   = new ThreadSafeQueue<T>(size);
             _runningCoroutines = new FasterList<T>(size);
             _spawnedCoroutines = new FasterList<T>(size);
 
-            UseModifier(new StandardFlow
+            UseFlowModifier(new StandardFlow
             {
                 runnerName = name
             });
@@ -113,7 +114,7 @@ namespace Svelto.Tasks
             GC.SuppressFinalize(this);
         }
 
-        protected void UseModifier<TFlowModifier>
+        protected void UseFlowModifier<TFlowModifier>
             (TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
             _processEnumerator =
@@ -121,13 +122,13 @@ namespace Svelto.Tasks
                                                              , modifier);
         }
 
-        IProcessSveltoTasks _processEnumerator;
+        protected IProcessSveltoTasks _processEnumerator;
 
         readonly ThreadSafeQueue<T> _newTaskRoutines;
         readonly FasterList<T>      _runningCoroutines;
         readonly FasterList<T>      _spawnedCoroutines;
 
-        readonly SveltoTaskRunner<T>.FlushingOperation _flushingOperation = new();
+        readonly SveltoTaskRunner<T>.FlushingOperation _flushingOperation;
 
         readonly string _name;
 

@@ -16,7 +16,7 @@ namespace Svelto.Tasks.Internal
 
             public Process
             (ThreadSafeQueue<T> newTaskRoutines, FasterList<T> coroutines, FasterList<T> spawnedCoroutines
-           , FlushingOperation flushingOperation, TFlowModifier info)
+              , FlushingOperation flushingOperation, TFlowModifier info)
             {
                 DBC.Tasks.Check.Require(coroutines != null, "coroutine array cannot be null");
                 DBC.Tasks.Check.Require(spawnedCoroutines != null, "spawnedCoroutines array cannot be null");
@@ -33,9 +33,9 @@ namespace Svelto.Tasks.Internal
                 where PlatformProfiler : IPlatformProfiler
             {
                 DBC.Tasks.Check.Require(_flushingOperation.paused == false || _flushingOperation.kill == false
-                                      , $"cannot be found in pause state if killing has been initiated {_info.runnerName}");
+                  , $"cannot be found in pause state if killing has been initiated {_info.runnerName}");
                 DBC.Tasks.Check.Require(_flushingOperation.kill == false || _flushingOperation.stopping == true
-                                      , $"if a runner is killed, must be stopped {_info.runnerName}");
+                  , $"if a runner is killed, must be stopped {_info.runnerName}");
 
                 if (_flushingOperation.flush)
                 {
@@ -78,7 +78,7 @@ namespace Svelto.Tasks.Internal
                 var coroutinesCount        = _coroutines.count;
                 var spawnedCoroutinesCount = _spawnedCoroutines.count;
 
-                if ((spawnedCoroutinesCount == 0 && coroutinesCount == 0)
+                if ((spawnedCoroutinesCount + coroutinesCount == 0)
                  || (_flushingOperation.paused == true && _flushingOperation.stopping == false))
                 {
                     return true;
@@ -91,18 +91,17 @@ namespace Svelto.Tasks.Internal
 
                 bool mustExit;
 
+                if (spawnedCoroutinesCount > 0)
                 {
-                    if (_spawnedCoroutines.count > 0)
+                    var spawnedCoroutines = _spawnedCoroutines;
+                    int index             = 0;
+
+                    do
                     {
-                        var spawnedCoroutines = _spawnedCoroutines;
-                        int index = 0;
+                        bool result;
 
-                        do
-                        {
-                            bool result;
-
-                            if (_flushingOperation.stopping)
-                                spawnedCoroutines[index].Stop();
+                        if (_flushingOperation.stopping)
+                            spawnedCoroutines[index].Stop();
 
 #if ENABLE_PLATFORM_PROFILER
                     using (platformProfiler.Sample(spawnedCoroutines[index].name))
@@ -111,22 +110,22 @@ namespace Svelto.Tasks.Internal
                         result =
                             Profiler.TaskProfiler.MonitorUpdateDuration(ref spawnedCoroutines[index], _info.runnerName);
 #else
-                            result = spawnedCoroutines[index].MoveNext();
+                        result = spawnedCoroutines[index].MoveNext();
 #endif
-                            if (result == false)
-                            {
-                                _spawnedCoroutines.UnorderedRemoveAt((uint)index);
+                        if (result == false)
+                        {
+                            _spawnedCoroutines.UnorderedRemoveAt((uint)index);
 
-                                spawnedCoroutinesCount--;
-                            }
-                            else
-                                index++;
+                            spawnedCoroutinesCount--;
+                        }
+                        else
+                            index++;
 
-                            mustExit = (spawnedCoroutinesCount == 0 || index >= spawnedCoroutinesCount);
-                        } while (!mustExit);
-                    }
+                        mustExit = (spawnedCoroutinesCount == 0 || index >= spawnedCoroutinesCount);
+                    } while (!mustExit);
                 }
                 
+                if (spawnedCoroutinesCount == 0)
                 {
                     int index = 0;
 
@@ -163,8 +162,8 @@ namespace Svelto.Tasks.Internal
                             index++;
 
                         mustExit = (coroutinesCount == 0
-                                 || _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount, !result)
-                                 == false || index >= coroutinesCount);
+                         || _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount, !result)
+                         == false || index >= coroutinesCount);
                     } while (!mustExit);
                 }
 

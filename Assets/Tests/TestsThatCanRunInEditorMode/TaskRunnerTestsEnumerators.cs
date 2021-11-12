@@ -176,20 +176,21 @@ namespace Test
             {
                 var modifier = new SerialFlow {runnerName = name};
                 
-                UseModifier(modifier);
+                UseFlowModifier(modifier);
             }
         }
         class RefHolder
         {
             public uint value;
-        }        
+        }   
+        
         
         [Test]
         public void SerialFlowModifierRunsTasksInSerial()
         {
             IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
             {
-                Assert.That(value.value == testvalue);
+                Assert.That(value.value, Is.EqualTo(testvalue));
                 
                 yield return Yield.It;
                 value.value++;
@@ -198,20 +199,31 @@ namespace Test
                 yield return Yield.It;
                 value.value++;
                 
-                Assert.That(value.value == testvalue + 3);
+                Assert.That(value.value, Is.EqualTo(testvalue + 3));
+            }
+            
+            IEnumerator<TaskContract> TestEnum2(RefHolder value, uint testvalue)
+            {
+                Assert.That(value.value, Is.EqualTo(testvalue));
+
+                yield return TestEnum(value, testvalue).Continue();
+                yield return TestEnum(value, testvalue + 3).Continue();
+                yield return TestEnum(value, testvalue + 6).Continue();
+                
+                Assert.That(value.value, Is.EqualTo(testvalue + 9));
             }
 
             var                   refHolder = new RefHolder();
             SerialSteppableRunner runner    = new SerialSteppableRunner("test");
 
-            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 6, 3)
-            TestEnum(refHolder, 0).RunOn(runner);
-            TestEnum(refHolder, 6).RunOn(runner);
-            TestEnum(refHolder, 3).RunOn(runner);
+            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 18, 9)
+            TestEnum2(refHolder, 0).RunOn(runner);
+            TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
+            TestEnum2(refHolder, 9).RunOn(runner);
             
-            runner.ForceComplete(1000);
+            runner.ForceComplete(10000);
             
-            Assert.That(refHolder.value, Is.EqualTo(9));
+            Assert.That(refHolder.value, Is.EqualTo(27));
         }
 
         [UnityTest]

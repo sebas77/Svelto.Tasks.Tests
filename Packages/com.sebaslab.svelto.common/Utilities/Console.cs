@@ -23,8 +23,9 @@ namespace Svelto
 
         static Console()
         {
-            _stringBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder(256));
-            _loggers       = new FasterList<ILogger>();
+            _stringBuilder = new ThreadLocal<StringBuilder>
+                (() => new StringBuilder(256));
+            _loggers        = new FasterList<ILogger>();
 
             AddLogger(new SimpleLogger());
         }
@@ -43,10 +44,7 @@ namespace Svelto
             log.OnLoggerAdded();
         }
 
-        public static void Log(string txt)
-        {
-            InternalLog(txt, LogType.Log);
-        }
+        public static void Log(string txt) { InternalLog(txt, LogType.Log); }
 
         public static void LogError(string txt, Dictionary<string, string> extraData = null)
         {
@@ -63,8 +61,8 @@ namespace Svelto
             InternalLog(toPrint, LogType.Error, null, extraData);
         }
 
-        public static void LogException
-            (Exception exception, string message = null, Dictionary<string, string> extraData = null)
+        public static void LogException(Exception exception, string message = null
+                                      , Dictionary<string, string> extraData = null)
         {
             if (extraData == null)
                 extraData = new Dictionary<string, string>();
@@ -110,28 +108,23 @@ namespace Svelto
         }
 
         [Conditional("DEBUG")]
-        public static void LogDebug(string txt)
-        {
-            InternalLog(txt, LogType.LogDebug);
-        }
+        public static void LogDebug(string txt) { InternalLog(txt, LogType.LogDebug); }
 
         [Conditional("DEBUG")]
         public static void LogDebug<T>(string txt, T extradebug)
         {
             InternalLog(txt.FastConcat(extradebug.ToString()), LogType.LogDebug);
         }
-
         [Conditional("DEBUG")]
         public static void LogDebugWarning(string txt)
         {
-            InternalLog(txt, LogType.Warning);
+            InternalLog(txt, LogType.Warning); 
         }
-
         [Conditional("DEBUG")]
         public static void LogDebugWarning(bool assertion, string txt)
         {
             if (assertion == false)
-                InternalLog(txt, LogType.Warning);
+                InternalLog(txt, LogType.Warning); 
         }
 
         /// <summary>
@@ -142,8 +135,8 @@ namespace Svelto
         /// <param name="type"></param>
         /// <param name="e"></param>
         /// <param name="extraData"></param>
-        static void InternalLog
-            (string txt, LogType type, Exception e = null, Dictionary<string, string> extraData = null)
+        static void InternalLog(string txt, LogType type, Exception e = null
+                              , Dictionary<string, string> extraData = null)
         {
             for (int i = 0; i < _loggers.count; i++)
             {

@@ -49,7 +49,7 @@ public static class TaskRunnerExtensions
         return new TaskContract(task);
     }
     
-    public static TaskContract Continue<T>(this T enumerator) where T:class, IEnumerator 
+    public static TaskContract Continue<T>(this T enumerator) where T:IEnumerator 
     {
         return new TaskContract(enumerator);
     }

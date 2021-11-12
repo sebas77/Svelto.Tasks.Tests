@@ -5,7 +5,7 @@ namespace Svelto.Tasks
 {
     namespace Lean
     {
-        public class SteppableRunner : BaseRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+        public class SteppableRunner : SteppableRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
             public SteppableRunner(string name) : base(name)
             { }
@@ -14,10 +14,16 @@ namespace Svelto.Tasks
 
     namespace ExtraLean
     {
-        public class SteppableRunner : BaseRunner<ExtraLeanSveltoTask<IEnumerator>>
+        public class SteppableRunner : SteppableRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
             public SteppableRunner(string name) : base(name)
             { }
         }
+    }
+    
+    public class SteppableRunner<T> : BaseRunner<T> where T : ISveltoTask
+    {
+        public SteppableRunner(string name) : base(name)
+        { }
     }
 }

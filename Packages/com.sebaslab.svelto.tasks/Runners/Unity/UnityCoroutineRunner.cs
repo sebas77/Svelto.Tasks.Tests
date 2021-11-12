@@ -6,15 +6,15 @@ using Object = UnityEngine.Object;
 
 namespace Svelto.Tasks.Unity.Internal
 {
-    class RunnerBehaviourUpdate : MonoBehaviour
+    class YieldInstructionRunnerBehaviourUpdate : MonoBehaviour
     {
     }
 
-    public static class UnityCoroutineRunner
+    static class UnityCoroutineRunner
     {
-        static RunnerBehaviourUpdate _runnerBehaviour;
+        static YieldInstructionRunnerBehaviourUpdate _runnerBehaviour;
 
-        static RunnerBehaviourUpdate runnerBehaviour
+        static YieldInstructionRunnerBehaviourUpdate runnerBehaviour
         {
             get
             {
@@ -24,7 +24,7 @@ namespace Svelto.Tasks.Unity.Internal
                     if (go != null)
                         Object.DestroyImmediate(go);
                     go = new GameObject("Svelto.Tasks.UnityScheduler");
-                    _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
+                    _runnerBehaviour = go.AddComponent<YieldInstructionRunnerBehaviourUpdate>();
 
                     Object.DontDestroyOnLoad(go);
                 }
