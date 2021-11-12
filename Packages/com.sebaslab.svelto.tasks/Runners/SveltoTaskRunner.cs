@@ -125,7 +125,7 @@ namespace Svelto.Tasks.Internal
                     } while (!mustExit);
                 }
                 
-                if (spawnedCoroutinesCount == 0)
+                //main coroutines
                 {
                     int index = 0;
 

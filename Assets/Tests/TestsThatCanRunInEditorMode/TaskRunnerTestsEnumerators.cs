@@ -145,6 +145,29 @@ namespace Test
         }
 
         [Test]
+        public void RunSeparateCoroutinesInParallelAndWaitForthem()
+        {
+            SyncRunner runner = new SyncRunner("test");
+            
+            IEnumerator<TaskContract> InitCompose()
+            {
+                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
+
+                var wait1 = smartFunctionEnumerator.RunOn(runner);
+                var wait2 = smartFunctionEnumerator.RunOn(runner);
+                var wait3 = smartFunctionEnumerator.RunOn(runner);
+                var wait4 = smartFunctionEnumerator.RunOn(runner);
+
+                while (wait1.isRunning == true || wait2.isRunning == true || wait3.isRunning == true
+                 || wait4.isRunning == true)
+                    yield return Yield.It;
+            }
+
+            InitCompose().RunOn(runner);
+            runner.ForceComplete(1000);
+        }
+
+        [Test]
         public void StandardUseOfEnumerators2()
         {
             /// <summary>
