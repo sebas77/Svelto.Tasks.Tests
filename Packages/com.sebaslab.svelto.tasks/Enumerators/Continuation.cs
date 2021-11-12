@@ -6,30 +6,30 @@ namespace Svelto.Tasks.Enumerators
     public readonly struct Continuation
     {
         internal readonly ContinuationEnumeratorInternal ce;
-#if DEBUG && !PROFILE_SVELTO        
-        internal readonly          IRunner                        _runner;
-#endif        
+#if DEBUG && !PROFILE_SVELTO
+        internal readonly WeakReference<IRunner> _runner;
+#endif
 
-        internal Continuation(ContinuationEnumeratorInternal continuator):this()
+        internal Continuation(ContinuationEnumeratorInternal continuator) : this()
         {
             _signature = continuator.signature;
-            ce = continuator;
+            ce         = continuator;
         }
-        
+
 #if DEBUG && !PROFILE_SVELTO
         internal Continuation(ContinuationEnumeratorInternal continuator, IRunner runner)
         {
-            _signature   = continuator.signature;
-            ce           = continuator;
-            _runner = runner;
+            _signature = continuator.signature;
+            ce         = continuator;
+            _runner    = new WeakReference<IRunner>(runner);
         }
-#endif        
+#endif
 
         public bool isRunning => ce.MoveNext(_signature);
 
-        readonly        DateTime _signature;
+        readonly DateTime _signature;
     }
-    
+
     /// <summary>
     /// The Continuation Wrapper contains a valid value until the task is not stopped. After that it should be released. 
     /// </summary>
@@ -39,7 +39,7 @@ namespace Svelto.Tasks.Enumerators
         {
             signature = DateTime.Now;
         }
-        
+
         public bool MoveNext(in DateTime signature)
         {
             return signature == this.signature;
@@ -55,7 +55,7 @@ namespace Svelto.Tasks.Enumerators
             //task is done. But how can I know how long a runner is going to hold the continuation enumerator for?
             //therefore the "signature" will invalidate stale holders and therefore it's safe here to set
             //_completed to false
-            
+
             ContinuationPool.PushBack(this); //and return to the pool
         }
 
@@ -63,7 +63,7 @@ namespace Svelto.Tasks.Enumerators
         {
             signature = DateTime.Now; //invalidate ContinuationEnumerator holding this object            
         }
-        
+
         ~ContinuationEnumeratorInternal()
         {
             ReturnToPool();

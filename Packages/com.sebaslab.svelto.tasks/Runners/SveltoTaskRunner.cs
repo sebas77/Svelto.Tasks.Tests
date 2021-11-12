@@ -114,7 +114,6 @@ namespace Svelto.Tasks.Internal
 #else
 
                             result = spawnedCoroutines[index].MoveNext();
-                        
 #endif
                         }
                         catch
@@ -138,7 +137,7 @@ namespace Svelto.Tasks.Internal
                     } while (!mustExit);
                 }
 
-                //main coroutines
+                if (coroutinesCount > 0)
                 {
                     int index = 0;
 
