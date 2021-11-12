@@ -72,7 +72,7 @@ namespace Svelto.Tasks.Lean
             _current = task.Current;
             
             DBC.Tasks.Check.Ensure(_current.continuation?._runner != _taskContinuation._runner,
-                "Cannot yield a new task running on the same runner of the spawning task, use Continue() instead");
+                $"Cannot yield a new task running on the same runner of the spawning task, use Continue() instead {_current}");
 
             if (_current.yieldIt == true)
                 return true;

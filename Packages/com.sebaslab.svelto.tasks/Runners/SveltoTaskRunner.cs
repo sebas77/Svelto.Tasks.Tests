@@ -103,15 +103,28 @@ namespace Svelto.Tasks.Internal
                         if (_flushingOperation.stopping)
                             spawnedCoroutines[index].Stop();
 
+                        try
+                        {
 #if ENABLE_PLATFORM_PROFILER
-                    using (platformProfiler.Sample(spawnedCoroutines[index].name))
+                            using (platformProfiler.Sample(spawnedCoroutines[index].name))
 #endif
 #if TASKS_PROFILER_ENABLED
-                        result =
-                            Profiler.TaskProfiler.MonitorUpdateDuration(ref spawnedCoroutines[index], _info.runnerName);
+                            result =
+                                Profiler.TaskProfiler.MonitorUpdateDuration(ref spawnedCoroutines[index], _info.runnerName);
 #else
-                        result = spawnedCoroutines[index].MoveNext();
+
+                            result = spawnedCoroutines[index].MoveNext();
+                        
 #endif
+                        }
+                        catch
+                        {
+                            Svelto.Console.LogError(
+                                $"catching exception for spawned task {spawnedCoroutines[index].name}");
+
+                            throw;
+                        }
+                        
                         if (result == false)
                         {
                             _spawnedCoroutines.UnorderedRemoveAt((uint)index);
@@ -124,7 +137,7 @@ namespace Svelto.Tasks.Internal
                         mustExit = (spawnedCoroutinesCount == 0 || index >= spawnedCoroutinesCount);
                     } while (!mustExit);
                 }
-                
+
                 //main coroutines
                 {
                     int index = 0;
@@ -141,15 +154,26 @@ namespace Svelto.Tasks.Internal
                         if (_flushingOperation.stopping)
                             coroutines[index].Stop();
 
+                        try
+                        {
 #if ENABLE_PLATFORM_PROFILER
-                    using (platformProfiler.Sample(coroutines[index].name))
+                            using (platformProfiler.Sample(coroutines[index].name))
 #endif
+                    
 #if TASKS_PROFILER_ENABLED
-                        result =
-                            Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName);
+                            result =
+                                Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName);
 #else
-                        result = coroutines[index].MoveNext();
+                            result = coroutines[index].MoveNext();
 #endif
+                        }
+                        catch
+                        {
+                            Svelto.Console.LogError($"catching exception for root task {coroutines[index].name}");
+
+                            throw;
+                        }
+
                         int previousIndex = index;
 
                         if (result == false)
