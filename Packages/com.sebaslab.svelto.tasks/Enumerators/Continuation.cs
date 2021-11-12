@@ -6,16 +6,28 @@ namespace Svelto.Tasks.Enumerators
     public readonly struct Continuation
     {
         internal readonly ContinuationEnumeratorInternal ce;
-        
-        internal Continuation(ContinuationEnumeratorInternal continuator)
+#if DEBUG && !PROFILE_SVELTO        
+        internal readonly          IRunner                        _runner;
+#endif        
+
+        internal Continuation(ContinuationEnumeratorInternal continuator):this()
         {
             _signature = continuator.signature;
             ce = continuator;
         }
+        
+#if DEBUG && !PROFILE_SVELTO
+        internal Continuation(ContinuationEnumeratorInternal continuator, IRunner runner)
+        {
+            _signature   = continuator.signature;
+            ce           = continuator;
+            _runner = runner;
+        }
+#endif        
 
         public bool isRunning => ce.MoveNext(_signature);
 
-        readonly DateTime _signature;
+        readonly        DateTime _signature;
     }
     
     /// <summary>

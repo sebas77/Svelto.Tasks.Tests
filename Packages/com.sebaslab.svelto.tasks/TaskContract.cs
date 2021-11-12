@@ -140,7 +140,7 @@ namespace Svelto.Tasks
         internal IEnumerator enumerator => _currentState == States.leanEnumerator || 
             _currentState == States.extraLeanEnumerator ? (IEnumerator) _returnObjects.reference : null;
 
-        internal Continuation? Continuation
+        internal Continuation? continuation
         {
             get
             {

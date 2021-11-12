@@ -26,7 +26,11 @@ namespace Svelto.Tasks.Lean
 #endif
 
                 using (profiler.Sample("fetch enumerator"))
+#if DEBUG && !PROFILE_SVELTO                    
+                    _continuation = new Continuation(ContinuationPool.RetrieveFromPool(), runner);
+#else                
                     _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
+#endif                
                 
                 _threadSafeSveltoTaskStates.started = true;
 
@@ -52,7 +56,11 @@ namespace Svelto.Tasks.Lean
 #endif
 
                 using (profiler.Sample("fetch enumerator"))
+#if DEBUG && !PROFILE_SVELTO                    
+                    _continuation = new Continuation(ContinuationPool.RetrieveFromPool(), runner);
+#else                
                     _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
+#endif   
                 
                 _threadSafeSveltoTaskStates.started = true;
 

@@ -13,10 +13,12 @@ namespace Svelto.Tasks.Lean
 
         public bool MoveNext()
         {
-            if (_current.Continuation != null)
+            //This task cannot continue until the spawned task is not finished.
+            //"continuation" signals that a spawned task is still running so this task cannot continue
+            if (_current.continuation != null)
             {
                 //a task is waiting to be completed, spin this one
-                if (_current.Continuation.Value.isRunning == true)
+                if (_current.continuation.Value.isRunning == true)
                     return true;
 
                 //this is a continued task
@@ -31,11 +33,14 @@ namespace Svelto.Tasks.Lean
                 }
             }
             
+            //this means that the previous MoveNext returned an enumerator, it may be a continuation case
             if (_current.enumerator != null)
             {
+                //Handle the Continue() case, the new task must "continue" using the current runner
                 if (_current.isTaskEnumerator)
                 {
                     //a new TaskContract is created, holding the continuationEnumerator of the new task
+                    //it must be added in the runner as "spawned" task and must run separately from this task
                     //TODO Optimize this:
                     _taskContinuation._continuingTask = (IEnumerator<TaskContract>) _current.enumerator;
                     TTask continuingTask = ((TTask) _taskContinuation._continuingTask);
@@ -52,6 +57,8 @@ namespace Svelto.Tasks.Lean
                     return true;
                 }
 
+                //if the returned enumerator is NOT a taskcontract one, the continuing task cannot spawn new tasks,
+                //so we can simply iterate it here until is done.
                 if (_current.enumerator.MoveNext() == true)
                     return true;
 
@@ -63,6 +70,9 @@ namespace Svelto.Tasks.Lean
                 return false;
 
             _current = task.Current;
+            
+            DBC.Tasks.Check.Ensure(_current.continuation?._runner != _taskContinuation._runner,
+                "Cannot yield a new task running on the same runner of the spawning task, use Continue() instead");
 
             if (_current.yieldIt == true)
                 return true;

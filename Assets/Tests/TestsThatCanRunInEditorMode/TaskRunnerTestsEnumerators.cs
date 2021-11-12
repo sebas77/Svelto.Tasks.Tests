@@ -145,6 +145,22 @@ namespace Test
         }
 
         [Test]
+        public void YieldingARootTaskOnTheSameRunnerThrowsException()
+        {
+            SyncRunner runner = new SyncRunner("test");
+            
+            IEnumerator<TaskContract> InitCompose()
+            {
+                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
+
+                yield return smartFunctionEnumerator.RunOn(runner);
+            }
+
+            InitCompose().RunOn(runner);
+            runner.ForceComplete(1000);
+        }
+
+        [Test]
         public void RunSeparateCoroutinesInParallelAndWaitForthem()
         {
             SyncRunner runner = new SyncRunner("test");

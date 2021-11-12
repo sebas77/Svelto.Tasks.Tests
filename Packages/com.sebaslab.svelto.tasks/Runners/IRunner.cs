@@ -23,7 +23,7 @@ namespace Svelto.Tasks
         uint numberOfProcessingTasks { get; }
     }
 
-    public interface IRunner<T> where T:ISveltoTask
+    public interface IRunner<T>: IRunner where T:ISveltoTask
     {
         void StartTask(in T task);
         void SpawnContinuingTask(in T task);
