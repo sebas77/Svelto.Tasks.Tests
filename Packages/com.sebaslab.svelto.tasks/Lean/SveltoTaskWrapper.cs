@@ -13,7 +13,7 @@ namespace Svelto.Tasks.Lean
 
         public bool MoveNext()
         {
-            #region ALL_CODE_THAT_RUNS_INSTEAD_OF_task_MoveNext 
+            #region ALL_CODE_THAT_RUNS_INSTEAD_OF_task_MoveNext
             //This task cannot continue until the spawned task is not finished.
             //"continuation" signals that a spawned task is still running so this task cannot continue
             if (_current.continuation != null)
@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Lean
                         return false;
                 }
             }
-            
+
             //this means that the previous MoveNext returned an enumerator, it may be a continuation case
             if (_current.enumerator != null)
             {
@@ -43,30 +43,31 @@ namespace Svelto.Tasks.Lean
                     //so we can simply iterate it here until is done. This MUST run instead of the normal task.MoveNext()
                     if (_current.enumerator.MoveNext() == true)
                         return true;
-                    
+
                     _current = new TaskContract(); //end of the enumerator, reset TaskContract?
                 }
             }
             #endregion
-            
+
             //continue the normal execution of this task
             if (task.MoveNext() == false)
                 return false;
 
             _current = task.Current;
-            
+#if DEBUG && !PROFILE_SVELTO
             DBC.Tasks.Check.Ensure(_current.continuation?._runner != _taskContinuation._runner,
                 $"Cannot yield a new task running on the same runner of the spawning task, use Continue() instead {_current}");
+#endif
 
             if (_current.yieldIt == true)
                 return true;
 
             if (_current.breakIt == Break.It || _current.breakIt == Break.AndStop || _current.hasValue == true)
                 return false;
-            
+
             //this means that the previous MoveNext returned an enumerator, it may be a continuation case
             if (_current.enumerator != null)
-            { 
+            {
                 //Handle the Continue() case, the new task must "continue" using the current runner
                 //the current task will continue waiting for the new spawned task through the continuation
                 if (_current.isTaskEnumerator)
@@ -81,9 +82,10 @@ namespace Svelto.Tasks.Lean
 
                     //to remember, why isRunnering could be false?
                     DBC.Tasks.Check.Assert(continuation.isRunning == true, "why is it false? Update comment");
-                    
-                    _current = continuation.isRunning == true ? 
-                        new TaskContract(continuation) : 
+
+                    // TODO: THIS breaks.
+                    _current = continuation.isRunning == true ?
+                        new TaskContract(continuation) :
                         new TaskContract(); //end of the enumerator, reset TaskContract?
                 }
             }

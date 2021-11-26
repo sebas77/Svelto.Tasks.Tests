@@ -114,7 +114,7 @@ namespace Svelto.Tasks.Internal
 #else
 
                             result = spawnedCoroutines[index].MoveNext();
-#endif
+                        #endif
                         }
                         catch
                         {
@@ -123,7 +123,7 @@ namespace Svelto.Tasks.Internal
 
                             throw;
                         }
-                        
+
                         if (result == false)
                         {
                             _spawnedCoroutines.UnorderedRemoveAt((uint)index);
@@ -158,7 +158,7 @@ namespace Svelto.Tasks.Internal
 #if ENABLE_PLATFORM_PROFILER
                             using (platformProfiler.Sample(coroutines[index].name))
 #endif
-                    
+
 #if TASKS_PROFILER_ENABLED
                             result =
                                 Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName);
