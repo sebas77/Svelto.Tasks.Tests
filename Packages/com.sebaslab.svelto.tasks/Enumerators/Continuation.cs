@@ -10,17 +10,17 @@ namespace Svelto.Tasks.Enumerators
         internal readonly WeakReference<IRunner> _runner;
 #endif
 
-        internal Continuation(ContinuationEnumeratorInternal continuator) : this()
+        internal Continuation(ContinuationEnumeratorInternal continuation) : this()
         {
-            _signature = continuator.signature;
-            ce         = continuator;
+            _signature = continuation.signature;
+            ce         = continuation;
         }
 
 #if DEBUG && !PROFILE_SVELTO
-        internal Continuation(ContinuationEnumeratorInternal continuator, IRunner runner)
+        internal Continuation(ContinuationEnumeratorInternal continuation, IRunner runner)
         {
-            _signature = continuator.signature;
-            ce         = continuator;
+            _signature = continuation.signature;
+            ce         = continuation;
             _runner    = new WeakReference<IRunner>(runner);
         }
 #endif
