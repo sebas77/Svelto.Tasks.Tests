@@ -2,12 +2,6 @@ using System;
 
 namespace Svelto.Tasks
 {
-    interface ISteppableRunner: IRunner
-    {
-        void Step();
-        bool hasTasks { get; }
-    }
-    
     public interface IRunner: IDisposable
     {
         bool isStopping { get; }
@@ -18,14 +12,20 @@ namespace Svelto.Tasks
         void Stop();
         void Flush();
 
-        uint numberOfRunningTasks { get; }
-        uint numberOfQueuedTasks  { get; }
+        uint numberOfRunningTasks    { get; }
+        uint numberOfQueuedTasks     { get; }
         uint numberOfProcessingTasks { get; }
     }
-
+    
+    interface ISteppableRunner: IRunner
+    {
+        void Step();
+        bool hasTasks { get; }
+    }
+    
     public interface IRunner<T>: IRunner where T:ISveltoTask
     {
-        void StartTask(in T task);
-        void SpawnContinuingTask(in T task);
+        void  StartTask(in T task);
+        ref T SpawnContinuingTask(T task);
     }
 }

@@ -231,8 +231,15 @@ namespace Svelto.Common
                 var sizeOf        = SizeOf<T>();
                 var sizeOfInBytes = (uint) (sizeOf * count);
                 //this uses System.Runtime.RuntimeImports::Memmove which is safe if memory overlaps
-                Buffer.MemoryCopy((void*) (source + (int) destinationStartIndex * sizeOf)
-                  , (void*) (source + (int) sourceStartIndex * sizeOf), sizeOfInBytes, sizeOfInBytes);
+                /*
+                 *  public static void MemoryCopy(
+                        void* source,
+                        void* destination,
+                        long destinationSizeInBytes,
+                        long sourceBytesToCopy);
+                 */
+                Buffer.MemoryCopy((void*) (source + (int) sourceStartIndex * sizeOf)
+                  , (void*) (source + (int) destinationStartIndex * sizeOf), sizeOfInBytes, sizeOfInBytes);
             }
         }
 
@@ -248,6 +255,9 @@ namespace Svelto.Common
                 var sizeOf        = SizeOf<T>();
                 var sizeOfInBytes = (uint) (sizeOf * count);
                 //issues cpblk that assumes that both the source and destination addressed are aligned to the natural size of the machine.
+                /*
+                 * public static unsafe void CopyBlock(void* destination, void* source, uint byteCount)
+                 * */
                 Unsafe.CopyBlock(Unsafe.Add<T>((void*)destination, ((int) destinationStartIndex)),
                     Unsafe.Add<T>((void*)source, ((int) sourceStartIndex)), sizeOfInBytes);
             }           

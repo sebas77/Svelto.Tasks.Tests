@@ -23,7 +23,7 @@ namespace Svelto.Utilities
 
             StringBuilder ValueFactory() => new StringBuilder();
 
-            _stringBuilder = new ThreadLocal<StringBuilder>(ValueFactory);
+            stringBuilder = new ThreadLocal<StringBuilder>(ValueFactory);
 
             Console.SetLogger(new SlowUnityLogger());
         }
@@ -161,35 +161,39 @@ namespace Svelto.Utilities
         /// <returns></returns>
         string ExtractFormattedStackTrace(StackTrace stackTrace)
         {
-            _stringBuilder.Value.Length = 0;
+            var builder = _stringBuilder;
+            
+            builder.Length = 0;
 
             var frame = new StackTrace(4, true);
 
             for (var index1 = 0; index1 < stackTrace.FrameCount; ++index1)
             {
-                FormatStack(stackTrace, index1, _stringBuilder.Value);
+                FormatStack(stackTrace, index1, builder);
             }
 
             for (var index1 = 0; index1 < frame.FrameCount; ++index1)
             {
-                FormatStack(frame, index1, _stringBuilder.Value);
+                FormatStack(frame, index1, builder);
             }
 
-            return _stringBuilder.ToString();
+            return builder.ToString();
         }
 
         string ExtractFormattedStackTrace()
         {
-            _stringBuilder.Value.Length = 0;
+            var builder = _stringBuilder;
+            
+            builder.Length = 0;
 
             var frame = new StackTrace(4, true);
 
             for (var index1 = 0; index1 < frame.FrameCount; ++index1)
             {
-                FormatStack(frame, index1, _stringBuilder.Value);
+                FormatStack(frame, index1, builder);
             }
 
-            return _stringBuilder.ToString();
+            return builder.ToString();
         }
 
         void FormatStack(StackTrace stackTrace, int iIndex, StringBuilder sb)
@@ -270,8 +274,23 @@ namespace Svelto.Utilities
 
             sb.Append("\n");
         }
+        
+        static StringBuilder _stringBuilder
+        {
+            get
+            {
+                try
+                {
+                    return stringBuilder.Value;
+                }
+                catch
+                {
+                    return new StringBuilder(); //this is just to handle finalizer that could be called after the _threadSafeStrings is finalized. So pretty rare
+                }
+            }
+        }
 
-        static ThreadLocal<StringBuilder> _stringBuilder;
+        static ThreadLocal<StringBuilder> stringBuilder;
 
         static string projectFolder;
         static int    MAINTHREADID;

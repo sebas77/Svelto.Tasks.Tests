@@ -21,18 +21,26 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator<TaskContract>>
         {
             public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks) { }
+                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
-            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs) { }
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
         }
 
         public class MultiThreadRunner<T> : Svelto.Tasks.MultiThreadRunner<LeanSveltoTask<T>>
             where T : IEnumerator<TaskContract>
         {
             public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks) { }
+                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
-            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs) { }
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
         }
     }
 
@@ -41,17 +49,25 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator>
         {
             public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks) { }
+                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
-            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs) { }
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
         }
 
         public class MultiThreadRunner<T> : Svelto.Tasks.MultiThreadRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
         {
             public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks) { }
+                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
-            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs) { }
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
         }
     }
 
@@ -59,10 +75,14 @@ namespace Svelto.Tasks
     {
         public MultiThreadRunner
             (string name, bool relaxed = false, bool tightTasks = false) : base(
-            name, new StandardFlow(), relaxed, tightTasks) { }
+            name, new StandardFlow(), relaxed, tightTasks)
+        {
+        }
 
         public MultiThreadRunner
-            (string name, float intervalInMs) : base(name, new StandardFlow(), intervalInMs) { }
+            (string name, float intervalInMs) : base(name, new StandardFlow(), intervalInMs)
+        {
+        }
     }
 
     /// <summary>
@@ -71,7 +91,7 @@ namespace Svelto.Tasks
     /// </summary>
     /// <typeparam name="TTask"></typeparam>
     /// <typeparam name="TFlowModifier"></typeparam>
-    public class MultiThreadRunner<TTask, TFlowModifier> : IRunner, IRunner<TTask> where TTask : ISveltoTask
+    public class MultiThreadRunner<TTask, TFlowModifier> : IRunner<TTask> where TTask : ISveltoTask
         where TFlowModifier : IFlowModifier
     {
         /// <summary>
@@ -103,7 +123,7 @@ namespace Svelto.Tasks
         ~MultiThreadRunner()
         {
             Console.LogWarning("MultiThreadRunner has been garbage collected, this could have serious"
-                             + "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
+              + "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
 
             Dispose();
         }
@@ -117,10 +137,20 @@ namespace Svelto.Tasks
         public uint numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.count;
         public bool hasTasks                => numberOfProcessingTasks != 0;
 
-        public override string ToString() { return _runnerData.name; }
+        public override string ToString()
+        {
+            return _runnerData.name;
+        }
 
-        public void Pause()  { _runnerData.isPaused = true; }
-        public void Resume() { _runnerData.isPaused = false; }
+        public void Pause()
+        {
+            _runnerData.isPaused = true;
+        }
+
+        public void Resume()
+        {
+            _runnerData.isPaused = false;
+        }
 
         public void Flush()
         {
@@ -143,14 +173,22 @@ namespace Svelto.Tasks
             _runnerData.newTaskRoutines.Enqueue(task);
             _runnerData.UnlockThread();
         }
-        
-        public void SpawnContinuingTask(in TTask task)
+
+        public ref TTask SpawnContinuingTask(TTask task)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ref TTask SpawnContinuingTask(in TTask task)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
 
-            _runnerData.newTaskRoutines.Enqueue(task);
+            var runnerDataSpawnedCoroutines = _runnerData.spawnedCoroutines;
+            runnerDataSpawnedCoroutines.Add(task);
             _runnerData.UnlockThread();
+            
+            return ref runnerDataSpawnedCoroutines[runnerDataSpawnedCoroutines.count - 1];
         }
 
         public void Stop()
@@ -201,15 +239,16 @@ namespace Svelto.Tasks
                 _mevent              = new ManualResetEventSlim();
                 _watch               = new Stopwatch();
                 _coroutines          = new FasterList<TTask>();
-                _spawnedCoroutines   = new FasterList<TTask>();
+                spawnedCoroutines    = new FasterList<TTask>();
                 newTaskRoutines      = new ThreadSafeQueue<TTask>();
-                _interval            = (long) (interval * 10000);
+                _interval            = (long)(interval * 10000);
                 this.name            = name;
                 _isRunningTightTasks = isRunningTightTasks;
                 _flushingOperation   = new SveltoTaskRunner<TTask>.FlushingOperation();
                 modifier.runnerName  = name;
+                
                 _process = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(
-                    newTaskRoutines, _coroutines, _spawnedCoroutines, _flushingOperation, modifier);
+                    newTaskRoutines, _coroutines, spawnedCoroutines, _flushingOperation, modifier);
 
                 if (relaxed)
                     _lockingMechanism = RelaxedLockingMechanism;
@@ -223,7 +262,7 @@ namespace Svelto.Tasks
                 {
                     Interlocked.MemoryBarrier();
 
-                    return (uint) _coroutines.count;
+                    return (uint)_coroutines.count;
                 }
             }
 
@@ -237,7 +276,7 @@ namespace Svelto.Tasks
             internal void StopAndFlush()
             {
                 _flushingOperation.StopAndFlush();
-                
+
                 //unlocking thread as otherwise the stopping flag will never be reset
                 UnlockThread();
             }
@@ -245,7 +284,7 @@ namespace Svelto.Tasks
             internal void Kill(Action onThreadKilled)
             {
                 _flushingOperation.Kill(name);
-                
+
                 if (_mevent != null) //already disposed
                 {
                     _onThreadKilled = onThreadKilled;
@@ -313,9 +352,9 @@ namespace Svelto.Tasks
                     catch
                     {
                         Kill(null);
-                        
+
                         //the process must always complete naturally, otherwise the continuators won't be released.
-                        while (_process.MoveNext(profiler) == true);
+                        while (_process.MoveNext(profiler) == true) ;
 
                         throw;
                     }
@@ -346,7 +385,7 @@ namespace Svelto.Tasks
                 }
             }
 
-            internal bool waitForStop    => _flushingOperation.stopping;
+            internal bool waitForStop => _flushingOperation.stopping;
 
             /// <summary>
             /// More reacting pause/resuming system. It spins for a while before reverting to the relaxing locking 
@@ -402,17 +441,17 @@ namespace Svelto.Tasks
             internal readonly ThreadSafeQueue<TTask> newTaskRoutines;
             internal readonly string                 name;
 
-            readonly FasterList<TTask> _coroutines;
-            readonly FasterList<TTask>  _spawnedCoroutines;
-            readonly long              _interval;
-            readonly bool              _isRunningTightTasks;
-            readonly Action            _lockingMechanism;
+            readonly          FasterList<TTask> _coroutines;
+            internal readonly FasterList<TTask> spawnedCoroutines;
+            readonly          long              _interval;
+            readonly          bool              _isRunningTightTasks;
+            readonly          Action            _lockingMechanism;
 
-            ManualResetEventSlim       _mevent;
-            Action                     _onThreadKilled;
-            Stopwatch                  _watch;
-            int                        _interlock;
-            int                        _yieldingCount;
+            ManualResetEventSlim _mevent;
+            Action               _onThreadKilled;
+            Stopwatch            _watch;
+            int                  _interlock;
+            int                  _yieldingCount;
 
             readonly SveltoTaskRunner<TTask>.FlushingOperation _flushingOperation;
 
@@ -424,6 +463,8 @@ namespace Svelto.Tasks
 
     public class MultiThreadRunnerException : Exception
     {
-        public MultiThreadRunnerException(string message) : base(message) { }
+        public MultiThreadRunnerException(string message) : base(message)
+        {
+        }
     }
 }

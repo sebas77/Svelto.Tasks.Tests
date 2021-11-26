@@ -83,7 +83,9 @@ namespace Svelto.Tasks.Profiler
             {
                 int count = 0;
 
-                foreach (var runner in taskInfos) count += runner.Value.count;
+                foreach (KeyValuePairFast<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>,
+                    ManagedStrategy<FasterDictionary<RefWrapper<string>, TaskInfo>>> runner in taskInfos)
+                    count += runner.value.count;
 
                 if (infos == null || infos.Length != count)
                     infos = new TaskInfo[count];
@@ -92,8 +94,8 @@ namespace Svelto.Tasks.Profiler
 
                 foreach (var runner in taskInfos)
                 {
-                    runner.Value.CopyValuesTo(infos, (uint) count);
-                    count += runner.Value.count;
+                    runner.value.CopyValuesTo(infos, (uint) count);
+                    count += runner.value.count;
                 }
             }
         }

@@ -17,7 +17,7 @@ namespace Svelto.Tasks.Lean
             using (var profiler = new PlatformProfiler("LeanSveltoTask.Run"))
             {
                 using (profiler.Sample("create task"))
-                    _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(ref task, runner);
+                    _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(task, runner);
 
 #if DEBUG && !PROFILE_SVELTO
                 DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null
@@ -41,13 +41,13 @@ namespace Svelto.Tasks.Lean
             }
         }
         
-        internal Continuation SpawnContinuingTask<TRunner>(TRunner runner, ref TTask task)
+        internal ref SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>> SpawnContinuingTask<TRunner>(TRunner runner, in TTask task)
             where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             using (var profiler = new PlatformProfiler("LeanSveltoTask.Run"))
             {
                 using (profiler.Sample("create task"))
-                    _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(ref task, runner);
+                    _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(in task, runner);
 
 #if DEBUG && !PROFILE_SVELTO
                 DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null
@@ -64,10 +64,7 @@ namespace Svelto.Tasks.Lean
                 
                 _threadSafeSveltoTaskStates.started = true;
 
-                using (profiler.Sample("StartCoroutine"))
-                    runner.SpawnContinuingTask(this);
-
-                return _continuation;
+                return ref runner.SpawnContinuingTask(this)._sveltoTask;
             }
         }
 
