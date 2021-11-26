@@ -174,12 +174,7 @@ namespace Svelto.Tasks
             _runnerData.UnlockThread();
         }
 
-        public ref TTask SpawnContinuingTask(TTask task)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ref TTask SpawnContinuingTask(in TTask task)
+        public void SpawnContinuingTask(TTask task)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -187,8 +182,6 @@ namespace Svelto.Tasks
             var runnerDataSpawnedCoroutines = _runnerData.spawnedCoroutines;
             runnerDataSpawnedCoroutines.Add(task);
             _runnerData.UnlockThread();
-            
-            return ref runnerDataSpawnedCoroutines[runnerDataSpawnedCoroutines.count - 1];
         }
 
         public void Stop()

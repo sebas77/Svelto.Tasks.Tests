@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Svelto.Tasks.Enumerators;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Lean
 {
@@ -7,8 +9,8 @@ namespace Svelto.Tasks.Lean
     {
         public SveltoTaskWrapper(in TTask task, TRunner runner) : this()
         {
-            _taskContinuation._runner = runner;
-            this.task                 = task;
+            _runner   = runner;
+            this.task = task;
         }
 
         public bool MoveNext()
@@ -21,20 +23,21 @@ namespace Svelto.Tasks.Lean
                 if (_current.continuation.Value.isRunning)
                     return true;
 
-                if (_taskContinuation._continuingTask != null)
+                //if _continuingTask != null Continue() has been yielded
+                //if _continuingTask == null RunOn() has been yielded
+                if (_continuingTask != null)
                 {
                     //the child task is telling to interrupt everything!
-                    var currentBreakIt = _taskContinuation._continuingTask.Current.breakIt;
+                    var currentBreakIt = _continuingTask.Current.breakIt;
                     _current = new TaskContract(); //finish to wait for the continuator, reset it
+                    
+                    _continuingTask = null;
 
                     if (currentBreakIt == Break.AndStop)
                         return false;
                 }
-                else
-                {
-                    Console.Log("what");
-                }
             }
+            
 
             //this means that the previous MoveNext returned an enumerator, it may be a continuation case
             if (_current.isExtraLeanEnumerator(out var extraLeanEnumerator) == true)
@@ -53,7 +56,7 @@ namespace Svelto.Tasks.Lean
 
             _current = task.Current;
 #if DEBUG && !PROFILE_SVELTO
-            DBC.Tasks.Check.Ensure(_current.continuation?._runner != _taskContinuation._runner,
+            DBC.Tasks.Check.Ensure(_current.continuation?._runner != _runner,
                 $"Cannot yield a new task running on the same runner of the spawning task, use Continue() instead {_current}");
 #endif
             if (_current.yieldIt)
@@ -70,15 +73,20 @@ namespace Svelto.Tasks.Lean
 
                 //a new TaskContract is created, holding the continuationEnumerator of the new task
                 //it must be added in the runner as "spawned" task and must run separately from this task
-                //TODO Optimize this:
                 DBC.Tasks.Check.Require(leanEnumerator != null);
-                _taskContinuation.SetContinuationTask(leanEnumerator);
 
-                ref SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>> task =
-                    ref new LeanSveltoTask<TTask>().SpawnContinuingTask(_taskContinuation._runner,
-                        (TTask)_taskContinuation._continuingTask);
-                
-                task._current = new TaskContract(leanEnumerator); 
+#if DEBUG && !PROFILE_SVELTO
+                var continuation = new Continuation(ContinuationPool.RetrieveFromPool(), _runner);
+#else
+                var  continuation = new Continuation(ContinuationPool.RetrieveFromPool());
+#endif
+                //note: this is a struct and this must be completely set before calling SpawnContinuingTask
+                //as it can trigger a resize of the datastructure that contains this, invalidating this
+                //TestThatLeanTasksWaitForContinuesWhenRunnerListsResize unit test covers this case
+                _current        = new TaskContract(continuation);
+                _continuingTask = leanEnumerator;
+
+                new LeanSveltoTask<TTask>().SpawnContinuingTask(_runner, (TTask)leanEnumerator, continuation);
             }
 
             return true;
@@ -86,18 +94,9 @@ namespace Svelto.Tasks.Lean
 
         internal TTask task { get; }
 
-        ContinueTask _taskContinuation;
-        TaskContract _current;
+        TaskContract              _current;
+        IEnumerator<TaskContract> _continuingTask;
 
-        struct ContinueTask
-        {
-            internal TRunner                   _runner;
-            internal IEnumerator<TaskContract> _continuingTask { get; private set; }
-
-            internal void SetContinuationTask(IEnumerator<TaskContract> continuingTask)
-            {
-                _continuingTask = continuingTask;
-            }
-        }
+        readonly TRunner _runner;
     }
 }

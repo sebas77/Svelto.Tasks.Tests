@@ -41,7 +41,7 @@ namespace Svelto.Tasks.Lean
             }
         }
         
-        internal ref SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>> SpawnContinuingTask<TRunner>(TRunner runner, in TTask task)
+        internal void SpawnContinuingTask<TRunner>(TRunner runner, in TTask task, Continuation continuation)
             where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             using (var profiler = new PlatformProfiler("LeanSveltoTask.Run"))
@@ -55,16 +55,11 @@ namespace Svelto.Tasks.Lean
                                             ToString()));
 #endif
 
-                using (profiler.Sample("fetch enumerator"))
-#if DEBUG && !PROFILE_SVELTO                    
-                    _continuation = new Continuation(ContinuationPool.RetrieveFromPool(), runner);
-#else                
-                    _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
-#endif   
+                _continuation = continuation;
                 
                 _threadSafeSveltoTaskStates.started = true;
 
-                return ref runner.SpawnContinuingTask(this)._sveltoTask;
+                runner.SpawnContinuingTask(this);
             }
         }
 

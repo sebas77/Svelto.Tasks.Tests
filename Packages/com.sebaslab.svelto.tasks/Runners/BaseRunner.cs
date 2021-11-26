@@ -92,14 +92,12 @@ namespace Svelto.Tasks
             _newTaskRoutines.Enqueue(task);
         }
 
-        public ref T SpawnContinuingTask(T task)
+        public void SpawnContinuingTask(T task)
         {
             DBC.Tasks.Check.Require(_flushingOperation.kill == false
                                   , $"can't schedule new routines on a killed scheduler {_name}");
 
             _spawnedCoroutines.Add(task);
-
-            return ref _spawnedCoroutines[_spawnedCoroutines.count - 1];
         }
 
         public virtual void Dispose()
