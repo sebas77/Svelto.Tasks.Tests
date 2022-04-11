@@ -1,15 +1,15 @@
 using System;
+using System.Collections;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public readonly struct Continuation
+    public readonly struct Continuation: IEnumerator
     {
-        internal readonly ContinuationEnumeratorInternal ce;
+        readonly ContinuationEnumeratorInternal ce;
 #if DEBUG && !PROFILE_SVELTO
         internal readonly WeakReference<IRunner> _runner;
 #endif
-
         internal Continuation(ContinuationEnumeratorInternal continuation) : this()
         {
             _signature = continuation.signature;
@@ -28,6 +28,23 @@ namespace Svelto.Tasks.Enumerators
         public bool isRunning => ce.MoveNext(_signature);
 
         readonly DateTime _signature;
+        
+        public   bool     MoveNext()
+        {
+            return ce.MoveNext(_signature);
+        }
+
+        public   void     Reset()
+        {
+            throw new NotImplementedException();
+        }
+
+        public object Current => Yield.It;
+
+        public void ReturnToPool()
+        {
+            ce?.ReturnToPool();
+        }
     }
 
     /// <summary>
@@ -59,7 +76,7 @@ namespace Svelto.Tasks.Enumerators
             ContinuationPool.PushBack(this); //and return to the pool
         }
 
-        public void Reset()
+        void Reset()
         {
             signature = DateTime.Now; //invalidate ContinuationEnumerator holding this object            
         }

@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Svelto.DataStructures;
 
-namespace Svelto.Tasks.DataStructures
+namespace Svelto.Common.DataStructures
 {
-    internal class ThreadSafeQueue<T>
+    public class ThreadSafeQueue<T>
     {
         public ThreadSafeQueue()
         {
@@ -24,7 +24,7 @@ namespace Svelto.Tasks.DataStructures
             }
             finally
             {
-                _lockQ.QuittingWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
@@ -37,18 +37,19 @@ namespace Svelto.Tasks.DataStructures
             }
             finally
             {
-                _lockQ.QuittingWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
         public void DequeueAllInto(FasterList<T> list)
         {
             uint i = (uint) list.count;
+            
+            list.IncrementCountBy((uint) _queue.Count);
+            var array = list.ToArrayFast(out _);
                 
             _lockQ.EnterWriteLock();
-            list.ExpandBy((uint) _queue.Count);
 
-            var array = list.ToArrayFast(out _);
             try
             {
                 while (_queue.Count > 0)
@@ -56,7 +57,7 @@ namespace Svelto.Tasks.DataStructures
             }
             finally
             {
-                _lockQ.QuittingWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
@@ -71,7 +72,7 @@ namespace Svelto.Tasks.DataStructures
             }   
             finally
             {
-                _lockQ.QuittingWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
@@ -87,7 +88,7 @@ namespace Svelto.Tasks.DataStructures
             }
             finally
             {
-                _lockQ.QuittingReadLock();
+                _lockQ.ExitReadLock();
             }
             
             return item;
@@ -102,7 +103,7 @@ namespace Svelto.Tasks.DataStructures
             }
             finally
             {
-                _lockQ.QuittingWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
@@ -120,7 +121,7 @@ namespace Svelto.Tasks.DataStructures
                     }
                     finally
                     {
-                        _lockQ.QuittingWriteLock();
+                        _lockQ.ExitWriteLock();
                     }
                     return true;
                 }
@@ -146,7 +147,7 @@ namespace Svelto.Tasks.DataStructures
                 }
                 finally
                 {
-                    _lockQ.QuittingReadLock();
+                    _lockQ.ExitReadLock();
                 }
             }
         }

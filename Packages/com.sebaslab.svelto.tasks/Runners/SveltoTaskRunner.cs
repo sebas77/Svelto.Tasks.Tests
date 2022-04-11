@@ -1,7 +1,9 @@
+using System;
 using System.Threading;
 using Svelto.Common;
+using Svelto.Common.DataStructures;
 using Svelto.DataStructures;
-using Svelto.Tasks.DataStructures;
+
 
 namespace Svelto.Tasks.Internal
 {
@@ -64,7 +66,8 @@ namespace Svelto.Tasks.Internal
                     {
                         if (_flushingOperation.kill == true)
                         {
-                            //todo what happens to the continuationenumerators?
+                            //ContinuationEnumeratorInternal are intercepted by the finalizers and
+                            //returned to the pool.`
                             _coroutines.Clear();
                             _newTaskRoutines.Clear();
                             return false;
@@ -166,9 +169,9 @@ namespace Svelto.Tasks.Internal
                             result = coroutines[index].MoveNext();
 #endif
                         }
-                        catch
+                        catch (Exception e)
                         {
-                            Svelto.Console.LogError($"catching exception for root task {coroutines[index].name}");
+                            Svelto.Console.LogException(e, $"catching exception for root task {coroutines[index].name}");
 
                             throw;
                         }
@@ -177,6 +180,8 @@ namespace Svelto.Tasks.Internal
 
                         if (result == false)
                         {
+                            DBC.Tasks.Check.Assert(_coroutines.count != 0, $"are you running a disposed runner? {this._info.runnerName}");
+                            
                             _coroutines.UnorderedRemoveAt((uint)index);
 
                             coroutinesCount--;
@@ -214,7 +219,6 @@ namespace Svelto.Tasks.Internal
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot stop a runner that is killed {name}");
 
-                //todo: careful if I intended these operations to be atomic, they are not!
                 //maybe I want both flags to be set in a thread safe way This must be bitmask
                 Volatile.Write(ref _stopped, true);
                 Volatile.Write(ref _paused, false);
@@ -231,7 +235,6 @@ namespace Svelto.Tasks.Internal
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot kill a runner that is killed {name}");
 
-                //todo: careful if I intended these operations to be atomic, they are not!
                 //maybe I want both flags to be set in a thread safe way, meaning that the
                 //flags must all be set at once. This must be bitmask
                 Volatile.Write(ref _stopped, true);

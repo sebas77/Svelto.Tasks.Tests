@@ -54,33 +54,25 @@ namespace Svelto.Common
         /// </summary>
         Invalid = Unity.Collections.Allocator.Invalid
 
-       ,
-
         /// <summary>
         ///   <para>No allocation.</para>
         /// </summary>
-        None = Unity.Collections.Allocator.None
-
-       ,
+       ,None = Unity.Collections.Allocator.None
 
         /// <summary>
         ///   <para>Temporary allocation.</para>
         /// </summary>
-        Temp = Unity.Collections.Allocator.Temp
-
-       ,
+      , Temp = Unity.Collections.Allocator.Temp
 
         /// <summary>
         ///   <para>Temporary job allocation.</para>
         /// </summary>
-        TempJob = Unity.Collections.Allocator.TempJob
-
-       ,
+      , TempJob = Unity.Collections.Allocator.TempJob
 
         /// <summary>
         ///   <para>Persistent allocation.</para>
         /// </summary>
-        Persistent = Unity.Collections.Allocator.Persistent
+      , Persistent = Unity.Collections.Allocator.Persistent
 
       , Managed
     }
@@ -96,11 +88,8 @@ namespace Svelto.Common
             var castedAllocator = (Unity.Collections.Allocator) allocator;
             unsafe
             {
-                var tempPointer =
-                    Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc(
-                        signedCapacity, (int) OptimalAlignment.alignment, castedAllocator);
-
-                newPointer = (IntPtr) tempPointer;
+                newPointer = (IntPtr) Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc(
+                    signedCapacity, (int) OptimalAlignment.alignment, castedAllocator);
             }
 #else
             newPointer = Marshal.AllocHGlobal(signedCapacity); //this is guaranteed to be aligned by design

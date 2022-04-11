@@ -42,6 +42,99 @@ namespace Svelto.Tasks.Lean
     }
 }
 
+public static class TaskRunnerExtension2
+{
+    public static bool WaitForTasksDone<T>(this T runner, int frequency, int _timeout = 0) where T:ISteppableRunner 
+    {
+        var quickIterations = 0;
+
+        if (_timeout > 0)
+        {
+            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  valid  = true;
+            bool isDone = false;
+
+            while (isDone == false && valid == true)
+            {
+                valid  = DateTime.Now < then;
+                runner.Step();
+                isDone = runner.hasTasks == false;
+                ThreadUtility.Wait(ref quickIterations, frequency);    
+            }
+
+            if (valid == false && isDone == false)
+                return false;
+        }
+        else
+        {
+            if (_timeout == 0)
+            {
+                bool isDone = false;
+                
+                while (isDone == false)
+                {
+                    runner.Step();
+                    isDone = runner.hasTasks == false;
+                    ThreadUtility.Wait(ref quickIterations, frequency);
+                }
+            }
+            else
+            {//careful, a tight loop may prevent other thread from running as it would take 100% of the core
+                bool isDone = false;
+                
+                while (isDone == false)
+                {
+                    runner.Step();
+                    isDone = runner.hasTasks == false;
+                }
+            }
+        }
+
+        return true;
+    }
+    
+    public static bool WaitForTasksDoneRelaxed<T>(this T runner, int _timeout = 0) where T:ISteppableRunner 
+    {
+        if (_timeout > 0)
+        {
+            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  valid  = true;
+            bool isDone = false;
+
+            while (isDone == false && valid == true)
+            {
+                valid = DateTime.Now < then;
+                runner.Step();
+                isDone = runner.hasTasks == false;
+                ThreadUtility.Relax();    
+            }
+
+            if (valid == false && isDone == false)
+                return false;
+        }
+        else
+        {
+            if (_timeout == 0)
+            {
+                bool isDone = false;
+                
+                while (isDone == false)
+                {
+                    runner.Step();
+                    isDone = runner.hasTasks == false;
+                    ThreadUtility.Relax();    
+                }
+            }
+            else
+            { 
+                throw new ArgumentException();
+            }
+        }
+
+        return true;
+    }
+}
+
 public static class TaskRunnerExtensions
 {
     public static TaskContract Continue(this IEnumerator<TaskContract> task) 
@@ -67,13 +160,18 @@ public static class TaskRunnerExtensions
 
         if (_timeout > 0)
         {
-            var then  = DateTime.Now.AddMilliseconds(_timeout);
-            var valid = true;
+            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  valid  = true;
+            bool isDone = false;
 
-            while (enumerator.MoveNext() &&
-                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
+            while (isDone == false && valid == true)
+            {
+                valid  = DateTime.Now < then;
+                isDone = enumerator.MoveNext();
+                ThreadUtility.Wait(ref quickIterations);    
+            }
 
-            if (valid == false)
+            if (valid == false && isDone == false)
                 throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
         }
         else
@@ -81,7 +179,7 @@ public static class TaskRunnerExtensions
             if (_timeout == 0)
                 while (enumerator.MoveNext())
                     ThreadUtility.Wait(ref quickIterations);
-            else
+            else //careful, a tight loop may prevent other thread from running as it would take 100% of the core
                 while (enumerator.MoveNext());
         }
     }

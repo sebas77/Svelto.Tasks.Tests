@@ -30,6 +30,12 @@ namespace Svelto.Tasks
             _currentState       = States.value;
             _returnValue.uint32 = val;
         }
+        
+        public TaskContract(bool val) : this()
+        {
+            _currentState       = States.value;
+            _returnValue.vbool = val;
+        }
 
         public TaskContract(string val) : this()
         {
@@ -133,6 +139,11 @@ namespace Svelto.Tasks
         {
             return _returnValue.single;
         }
+        
+        public bool ToBool()
+        {
+            return _returnValue.vbool;
+        }
 
         public T ToRef<T>() where T : class
         {
@@ -196,6 +207,7 @@ namespace Svelto.Tasks
             [FieldOffset(0)] internal int   int32;
             [FieldOffset(0)] internal uint  uint32;
             [FieldOffset(0)] internal ulong uint64;
+            [FieldOffset(0)] internal bool  vbool;
         }
 
         [StructLayout(LayoutKind.Explicit)]

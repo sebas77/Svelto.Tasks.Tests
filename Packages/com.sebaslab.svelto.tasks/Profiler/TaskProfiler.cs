@@ -35,7 +35,7 @@ namespace Svelto.Tasks.Profiler
 #endif
             lock (LockObject)
             {
-                ref var infosPerRunnner = ref taskInfos.GetOrCreate(runnerName, () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
+                ref var infosPerRunnner = ref taskInfos.GetOrAdd(runnerName, () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
                 if (infosPerRunnner.TryGetValue(taskName, out var info) == false)
                 {
                     info = new TaskInfo(taskName, runnerName);

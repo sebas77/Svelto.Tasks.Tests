@@ -2,7 +2,7 @@ using System;
 
 namespace Svelto.Tasks
 {
-    public interface IRunner: IDisposable
+    public interface IRunner : IDisposable
     {
         bool isStopping { get; }
         //bool isKilled   { get; }
@@ -15,17 +15,19 @@ namespace Svelto.Tasks
         uint numberOfRunningTasks    { get; }
         uint numberOfQueuedTasks     { get; }
         uint numberOfProcessingTasks { get; }
+        
+        string name { get; }
     }
-    
-    interface ISteppableRunner: IRunner
+
+    public interface ISteppableRunner : IRunner
     {
-        void Step();
+        bool Step();
         bool hasTasks { get; }
     }
-    
-    public interface IRunner<T>: IRunner where T:ISveltoTask
+
+    public interface IRunner<T> : IRunner where T : ISveltoTask
     {
-        void  StartTask(in T task);
+        void StartTask(in T task);
         void SpawnContinuingTask(T task);
     }
 }

@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.Common;
+using Svelto.Common.DataStructures;
 using Svelto.DataStructures;
-using Svelto.Tasks.DataStructures;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
 using Svelto.Utilities;
@@ -20,8 +20,8 @@ namespace Svelto.Tasks
     {
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator<TaskContract>>
         {
-            public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
+                tightTasks)
             {
             }
 
@@ -33,8 +33,8 @@ namespace Svelto.Tasks
         public class MultiThreadRunner<T> : Svelto.Tasks.MultiThreadRunner<LeanSveltoTask<T>>
             where T : IEnumerator<TaskContract>
         {
-            public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
+                tightTasks)
             {
             }
 
@@ -48,8 +48,8 @@ namespace Svelto.Tasks
     {
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator>
         {
-            public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
+                tightTasks)
             {
             }
 
@@ -60,8 +60,8 @@ namespace Svelto.Tasks
 
         public class MultiThreadRunner<T> : Svelto.Tasks.MultiThreadRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
         {
-            public MultiThreadRunner
-                (string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
+                tightTasks)
             {
             }
 
@@ -73,14 +73,12 @@ namespace Svelto.Tasks
 
     public class MultiThreadRunner<TTask> : MultiThreadRunner<TTask, StandardFlow> where TTask : ISveltoTask
     {
-        public MultiThreadRunner
-            (string name, bool relaxed = false, bool tightTasks = false) : base(
-            name, new StandardFlow(), relaxed, tightTasks)
+        public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name,
+            new StandardFlow(), relaxed, tightTasks)
         {
         }
 
-        public MultiThreadRunner
-            (string name, float intervalInMs) : base(name, new StandardFlow(), intervalInMs)
+        public MultiThreadRunner(string name, float intervalInMs) : base(name, new StandardFlow(), intervalInMs)
         {
         }
     }
@@ -122,20 +120,21 @@ namespace Svelto.Tasks
 
         ~MultiThreadRunner()
         {
-            Console.LogWarning("MultiThreadRunner has been garbage collected, this could have serious"
-              + "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
+            Console.LogWarning("MultiThreadRunner has been garbage collected, this could have serious" +
+                "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
 
             Dispose();
         }
 
         public bool isStopping => _runnerData.waitForStop;
 
-        public bool isKilled                => _runnerData == null;
-        public bool paused                  => _runnerData.isPaused;
-        public uint numberOfRunningTasks    => _runnerData.Count;
-        public uint numberOfQueuedTasks     => _runnerData.newTaskRoutines.count;
-        public uint numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.count;
-        public bool hasTasks                => numberOfProcessingTasks != 0;
+        public bool   isKilled                => _runnerData == null;
+        public bool   isPaused                => _runnerData.isPaused;
+        public string name                    => _runnerData.name;
+        public uint   numberOfQueuedTasks     => _runnerData.numberOfQueuedTasks;
+        public uint   numberOfRunningTasks    => _runnerData.numberOfRunningTasks;
+        public uint   numberOfProcessingTasks => numberOfRunningTasks + numberOfQueuedTasks;
+        public bool   hasTasks                => numberOfProcessingTasks != 0;
 
         public override string ToString()
         {
@@ -170,8 +169,7 @@ namespace Svelto.Tasks
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
 
-            _runnerData.newTaskRoutines.Enqueue(task);
-            _runnerData.UnlockThread();
+            _runnerData.EnqueueNewTask(task);
         }
 
         public void SpawnContinuingTask(TTask task)
@@ -179,9 +177,7 @@ namespace Svelto.Tasks
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
 
-            var runnerDataSpawnedCoroutines = _runnerData.spawnedCoroutines;
-            runnerDataSpawnedCoroutines.Add(task);
-            _runnerData.UnlockThread();
+            _runnerData.EnqueueContinuingTask(task);
         }
 
         public void Stop()
@@ -217,7 +213,8 @@ namespace Svelto.Tasks
             //threadpool doesn't work well with Unity apparently it seems to choke when too meany threads are started
             new Thread(runnerData.RunCoroutineFiber)
             {
-                IsBackground = true
+                IsBackground = true,
+                Name         = _runnerData.name
             }.Start();
 #else
             Task.Factory.StartNew(() => runnerData.RunCoroutineFiber(), TaskCreationOptions.LongRunning);
@@ -226,37 +223,30 @@ namespace Svelto.Tasks
 
         class RunnerData
         {
-            public RunnerData
-                (bool relaxed, float interval, string name, bool isRunningTightTasks, TFlowModifier modifier)
+            public uint numberOfRunningTasks => (uint)_coroutines.count + (uint)_spawnedCoroutines.count;
+            public uint numberOfQueuedTasks  => _newTaskRoutines.count;
+
+            public RunnerData(bool relaxed, float intervalInMs, string name, bool isRunningTightTasks,
+                TFlowModifier modifier)
             {
-                _mevent              = new ManualResetEventSlim();
-                _watch               = new Stopwatch();
+                _watchForInterval    = new Stopwatch();
+                _watchForLocking     = new Stopwatch();
                 _coroutines          = new FasterList<TTask>();
-                spawnedCoroutines    = new FasterList<TTask>();
-                newTaskRoutines      = new ThreadSafeQueue<TTask>();
-                _interval            = (long)(interval * 10000);
+                _spawnedCoroutines   = new FasterList<TTask>();
+                _newTaskRoutines     = new ThreadSafeQueue<TTask>();
+                _intervalInTicks     = (long)(intervalInMs * 10000);
                 this.name            = name;
                 _isRunningTightTasks = isRunningTightTasks;
                 _flushingOperation   = new SveltoTaskRunner<TTask>.FlushingOperation();
                 modifier.runnerName  = name;
-                
-                _process = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(
-                    newTaskRoutines, _coroutines, spawnedCoroutines, _flushingOperation, modifier);
+
+                _process = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_newTaskRoutines, _coroutines,
+                    _spawnedCoroutines, _flushingOperation, modifier);
 
                 if (relaxed)
                     _lockingMechanism = RelaxedLockingMechanism;
                 else
                     _lockingMechanism = QuickLockingMechanism;
-            }
-
-            internal uint Count
-            {
-                get
-                {
-                    Interlocked.MemoryBarrier();
-
-                    return (uint)_coroutines.count;
-                }
             }
 
             internal void Stop()
@@ -278,91 +268,90 @@ namespace Svelto.Tasks
             {
                 _flushingOperation.Kill(name);
 
-                if (_mevent != null) //already disposed
-                {
-                    _onThreadKilled = onThreadKilled;
-                    Interlocked.MemoryBarrier();
+                _onThreadKilled = onThreadKilled;
 
-                    UnlockThread();
-                }
-
-                if (_watch != null)
-                {
-                    _watch.Stop();
-                    _watch = null;
-                }
+                UnlockThread();
             }
 
-            internal void UnlockThread()
+            internal void EnqueueNewTask(in TTask task)
             {
-                _interlock = 1;
+                _newTaskRoutines.Enqueue(task);
 
-                _mevent.Set();
+                UnlockThread();
+            }
 
-                Interlocked.MemoryBarrier();
+            public void EnqueueContinuingTask(in TTask task)
+            {
+                _spawnedCoroutines.Add(task);
+
+                UnlockThread();
+            }
+
+            void UnlockThread()
+            {
+                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
             }
 
             internal void RunCoroutineFiber()
             {
-                Interlocked.MemoryBarrier();
-
-                using (var profiler = new PlatformProfilerMT(name))
+                try
                 {
-                    try
+                    while (true)
                     {
-                        while (true)
+                        using (_profiler.Sample(name))
                         {
-                            if (_process.MoveNext(profiler) == false)
+                            if (_intervalInTicks > 0)
+                                _watchForInterval?.Restart();
+                            
+                            if (_process.MoveNext(_profiler) == false)
                                 break;
 
                             //If the runner is not killed
                             if (_flushingOperation.stopping == false)
                             {
                                 //if the runner is paused enable the locking mechanism
-                                if (_flushingOperation.paused)
+                                if (_flushingOperation.paused == true)
                                     _lockingMechanism();
 
                                 //if there is an interval time between calls we need to wait for it
-                                if (_interval > 0)
+                                if (_intervalInTicks > 0)
                                     WaitForInterval();
 
                                 //if there aren't task left we put the thread in pause
-                                if (_coroutines.count == 0)
+                                if (numberOfRunningTasks == 0)
                                 {
-                                    if (newTaskRoutines.count == 0)
+                                    if (numberOfQueuedTasks == 0)
                                         _lockingMechanism();
-                                    else
+                                    else 
+                                    if (_isRunningTightTasks == false)
                                         ThreadUtility.Wait(ref _yieldingCount, 16);
                                 }
                                 else
                                 {
-                                    if (_isRunningTightTasks)
+                                    //if it's not running tight tasks, let's let the runner breath a bit
+                                    //every now and then
+                                    if (_isRunningTightTasks == false)
                                         ThreadUtility.Wait(ref _yieldingCount, 16);
                                 }
                             }
                         }
                     }
-                    catch
+                }
+                catch
+                {
+                    Kill(null);
+
+                    //the process must always complete naturally, otherwise the continuators won't be released.
+                    using (_profiler.Sample(name))
                     {
-                        Kill(null);
-
-                        //the process must always complete naturally, otherwise the continuators won't be released.
-                        while (_process.MoveNext(profiler) == true) ;
-
-                        throw;
+                        while (_process.MoveNext(_profiler) == true) ;
                     }
-                    finally
-                    {
-                        _onThreadKilled?.Invoke();
 
-                        if (_mevent != null)
-                        {
-                            _mevent.Dispose();
-                            _mevent = null;
-
-                            Interlocked.MemoryBarrier();
-                        }
-                    }
+                    throw;
+                }
+                finally
+                {
+                    _onThreadKilled?.Invoke();
                 }
             }
 
@@ -381,74 +370,89 @@ namespace Svelto.Tasks
             internal bool waitForStop => _flushingOperation.stopping;
 
             /// <summary>
-            /// More reacting pause/resuming system. It spins for a while before reverting to the relaxing locking 
+            /// More reacting pause/resuming system. It spins for a while before reverting to the relaxing locking
+            /// TODO: I CHANGED THIS AND DIDN'T PROPERLY TESTED IT, MUST UNIT TESTED PROPERLY 
             /// </summary>
             void QuickLockingMechanism()
             {
                 var quickIterations = 0;
-                var frequency       = 1024;
+                var frequency       = 128;
 
-                while (Volatile.Read(ref _interlock) != 1 && quickIterations < 4096)
+                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
+
+                while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire &&
+                       quickIterations < 4096)
                 {
                     ThreadUtility.Wait(ref quickIterations, frequency);
 
-                    if (waitForStop)
+                    if (waitForStop) //we need to flush the queue, so the thread cannot stop
                         return;
                 }
 
-                if (_interlock == 0 && waitForStop == false)
-                    RelaxedLockingMechanism();
-                else
-                    _interlock = 0;
+                //After the spinning, just revert to the normal locking mechanism
+                RelaxedLockingMechanism();
             }
 
             /// <summary>
-            /// Resuming a manual even can take a long time, but allow the thread to be pause and the core to be used by other threads
+            /// Resuming a manual even can take a long time, but allow the thread to be pause and the core to be used
+            /// by other threads.
+            /// For the future: I tried all the combinations with ManualResetEvent (to slow to resume)
+            /// and ManualResetEventSlim (spinning too much). This is the best solution:
+            /// DO NOT TOUCH THE NUMBERS, THEY ARE THE BEST BALANCE BETWEEN CPU OCCUPATION AND RESUME SPEED
             /// </summary>
             void RelaxedLockingMechanism()
             {
-                _mevent.Wait();
+                var       quickIterations = 0;
+                var       frequency       = 64;
+                _watchForLocking.Restart();
 
-                _mevent.Reset();
+                using (_profiler.Sample("locked"))
+                {
+                    while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire)
+                    {
+                        ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
+                    }
+                }
             }
 
             void WaitForInterval()
             {
                 var quickIterations = 0;
-                _watch.Start();
+                var frequency       = 16;
 
-                while (_watch.ElapsedTicks < _interval)
+                while (_watchForInterval.ElapsedTicks < _intervalInTicks)
                 {
-                    if ((_interval - _watch.ElapsedTicks) < 16000)
-                        ThreadUtility.Wait(ref quickIterations);
-                    else
-                        ThreadUtility.TakeItEasy();
+                    ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
 
                     if (waitForStop == true)
                         return;
                 }
-
-                _watch.Reset();
             }
 
-            internal readonly ThreadSafeQueue<TTask> newTaskRoutines;
-            internal readonly string                 name;
+            internal readonly string name;
 
-            readonly          FasterList<TTask> _coroutines;
-            internal readonly FasterList<TTask> spawnedCoroutines;
-            readonly          long              _interval;
-            readonly          bool              _isRunningTightTasks;
-            readonly          Action            _lockingMechanism;
+            readonly ThreadSafeQueue<TTask> _newTaskRoutines;
+            readonly FasterList<TTask>      _coroutines;
+            readonly FasterList<TTask>      _spawnedCoroutines;
+            readonly long                   _intervalInTicks;
+            readonly bool                   _isRunningTightTasks;
+            readonly Action                 _lockingMechanism;
+            PlatformProfilerMT              _profiler;
+            
+            Action             _onThreadKilled;
+            readonly Stopwatch _watchForInterval;
+            readonly Stopwatch _watchForLocking;
+            int                _quickThreadSpinning;
+            int                _yieldingCount;
 
-            ManualResetEventSlim _mevent;
-            Action               _onThreadKilled;
-            Stopwatch            _watch;
-            int                  _interlock;
-            int                  _yieldingCount;
-
-            readonly SveltoTaskRunner<TTask>.FlushingOperation _flushingOperation;
-
+            readonly SveltoTaskRunner<TTask>.FlushingOperation      _flushingOperation;
             readonly SveltoTaskRunner<TTask>.Process<TFlowModifier> _process;
+
+            enum QuckLockinSpinningState
+            {
+                Release,
+                Acquire
+            }
         }
 
         RunnerData _runnerData;
