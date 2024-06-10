@@ -30,7 +30,7 @@ namespace Svelto.Tasks.Parallelism.Internal
         public void Reset()
         {}
 
-        public TaskContract Current => Yield.It;
+        public TaskContract Current => TaskContract.Yield.It;
 
         object IEnumerator.Current => null;
 

@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Svelto.Tasks.Enumerators;
 
@@ -42,6 +44,12 @@ namespace Svelto.Tasks
             _currentState            = States.value;
             _returnObjects.reference = val;
         }
+        
+        public TaskContract(Exception o) : this()
+        {
+            _currentState            = States.exception;
+            _returnObjects.reference = o;
+        }
 
         public TaskContract(object o) : this()
         {
@@ -55,13 +63,13 @@ namespace Svelto.Tasks
             _continuation = continuation;
         }
 
-        internal TaskContract(IEnumerator<TaskContract> enumerator) : this()
+        internal TaskContract(IEnumerator<TaskContract> enumerator, bool fireAndForget = false) : this()
         {
             DBC.Tasks.Check.Require(enumerator != null);
-            _currentState            = States.leanEnumerator;
+            _currentState            = fireAndForget ? States.forgetLeanEnumerator : States.leanEnumerator;
             _returnObjects.reference = enumerator;
         }
-
+        
         internal TaskContract(IEnumerator enumerator) : this()
         {
             DBC.Tasks.Check.Require(enumerator != null);
@@ -72,7 +80,7 @@ namespace Svelto.Tasks
         TaskContract(Break breakit) : this()
         {
             _currentState          = States.breakit;
-            _returnObjects.breakIt = breakit;
+            _returnObjects.breakMode = breakit;
         }
 
         public static implicit operator TaskContract(int number)
@@ -150,32 +158,44 @@ namespace Svelto.Tasks
             return _returnObjects.reference as T;
         }
 
-        internal Break breakIt => _currentState == States.breakit ? _returnObjects.breakIt : null;
+        internal Break breakMode => _currentState == States.breakit ? _returnObjects.breakMode : null;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool isExtraLeanEnumerator(out IEnumerator enumerator)
         {
             if (_currentState == States.extraLeanEnumerator)
             {
                 enumerator = (IEnumerator)_returnObjects.reference;
-
+                
                 return true;
             }
 
             enumerator = null;
-
+            
             return false;
         }
 
-        internal bool isTaskEnumerator(out IEnumerator<TaskContract> enumerator)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool isTaskEnumerator(out (IEnumerator<TaskContract> enumerator, bool isFireAndForget) tuple)
         {
             if (_currentState == States.leanEnumerator)
             {
-                enumerator = (IEnumerator<TaskContract>)_returnObjects.reference;
+                tuple.enumerator = (IEnumerator<TaskContract>)_returnObjects.reference;
+                tuple.isFireAndForget = false;
+
+                return true;
+            }
+            else
+            if (_currentState == States.forgetLeanEnumerator)
+            {
+                tuple.enumerator = (IEnumerator<TaskContract>)_returnObjects.reference;
+                tuple.isFireAndForget = true;
 
                 return true;
             }
 
-            enumerator = null;
+            tuple.enumerator = null;
+            tuple.isFireAndForget = false;
 
             return false;
         }
@@ -194,11 +214,18 @@ namespace Svelto.Tasks
         internal object reference => _currentState == States.value ? _returnObjects.reference : null;
         internal bool   hasValue  => _currentState == States.value;
         internal bool   yieldIt   => _currentState == States.yieldit;
-
+        
         readonly FieldValues  _returnValue;
         readonly FieldObjects _returnObjects;
         readonly States       _currentState;
         readonly Continuation _continuation;
+        
+        public static IEnumerator<TaskContract> Empty { get; } = EmptyEnumerator();
+
+        static IEnumerator<TaskContract> EmptyEnumerator()
+        {
+            yield break;
+        }
 
         [StructLayout(LayoutKind.Explicit)]
         struct FieldValues
@@ -214,7 +241,7 @@ namespace Svelto.Tasks
         struct FieldObjects
         {
             [FieldOffset(0)] internal object reference;
-            [FieldOffset(0)] internal Break  breakIt;
+            [FieldOffset(0)] internal Break  breakMode;
         }
 
         enum States
@@ -225,7 +252,41 @@ namespace Svelto.Tasks
             breakit,
             leanEnumerator,
             extraLeanEnumerator,
-            reference
+            reference,
+            exception,
+            forgetLeanEnumerator
+        }
+        
+        // ReSharper disable once ClassNeverInstantiated.Global
+        public class Yield
+        {
+            public static readonly Yield It = null;
+        }
+        
+        // ReSharper disable once ClassNeverInstantiated.Global
+        public class Break
+        {
+            /// <summary>
+            /// A Break.It task breaks but to not break the caller task. A task with break.it can be cached if it runs through a while (true) loop.
+            /// the task is completed and removed from the queue on each Break.It but the enumerator can be reused from
+            /// the calling task next frame as it's not completed for the CLR. This allows to reuse Iterator Blocks instead
+            /// to allocate new ones each time.
+            ///
+            /// A task can return yield return break, but yield return break will end the state machine life, while Break.It will keep it alive
+            /// </summary>
+            public static readonly Break It = new Break();
+            /// <summary>
+            /// Break.AndStop breaks the task and the caller tasks too (propagates the break to the caller task).
+            /// </summary>
+            public static readonly Break AndStop = new Break();
+            
+            //TODO URGENT: IS THERE ANY DIFFERENCE ANYMORE BETWEEN BREAK.IT AND BREAK.ANDSTOP? 
         }
     }
+    
+    //leaving this in case I came up with this smart idea again: THIS CANNOT BE DONE!
+    //UNFORTUNATELY IENUMERATOR MUST BE USED EXPLICITLY TO BE RECOGNISED AS ITERATOR BLOCK
+//    public interface ITaskEnumerator: IEnumerator<TaskContract>
+//    {
+//    }
 }

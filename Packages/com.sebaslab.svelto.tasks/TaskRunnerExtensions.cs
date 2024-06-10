@@ -2,6 +2,7 @@ using System;
 using Svelto.Tasks;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Lean;
 using Svelto.Utilities;
@@ -42,8 +43,95 @@ namespace Svelto.Tasks.Lean
     }
 }
 
-public static class TaskRunnerExtension2
+public static class TaskRunnerExtensions
 {
+    public static TaskContract Continue(this IEnumerator<TaskContract> task) 
+    {
+        return new TaskContract(task);
+    }
+    
+    public static TaskContract Forget(this IEnumerator<TaskContract> task) 
+    {
+        return new TaskContract(task, true);
+    }
+
+    public static async Task<T> ToTask<T>(this IEnumerator<TaskContract> iteratorBlock) where T : class
+    {
+        while (iteratorBlock.MoveNext())
+        {
+            await Task.Yield();
+        }
+        
+        return iteratorBlock.Current.ToRef<T>();
+    }
+    
+    public static TaskContract Continue<T>(this T enumerator) where T:IEnumerator 
+    {
+        return new TaskContract(enumerator);
+    }
+    
+    public static void Complete(this IEnumerator<TaskContract> task, int _timeout = 0) 
+    {
+        var syncRunnerValue = LocalSyncRunners<IEnumerator<TaskContract>>.syncRunner.Value;
+        task.RunOn(syncRunnerValue);
+        syncRunnerValue.ForceComplete(_timeout);
+    }
+
+    public static void Complete<T>(this T enumerator, int _timeout = 0) where T:IEnumerator 
+    {
+        var quickIterations = 0;
+
+        if (_timeout > 0)
+        {
+            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  valid  = true;
+            bool isDone = false;
+
+            while (isDone == false && valid == true)
+            {
+                valid  = DateTime.Now < then;
+                isDone = enumerator.MoveNext();
+                ThreadUtility.Wait(ref quickIterations);    
+            }
+
+            if (valid == false && isDone == false)
+                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+        }
+        else
+        {
+            if (_timeout == 0)
+                while (enumerator.MoveNext())
+                    ThreadUtility.Wait(ref quickIterations);
+            else //careful, a tight loop may prevent other thread from running as it would take 100% of the core
+                while (enumerator.MoveNext());
+        }
+    }
+    
+    public static void Complete(this Continuation enumerator, int _timeout = 1000)
+    {
+        var quickIterations = 0;
+
+        if (_timeout > 0)
+        {
+            var then  = DateTime.Now.AddMilliseconds(_timeout);
+            var valid = true;
+
+            while (enumerator.isRunning &&
+                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
+
+            if (valid == false)
+                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+        }
+        else
+        {
+            if (_timeout == 0)
+                while (enumerator.isRunning)
+                    ThreadUtility.Wait(ref quickIterations);
+            else
+                while (enumerator.isRunning);
+        }
+    }
+    
     public static bool WaitForTasksDone<T>(this T runner, int frequency, int _timeout = 0) where T:ISteppableRunner 
     {
         var quickIterations = 0;
@@ -134,79 +222,3 @@ public static class TaskRunnerExtension2
         return true;
     }
 }
-
-public static class TaskRunnerExtensions
-{
-    public static TaskContract Continue(this IEnumerator<TaskContract> task) 
-    {
-        return new TaskContract(task);
-    }
-    
-    public static TaskContract Continue<T>(this T enumerator) where T:IEnumerator 
-    {
-        return new TaskContract(enumerator);
-    }
-    
-    public static void Complete(this IEnumerator<TaskContract> task, int _timeout = 0) 
-    {
-        var syncRunnerValue = LocalSyncRunners<IEnumerator<TaskContract>>.syncRunner.Value;
-        task.RunOn(syncRunnerValue);
-        syncRunnerValue.ForceComplete(_timeout);
-    }
-
-    public static void Complete<T>(this T enumerator, int _timeout = 0) where T:IEnumerator 
-    {
-        var quickIterations = 0;
-
-        if (_timeout > 0)
-        {
-            var  then   = DateTime.Now.AddMilliseconds(_timeout);
-            var  valid  = true;
-            bool isDone = false;
-
-            while (isDone == false && valid == true)
-            {
-                valid  = DateTime.Now < then;
-                isDone = enumerator.MoveNext();
-                ThreadUtility.Wait(ref quickIterations);    
-            }
-
-            if (valid == false && isDone == false)
-                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
-        }
-        else
-        {
-            if (_timeout == 0)
-                while (enumerator.MoveNext())
-                    ThreadUtility.Wait(ref quickIterations);
-            else //careful, a tight loop may prevent other thread from running as it would take 100% of the core
-                while (enumerator.MoveNext());
-        }
-    }
-    
-    public static void Complete(this Continuation enumerator, int _timeout = 1000)
-    {
-        var quickIterations = 0;
-
-        if (_timeout > 0)
-        {
-            var then  = DateTime.Now.AddMilliseconds(_timeout);
-            var valid = true;
-
-            while (enumerator.isRunning &&
-                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
-
-            if (valid == false)
-                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
-        }
-        else
-        {
-            if (_timeout == 0)
-                while (enumerator.isRunning)
-                    ThreadUtility.Wait(ref quickIterations);
-            else
-                while (enumerator.isRunning);
-        }
-    }
-}
-

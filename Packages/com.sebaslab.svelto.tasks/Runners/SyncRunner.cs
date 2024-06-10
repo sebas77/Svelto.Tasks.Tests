@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Svelto.Tasks.Lean;
 using Svelto.Utilities;
@@ -64,6 +65,7 @@ namespace Svelto.Tasks
         {
             public SyncRunner(string name) : base(name)   { }
             
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void ForceComplete(int timeout)
             {
                 SharedCode.Complete(this, timeout);
@@ -73,6 +75,6 @@ namespace Svelto.Tasks
 
     public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
     {
-        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.name));
+        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName));
     }
 }

@@ -1,5 +1,6 @@
 using System;
-using Svelto.Common.DataStructures;
+using System.Collections.Concurrent;
+using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Internal
@@ -37,7 +38,7 @@ namespace Svelto.Tasks.Internal
             return new ContinuationEnumeratorInternal();
         }
 
-        static readonly ThreadSafeQueue<ContinuationEnumeratorInternal> _pool =
-            new ThreadSafeQueue<ContinuationEnumeratorInternal>();
+        static readonly ConcurrentQueue<ContinuationEnumeratorInternal> _pool =
+            new ConcurrentQueue<ContinuationEnumeratorInternal>();
     }
 }

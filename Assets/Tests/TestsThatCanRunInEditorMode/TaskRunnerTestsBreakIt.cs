@@ -25,7 +25,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestThatAStandardBreakBreaksTheCurrentTaskOnly()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             IEnumerator<TaskContract> severalTasksParent = SeveralTasksParent();
             severalTasksParent.Complete();
@@ -90,7 +90,7 @@ namespace Test
         {
             yield return _iterable1.Continue();
 
-            yield return Break.AndStop;
+            yield return TaskContract.Break.AndStop;
 
             yield return _iterable2.Continue();
         }
@@ -99,7 +99,7 @@ namespace Test
         {
             yield return _iterable1.Continue();
 
-            yield return Break.It;
+            yield return TaskContract.Break.It;
 
             yield return 10;
         }

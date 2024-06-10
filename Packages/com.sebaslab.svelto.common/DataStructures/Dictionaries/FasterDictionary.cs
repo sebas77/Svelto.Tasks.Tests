@@ -12,6 +12,8 @@ namespace Svelto.DataStructures
         {
             this._dic = dic;
         }
+        
+        public uint count => (uint)_dic.count;
 
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
         public KeyValuePairFast<TKey, TValue, ManagedStrategy<TValue>>[] keyValues
@@ -40,7 +42,8 @@ namespace Svelto.DataStructures
     ///     the standard dictionary for most of the operations, but the difference is negligible. The only slower operation
     ///     is resizing the memory on add, as this implementation needs to use two separate arrays compared to the standard
     ///     one
-    ///     note: use native memory? Use _valuesInfo only when there are collisions?
+    ///     >>>NOTE: to use classes as key, use the RefWrapper<> class!!!
+    ///     my note: use native memory? Use _valuesInfo only when there are collisions?
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
@@ -110,9 +113,9 @@ namespace Svelto.DataStructures
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void FastClear()
+        public void Recycle()
         {
-            _dictionary.FastClear();
+            _dictionary.Recycle();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -137,6 +140,12 @@ namespace Svelto.DataStructures
         public ref TValue GetOrAdd(TKey key, Func<TValue> builder)
         {
             return ref _dictionary.GetOrAdd(key, builder);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref TValue GetOrAdd(TKey key, out uint index)
+        {
+            return ref _dictionary.GetOrAdd(key, out index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,9 +207,9 @@ namespace Svelto.DataStructures
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Remove(TKey key, out TValue o)
+        public bool Remove(TKey key, out TValue val)
         {
-            return _dictionary.Remove(key, out o);
+            return _dictionary.Remove(key, out _, out val);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -7,20 +7,23 @@ using UnityEngine;
 
 namespace Svelto.Tasks.Enumerators
 {
+    /// <summary>
+    /// This special enumerator exists to run special Unity instructions that normally are not supported by Svelto.Tasks.
+    /// </summary>
     public class YieldInstructionEnumerator : IEnumerator<TaskContract>
     {
         public YieldInstructionEnumerator(YieldInstruction instruction)
         {
             _instruction = instruction;
 
-            UnityCoroutineRunner.StartYieldInstructionCoroutine(GetEnumerator());
+            UnityCoroutineUtilities.StartYieldInstructionCoroutine(GetEnumerator());
         }
         
         public YieldInstructionEnumerator(AsyncOperation instruction)
         {
             _instruction = instruction;
 
-            UnityCoroutineRunner.StartYieldInstructionCoroutine(GetEnumerator());
+            UnityCoroutineUtilities.StartYieldInstructionCoroutine(GetEnumerator());
         }
 
         IEnumerator GetEnumerator()
@@ -33,7 +36,7 @@ namespace Svelto.Tasks.Enumerators
         public bool MoveNext() { return _isDone == false; }
         public void Reset() { throw new NotSupportedException(); }
 
-        public TaskContract Current => Yield.It;
+        public TaskContract Current => TaskContract.Yield.It;
         object IEnumerator.Current => null;
         
         bool                      _isDone;

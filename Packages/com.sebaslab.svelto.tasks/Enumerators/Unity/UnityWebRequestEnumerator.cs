@@ -25,7 +25,7 @@ namespace Svelto.Tasks.Enumerators
 
         object IEnumerator.Current => _www;
 
-        TaskContract IEnumerator<TaskContract>.Current { get; }
+        TaskContract IEnumerator<TaskContract>.Current => TaskContract.Yield.It;
 
         public UnityWebRequest Current => _www;
 

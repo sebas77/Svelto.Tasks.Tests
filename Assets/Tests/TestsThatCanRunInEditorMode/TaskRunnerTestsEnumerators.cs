@@ -27,6 +27,7 @@ namespace Test
             _iterable1 = new LeanEnumerator(10000);
         }
 
+#if PROFILE_SVELTO        
         [UnityTest]
         public IEnumerator TestPooledTaskMemoryUsage()
         {
@@ -35,7 +36,7 @@ namespace Test
             var runner = new MultiThreadRunner("test");
             var RunOn  = enumerator.RunOn(runner);
             while ((RunOn).isRunning == true)
-                yield return Yield.It;
+                yield return TaskContract.Yield.It;
 
             Assert.That(() =>
             {
@@ -45,11 +46,11 @@ namespace Test
 
             runner.Dispose();
         }
-
+#endif
         [UnityTest]
         public IEnumerator TestContinuatorSimple()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             //careful, runners can be garbage collected if they are not referenced somewhere and the
             //framework does not keep a reference
@@ -77,7 +78,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestUltraNaiveEnumerator()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             _iterable1.Complete();
 
@@ -92,7 +93,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestUltraNaiveEnumerator2()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             var subEnumerator = SubEnumerator(0, 10);
             subEnumerator.Complete(10000);
@@ -108,7 +109,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestFancyEnumerator()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete();
         }
@@ -120,7 +121,7 @@ namespace Test
         [UnityTest]
         public IEnumerator TestEvenFancierEnumerator()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             var multiThreadRunner = new MultiThreadRunner("test");
             MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete();
@@ -176,7 +177,7 @@ namespace Test
 
                 while (wait1.isRunning == true || wait2.isRunning == true || wait3.isRunning == true
                  || wait4.isRunning == true)
-                    yield return Yield.It;
+                    yield return TaskContract.Yield.It;
             }
 
             InitCompose().RunOn(runner);
@@ -231,11 +232,11 @@ namespace Test
             {
                 Assert.That(value.value, Is.EqualTo(testvalue));
                 
-                yield return Yield.It;
+                yield return TaskContract.Yield.It;
                 value.value++;
-                yield return Yield.It;
+                yield return TaskContract.Yield.It;
                 value.value++;
-                yield return Yield.It;
+                yield return TaskContract.Yield.It;
                 value.value++;
                 
                 Assert.That(value.value, Is.EqualTo(testvalue + 3));
@@ -268,24 +269,24 @@ namespace Test
         [UnityTest]
         public IEnumerator TestEnumeratorStartingFromEnumeratorIndependently()
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             using (var runner = new MultiThreadRunner("test"))
             {
                 var continuation = NestedEnumerator(runner).RunOn(runner);
 
                 while ((continuation).isRunning)
-                    yield return Yield.It;
+                    yield return TaskContract.Yield.It;
             }
         }
 
         static IEnumerator<TaskContract> NestedEnumerator(MultiThreadRunner runner)
         {
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
 
             new WaitForSecondsEnumerator(0.1f).RunOn(runner);
 
-            yield return Yield.It;
+            yield return TaskContract.Yield.It;
         }
 
         static IEnumerator<TaskContract> GameLoop()
@@ -306,7 +307,7 @@ namespace Test
 
                 reusableEnumerator.Reset();
 
-                yield return Yield.It; //yield one iteration, if you forget this, will enter in an infinite loop!
+                yield return TaskContract.Yield.It; //yield one iteration, if you forget this, will enter in an infinite loop!
                 //it's not mandatory but there must be at least one yield in a loop
             }
         }
@@ -387,7 +388,7 @@ namespace Test
             int count = i + total;
             do
             {
-                yield return Yield.It; //enable asynchronous execution
+                yield return TaskContract.Yield.It; //enable asynchronous execution
             } while (++i < count);
 
             yield return i; //careful it will be boxed;

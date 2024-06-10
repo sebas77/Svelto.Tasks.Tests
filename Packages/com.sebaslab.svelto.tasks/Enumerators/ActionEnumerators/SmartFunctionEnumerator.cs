@@ -22,7 +22,7 @@ namespace Svelto.Tasks.Enumerators
         public bool MoveNext() { return _func(ref _value); }
         public void Reset() {}
 
-        public TaskContract Current => Yield.It;
+        public TaskContract Current => TaskContract.Yield.It;
         object IEnumerator.Current => throw new NotSupportedException();
         public TVal value => _value;
         

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Lean;
 
 namespace Test
@@ -17,7 +18,7 @@ namespace Test
         [Test]
         public void TestThatLeanTasksWaitForContinuesWhenRunnerListsResize()
         {
-            // The task runner has an inner faster list that starts initialized with a privat const value of 3.
+            // The task runner has an inner faster list that starts initialized with a private const value of 3.
             // 32 task continuations should be enough for the foreseeable future to execute a list resize.
             const int requiredTasks = 32;
 
@@ -41,7 +42,7 @@ namespace Test
                 x = number;
             }
 
-            var task = Task(1).RunOn(_taskRunner);
+            Continuation task = Task(1).RunOn(_taskRunner);
             while (task.isRunning)
             {
                 _taskRunner.Step();

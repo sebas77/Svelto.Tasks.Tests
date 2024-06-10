@@ -1,50 +1,42 @@
 using System;
-using System.Collections;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public readonly struct Continuation: IEnumerator
+    public readonly struct Continuation
     {
-        readonly ContinuationEnumeratorInternal ce;
-#if DEBUG && !PROFILE_SVELTO
-        internal readonly WeakReference<IRunner> _runner;
-#endif
         internal Continuation(ContinuationEnumeratorInternal continuation) : this()
         {
             _signature = continuation.signature;
-            ce         = continuation;
+            _ce         = continuation;
         }
 
 #if DEBUG && !PROFILE_SVELTO
         internal Continuation(ContinuationEnumeratorInternal continuation, IRunner runner)
         {
             _signature = continuation.signature;
-            ce         = continuation;
+            _ce         = continuation;
             _runner    = new WeakReference<IRunner>(runner);
         }
 #endif
 
-        public bool isRunning => ce.MoveNext(_signature);
+        public bool isRunning => _ce.IsRunning(_signature);
 
-        readonly DateTime _signature;
-        
-        public   bool     MoveNext()
+        public bool MoveNext()
         {
-            return ce.MoveNext(_signature);
+            return _ce.IsRunning(_signature);
         }
-
-        public   void     Reset()
-        {
-            throw new NotImplementedException();
-        }
-
-        public object Current => Yield.It;
 
         public void ReturnToPool()
         {
-            ce?.ReturnToPool();
+            _ce?.ReturnToPool();
         }
+        
+        readonly DateTime _signature;
+        readonly ContinuationEnumeratorInternal _ce;
+#if DEBUG && !PROFILE_SVELTO
+        internal readonly WeakReference<IRunner> _runner;
+#endif
     }
 
     /// <summary>
@@ -57,7 +49,7 @@ namespace Svelto.Tasks.Enumerators
             signature = DateTime.Now;
         }
 
-        public bool MoveNext(in DateTime signature)
+        public bool IsRunning(in DateTime signature)
         {
             return signature == this.signature;
         }
@@ -72,7 +64,6 @@ namespace Svelto.Tasks.Enumerators
             //task is done. But how can I know how long a runner is going to hold the continuation enumerator for?
             //therefore the "signature" will invalidate stale holders and therefore it's safe here to set
             //_completed to false
-
             ContinuationPool.PushBack(this); //and return to the pool
         }
 

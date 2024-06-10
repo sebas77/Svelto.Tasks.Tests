@@ -20,7 +20,7 @@ namespace Svelto.Tasks.Enumerators
     public void Reset()
     {}
 
-    public TaskContract Current => Yield.It;
+    public TaskContract Current => TaskContract.Yield.It;
     object IEnumerator. Current => throw new NotSupportedException();
 
     public override string ToString()
@@ -58,7 +58,7 @@ namespace Svelto.Tasks.Enumerators
     public void Reset()
     {}
 
-    public TaskContract Current => Yield.It;
+    public TaskContract Current => TaskContract.Yield.It;
     object IEnumerator. Current => throw new NotSupportedException();
     public T            value   => _value;
 

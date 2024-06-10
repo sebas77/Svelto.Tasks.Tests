@@ -38,7 +38,7 @@ namespace Svelto.Tasks.Enumerators
             _init = false;
         }
 
-        public TaskContract Current => Yield.It;
+        public TaskContract Current => TaskContract.Yield.It;
 
         public void Reset(float seconds)
         {

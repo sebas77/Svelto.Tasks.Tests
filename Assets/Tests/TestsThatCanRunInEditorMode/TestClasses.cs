@@ -77,7 +77,7 @@ namespace Test
 
         public void Reset() { iterations = 0; }
 
-        public TaskContract Current => Yield.It;
+        public TaskContract Current => TaskContract.Yield.It;
         object IEnumerator.Current  => throw new NotSupportedException();
 
         public void Dispose() { throw new NotImplementedException(); }

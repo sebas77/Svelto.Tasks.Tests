@@ -7,14 +7,14 @@ namespace Svelto.DataStructures.Native
 {
     /// <summary>
     /// They are called strategy because they abstract the handling of the memory type used.
-    /// Through the IBufferStrategy interface, external datastructure can use interchangeably native and managed memory. 
+    /// Through the IBufferStrategy interface, with these, datastructure can use interchangeably native and managed memory and other strategies. 
     /// </summary>
     public struct NativeStrategy<T> : IBufferStrategy<T> where T : struct
     {
 #if DEBUG && !PROFILE_SVELTO
         static NativeStrategy()
         {
-            if (TypeType.isUnmanaged<T>() == false)
+            if (TypeCache<T>.isUnmanaged == false)
                 throw new DBC.Common.PreconditionException("Only unmanaged data can be stored natively");
         }
 #endif
@@ -25,29 +25,33 @@ namespace Svelto.DataStructures.Native
 
         public int       capacity           => _realBuffer.capacity;
 
-        public void Alloc(uint newCapacity, Allocator allocator, bool clear)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Alloc(uint newCapacity, Allocator allocator, bool memClear)
         {
 #if DEBUG && !PROFILE_SVELTO
             if (!(this._realBuffer.ToNativeArray(out _) == IntPtr.Zero))
                 throw new DBC.Common.PreconditionException("can't alloc an already allocated buffer");
+            if (allocator != Allocator.Persistent && allocator != Allocator.Temp && allocator != Allocator.TempJob)
+                throw new Exception("invalid allocator used for native strategy");
 #endif
             _nativeAllocator = allocator;
 
-            IntPtr   realBuffer = MemoryUtilities.Alloc<T>(newCapacity, _nativeAllocator, clear);
-            NB<T> b          = new NB<T>(realBuffer, newCapacity);
+            IntPtr   realBuffer = MemoryUtilities.NativeAlloc<T>(newCapacity, _nativeAllocator, memClear);
+            NBInternal<T> b          = new NBInternal<T>(realBuffer, newCapacity);
             _invalidHandle = true;
             _realBuffer    = b;
         }
 
-        public void Resize(uint newSize, bool copyContent = true)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Resize(uint newSize, bool copyContent = true, bool memClear = true)
         {
             if (newSize != capacity)
             {
                 IntPtr pointer = _realBuffer.ToNativeArray(out _);
-                pointer = MemoryUtilities.Realloc<T>(pointer, newSize, _nativeAllocator
+                pointer = MemoryUtilities.NativeRealloc<T>(pointer, newSize, _nativeAllocator
                                                    , newSize > capacity ? (uint) capacity : newSize
-                                                   , copyContent);
-                NB<T> b = new NB<T>(pointer, newSize);
+                                                   , copyContent, memClear);
+                NBInternal<T> b = new NBInternal<T>(pointer, newSize);
                 _realBuffer    = b;
                 _invalidHandle = true;
             }
@@ -63,6 +67,7 @@ namespace Svelto.DataStructures.Native
             throw new NotImplementedException();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ShiftLeft(uint index, uint count)
         {
             DBC.Common.Check.Require(index < capacity, "out of bounds index");
@@ -78,6 +83,7 @@ namespace Svelto.DataStructures.Native
             MemoryUtilities.MemMove<T>(array, index + 1, index, count - index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ShiftRight(uint index, uint count)
         {
             DBC.Common.Check.Require(index < capacity, "out of bounds index");
@@ -95,6 +101,8 @@ namespace Svelto.DataStructures.Native
 
         public bool isValid => _realBuffer.isValid;
 
+        public void FastClear() {}
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear() => _realBuffer.Clear();
 
         public ref T this[uint index]
@@ -131,12 +139,13 @@ namespace Svelto.DataStructures.Native
             _invalidHandle = false;
             if (((IntPtr) _cachedReference == IntPtr.Zero))
             {
-                _cachedReference = GCHandle.Alloc(_realBuffer, GCHandleType.Normal);
+                    _cachedReference = GCHandle.Alloc(_realBuffer, GCHandleType.Normal);
             }
 
             return (IBuffer<T>) _cachedReference.Target;
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public NB<T> ToRealBuffer()
         {
             return _realBuffer;
@@ -147,7 +156,7 @@ namespace Svelto.DataStructures.Native
             ReleaseCachedReference();
 
             if (_realBuffer.ToNativeArray(out _) != IntPtr.Zero)
-                MemoryUtilities.Free(_realBuffer.ToNativeArray(out _), _nativeAllocator);
+                MemoryUtilities.NativeFree(_realBuffer.ToNativeArray(out _), _nativeAllocator);
             else
                 throw new Exception("trying to dispose disposed buffer");
 
@@ -165,12 +174,13 @@ namespace Svelto.DataStructures.Native
         }
 
         Allocator _nativeAllocator;
-        NB<T>      _realBuffer;
+        NBInternal<T>      _realBuffer;
         bool       _invalidHandle;
 
 #if UNITY_COLLECTIONS || UNITY_JOBS || UNITY_BURST
         [Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
 #endif
+        //NativeStrategy must stay unmanaged so it cannot hold on an IBuffer reference
         GCHandle _cachedReference;
     }
 }

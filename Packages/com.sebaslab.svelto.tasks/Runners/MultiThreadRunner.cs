@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.Common;
-using Svelto.Common.DataStructures;
 using Svelto.DataStructures;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
@@ -394,9 +393,9 @@ namespace Svelto.Tasks
             }
 
             /// <summary>
-            /// Resuming a manual even can take a long time, but allow the thread to be pause and the core to be used
+            /// Resuming a manual even can take a long time, but allow the thread to be paused and the core to be used
             /// by other threads.
-            /// For the future: I tried all the combinations with ManualResetEvent (to slow to resume)
+            /// For the future: I tried all the combinations with ManualResetEvent (too slow to resume)
             /// and ManualResetEventSlim (spinning too much). This is the best solution:
             /// DO NOT TOUCH THE NUMBERS, THEY ARE THE BEST BALANCE BETWEEN CPU OCCUPATION AND RESUME SPEED
             /// </summary>
@@ -406,12 +405,9 @@ namespace Svelto.Tasks
                 var       frequency       = 64;
                 _watchForLocking.Restart();
 
-                using (_profiler.Sample("locked"))
+                while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire)
                 {
-                    while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire)
-                    {
-                        ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
-                    }
+                    ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
                 }
             }
 
@@ -422,7 +418,7 @@ namespace Svelto.Tasks
 
                 while (_watchForInterval.ElapsedTicks < _intervalInTicks)
                 {
-                    ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
+                    ThreadUtility.LongWaitLeft(_intervalInTicks, ref quickIterations, _watchForLocking, frequency);
 
                     if (waitForStop == true)
                         return;

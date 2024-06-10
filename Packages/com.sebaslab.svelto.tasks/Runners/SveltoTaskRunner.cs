@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using Svelto.Common;
-using Svelto.Common.DataStructures;
 using Svelto.DataStructures;
 
 
@@ -80,6 +79,7 @@ namespace Svelto.Tasks.Internal
 
                 var coroutinesCount        = _coroutines.count;
                 var spawnedCoroutinesCount = _spawnedCoroutines.count;
+                uint waitingRoutines = 0;
 
                 if ((spawnedCoroutinesCount + coroutinesCount == 0)
                  || (_flushingOperation.paused == true && _flushingOperation.stopping == false))
@@ -94,40 +94,45 @@ namespace Svelto.Tasks.Internal
 
                 bool mustExit;
 
+                //these are the child coroutines spawned by the main coroutines
                 if (spawnedCoroutinesCount > 0)
                 {
-                    var spawnedCoroutines = _spawnedCoroutines;
+                    var spawnedCoroutines = _spawnedCoroutines.ToArrayFast(out _);
                     int index             = 0;
 
                     do
                     {
-                        bool result;
+                        StepState result;
 
+                        ref var spawnedCoroutine = ref spawnedCoroutines[index];
+                        
                         if (_flushingOperation.stopping)
-                            spawnedCoroutines[index].Stop();
+                            spawnedCoroutine.Stop();
 
                         try
                         {
 #if ENABLE_PLATFORM_PROFILER
-                            using (platformProfiler.Sample(spawnedCoroutines[index].name))
+                            using (platformProfiler.Sample(spawnedCoroutine.name))
 #endif
 #if TASKS_PROFILER_ENABLED
                             result =
                                 Profiler.TaskProfiler.MonitorUpdateDuration(ref spawnedCoroutines[index], _info.runnerName);
 #else
 
-                            result = spawnedCoroutines[index].MoveNext();
+                            result = spawnedCoroutine.Step();
 #endif
                         }
-                        catch
+                        catch (Exception e)
                         {
-                            Svelto.Console.LogError(
-                                $"catching exception for spawned task {spawnedCoroutines[index].name}");
+                            //note, the user code cannot catch exceptions thrown by the task
+                            //we could however add some extra information in the TaskContract
+                            
+                            Svelto.Console.LogException(e, $"catching exception for spawned task {spawnedCoroutine.name}");
 
                             throw;
                         }
                         
-                        if (result == false)
+                        if (result == StepState.Completed)
                         {
                             _spawnedCoroutines.UnorderedRemoveAt((uint)index);
 
@@ -140,6 +145,7 @@ namespace Svelto.Tasks.Internal
                     } while (!mustExit);
                 }
 
+                //these are the main coroutines
                 if (coroutinesCount > 0)
                 {
                     int index = 0;
@@ -151,34 +157,36 @@ namespace Svelto.Tasks.Internal
                         if (_info.CanProcessThis(ref index) == false)
                             break;
 
-                        bool result;
+                        StepState result;
 
+                        ref var sveltoTask = ref coroutines[index];
+                        
                         if (_flushingOperation.stopping)
-                            coroutines[index].Stop();
+                            sveltoTask.Stop();
 
                         try
                         {
 #if ENABLE_PLATFORM_PROFILER
-                            using (platformProfiler.Sample(coroutines[index].name))
+                            using (platformProfiler.Sample(sveltoTask.name))
 #endif
                     
 #if TASKS_PROFILER_ENABLED
                             result =
                                 Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName);
 #else
-                            result = coroutines[index].MoveNext();
+                            result = sveltoTask.Step();
 #endif
                         }
                         catch (Exception e)
                         {
-                            Svelto.Console.LogException(e, $"catching exception for root task {coroutines[index].name}");
+                            Svelto.Console.LogException(e, $"catching exception for root task {sveltoTask.name}");
 
                             throw;
                         }
 
                         int previousIndex = index;
 
-                        if (result == false)
+                        if (result == StepState.Completed)
                         {
                             DBC.Tasks.Check.Assert(_coroutines.count != 0, $"are you running a disposed runner? {this._info.runnerName}");
                             
@@ -189,10 +197,10 @@ namespace Svelto.Tasks.Internal
                         else
                             index++;
 
-                        mustExit = (coroutinesCount == 0
-                         || _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount, !result)
-                         == false || index >= coroutinesCount);
-                    } while (!mustExit);
+                        mustExit = ((coroutinesCount == 0 && waitingRoutines == 0) 
+                         || _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount, result == StepState.Completed) == false 
+                         || index >= coroutinesCount);
+                    } while (mustExit == false);
                 }
 
                 return true;

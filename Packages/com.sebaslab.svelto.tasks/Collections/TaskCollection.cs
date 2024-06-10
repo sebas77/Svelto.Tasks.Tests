@@ -134,7 +134,7 @@ namespace Svelto.Tasks
             for (int index = 0; index < count; ++index)
                 stacks[index].Clear();
             
-            _listOfStacks.FastClear();
+            _listOfStacks.Clear();
          
             _currentStackIndex = 0;
         }
@@ -173,7 +173,7 @@ namespace Svelto.Tasks
                     return TaskState.yieldIt;
 
                 //can be a Svelto.Tasks Break
-                if (taskContractEn.Current.breakIt == Break.It || taskContractEn.Current.breakIt == Break.AndStop)
+                if (taskContractEn.Current.breakMode == TaskContract.Break.It || taskContractEn.Current.breakMode == TaskContract.Break.AndStop)
                     return TaskState.breakIt;
 
                     //careful it must be the array and not the list as it returns a struct!!
