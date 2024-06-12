@@ -63,12 +63,34 @@ namespace Svelto.Tasks.ExtraLean
             bool completed;
             if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
             {
-                completed = !_runningTask.MoveNext();
+                try
+                {
+                    if (_runningTask.MoveNext() == false)
+                        completed = true;
+                    else
+                    {
+                        var current = _runningTask.Current;
+
+                        if (current == null)
+                            completed = false;
+                        else
+                        if (current == TaskContract.Break.It || current == TaskContract.Break.AndStop)
+                            completed = true;
+                        else
+                            throw new SveltoTaskException("ExtraLean enumerator can return only null, Yield.It, Break.It, Break.AndStop and yield break");    
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.LogException(e);
+
+                    throw;
+                }
 #if DEBUG && !PROFILE_SVELTO
                 if (IS_TASK_STRUCT == false && _runningTask == null)
-                    throw new Exception($"Something went extremely wrong, has the runner been disposed?");
+                    throw new SveltoTaskException($"Something went extremely wrong, has the runner been disposed?");
                 if (_runningTask.Current != null)
-                    throw new Exception($"ExtraLean runners cannot yield any other value than Yield.It Task:{_name}");
+                    throw new SveltoTaskException($"ExtraLean runners cannot yield any other value than Yield.It Task:{_name}");
 #endif
             }
             else

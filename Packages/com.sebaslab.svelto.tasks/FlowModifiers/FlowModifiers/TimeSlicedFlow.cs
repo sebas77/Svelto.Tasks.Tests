@@ -9,7 +9,6 @@ namespace Svelto.Tasks.FlowModifiers
         {
             _maxTicks = (long) (maxMilliseconds * 10000);
             _stopWatch = new Stopwatch();
-            runnerName = null;
         }
 
         public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
@@ -40,8 +39,6 @@ namespace Svelto.Tasks.FlowModifiers
             _stopWatch.Reset();
             _stopWatch.Start();
         }
-
-        public string runnerName { get; set; }
 
         readonly Stopwatch _stopWatch;
         readonly long      _maxTicks;

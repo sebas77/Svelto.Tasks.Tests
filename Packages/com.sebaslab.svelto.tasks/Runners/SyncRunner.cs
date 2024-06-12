@@ -27,7 +27,7 @@ namespace Svelto.Tasks
                 }
 
                 if (valid == false)
-                    throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+                    throw new SveltoTaskException("synchronous task timed out, increase time out or check if it got stuck");
             }
             else
             {
@@ -75,6 +75,6 @@ namespace Svelto.Tasks
 
     public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
     {
-        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName));
+        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName + " SyncRunner"));
     }
 }

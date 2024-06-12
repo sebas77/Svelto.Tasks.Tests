@@ -35,8 +35,6 @@ namespace Svelto.Tasks.FlowModifiers
             _stopWatch.Start();
         }
 
-        public string runnerName { get; set; }
-
         readonly Stopwatch _stopWatch;
         readonly long      _maxMilliseconds;
     }

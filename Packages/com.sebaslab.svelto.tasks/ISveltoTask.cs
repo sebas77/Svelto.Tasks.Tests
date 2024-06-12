@@ -19,7 +19,7 @@ namespace Svelto.Tasks
     {
         Running,
         Completed,
-        Continued
+        //Waiting Todo: still thinking about this
     }
 }
 

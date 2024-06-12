@@ -7,7 +7,7 @@ using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks
 {
-    public struct TaskContract
+    public readonly struct TaskContract
     {
         public TaskContract(int number) : this()
         {
@@ -50,16 +50,10 @@ namespace Svelto.Tasks
             _currentState            = States.exception;
             _returnObjects.reference = o;
         }
-
-        public TaskContract(object o) : this()
+        
+        internal TaskContract(Continuation continuation, bool continueCase = false) : this()
         {
-            _currentState            = States.reference;
-            _returnObjects.reference = o;
-        }
-
-        internal TaskContract(Continuation continuation) : this()
-        {
-            _currentState = States.continuation;
+            _currentState = continueCase ? States.sameRunnerContinuation : States.continuation;
             _continuation = continuation;
         }
 
@@ -81,6 +75,17 @@ namespace Svelto.Tasks
         {
             _currentState          = States.breakit;
             _returnObjects.breakMode = breakit;
+        }
+
+        TaskContract(Yield o) : this()
+        {
+            _currentState            = States.yieldit;
+        }
+        
+        TaskContract(object reference, bool isReference): this() //I am using this convoluted way because I do not want the compiler to get confused and use an object constructor by mistake
+        {
+            _currentState = States.reference;
+            _returnObjects.reference = reference;
         }
 
         public static implicit operator TaskContract(int number)
@@ -121,6 +126,11 @@ namespace Svelto.Tasks
         public static implicit operator TaskContract(string payload)
         {
             return new TaskContract(payload);
+        }
+        
+        public static TaskContract FromReference(object reference)
+        {
+            return new TaskContract (reference, true);
         }
 
         public int ToInt()
@@ -185,7 +195,7 @@ namespace Svelto.Tasks
 
                 return true;
             }
-            else
+
             if (_currentState == States.forgetLeanEnumerator)
             {
                 tuple.enumerator = (IEnumerator<TaskContract>)_returnObjects.reference;
@@ -204,22 +214,24 @@ namespace Svelto.Tasks
         {
             get
             {
-                if (_currentState != States.continuation)
+                if (_currentState != States.continuation && _currentState != States.sameRunnerContinuation)
                     return null;
 
                 return _continuation;
             }
         }
 
-        internal object reference => _currentState == States.value ? _returnObjects.reference : null;
-        internal bool   hasValue  => _currentState == States.value;
-        internal bool   yieldIt   => _currentState == States.yieldit;
+        //Todo: Unit Test return object with TaskContract
+        internal bool hasValue    => _currentState == States.value || _currentState == States.reference || _currentState == States.exception;
+        
+        internal bool yieldIt     => _currentState == States.yieldit;
+        internal bool isContinued => _currentState == States.sameRunnerContinuation;
         
         readonly FieldValues  _returnValue;
         readonly FieldObjects _returnObjects;
         readonly States       _currentState;
         readonly Continuation _continuation;
-        
+
         public static IEnumerator<TaskContract> Empty { get; } = EmptyEnumerator();
 
         static IEnumerator<TaskContract> EmptyEnumerator()
@@ -254,7 +266,8 @@ namespace Svelto.Tasks
             extraLeanEnumerator,
             reference,
             exception,
-            forgetLeanEnumerator
+            forgetLeanEnumerator,
+            sameRunnerContinuation
         }
         
         // ReSharper disable once ClassNeverInstantiated.Global

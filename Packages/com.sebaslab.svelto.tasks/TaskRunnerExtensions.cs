@@ -95,7 +95,7 @@ public static class TaskRunnerExtensions
             }
 
             if (valid == false && isDone == false)
-                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+                throw new SveltoTaskException("synchronous task timed out, increase time out or check if it got stuck");
         }
         else
         {
@@ -120,7 +120,7 @@ public static class TaskRunnerExtensions
                    (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
 
             if (valid == false)
-                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+                throw new SveltoTaskException("synchronous task timed out, increase time out or check if it got stuck");
         }
         else
         {

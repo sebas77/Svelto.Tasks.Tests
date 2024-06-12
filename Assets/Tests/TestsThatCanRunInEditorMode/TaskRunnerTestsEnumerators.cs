@@ -214,7 +214,7 @@ namespace Test
         {
             public SerialSteppableRunner(string name):base(name)
             {
-                var modifier = new SerialFlow {runnerName = name};
+                var modifier = new SerialFlow ();
                 
                 UseFlowModifier(modifier);
             }

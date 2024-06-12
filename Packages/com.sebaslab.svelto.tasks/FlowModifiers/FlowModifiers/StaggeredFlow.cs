@@ -13,7 +13,6 @@ namespace Svelto.Tasks.FlowModifiers
         {
             _maxTasksPerIteration = maxTasksPerIteration;
             _iterations           = 0;
-            runnerName            = null;
         }
 
         public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
@@ -39,8 +38,6 @@ namespace Svelto.Tasks.FlowModifiers
         {
             _iterations = 0;
         }
-
-        public string runnerName { get; set; }
 
         int            _iterations;
         readonly float _maxTasksPerIteration;

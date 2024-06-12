@@ -157,8 +157,8 @@ namespace Svelto.Tasks
         protected TaskState ProcessStackAndCheckIfDone(int currentindex)
         {
             _currentStackIndex = currentindex;
-            var listOfStacks = _listOfStacks.ToArrayFast(out _);
-            ref var enumerator = ref listOfStacks[_currentStackIndex].Peek();
+            var arrayOfTasks = _listOfStacks.ToArrayFast(out _);
+            ref var enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
 
             bool isDone  = !enumerator.MoveNext();
             
@@ -177,7 +177,7 @@ namespace Svelto.Tasks
                     return TaskState.breakIt;
 
                     //careful it must be the array and not the list as it returns a struct!!
-                 listOfStacks[_currentStackIndex].Push(taskContractEn); //push the new yielded task and execute it immediately
+                 arrayOfTasks[_currentStackIndex].Push(taskContractEn); //push the new yielded task and execute it immediately
             }
 
             return TaskState.continueIt;

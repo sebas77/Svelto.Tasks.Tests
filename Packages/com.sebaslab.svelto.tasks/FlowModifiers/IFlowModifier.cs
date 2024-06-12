@@ -5,7 +5,5 @@ namespace Svelto.Tasks.Internal
         bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool hasCoroutineCompleted) where T : ISveltoTask;
         bool CanProcessThis(ref int index);
         void Reset();
-        
-        string runnerName { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Enumerators
@@ -19,14 +20,13 @@ namespace Svelto.Tasks.Enumerators
             _runner    = new WeakReference<IRunner>(runner);
         }
 #endif
-
-        public bool isRunning => _ce.IsRunning(_signature);
-
-        public bool MoveNext()
+        public bool isRunning
         {
-            return _ce.IsRunning(_signature);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _ce.IsRunning(_signature);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReturnToPool()
         {
             _ce?.ReturnToPool();
@@ -49,6 +49,7 @@ namespace Svelto.Tasks.Enumerators
             signature = DateTime.Now;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRunning(in DateTime signature)
         {
             return signature == this.signature;

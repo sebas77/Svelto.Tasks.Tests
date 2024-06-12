@@ -1,7 +1,5 @@
 using System;
 using Svelto.Common;
-using Svelto.DataStructures;
-using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
@@ -10,33 +8,25 @@ namespace Svelto.Tasks
     /// Remember, unless you are using the StandardSchedulers, nothing hold your runners. Be careful that if you
     /// don't hold a reference, they will be garbage collected even if tasks are still running
     /// </summary>
-    public class SteppableRunner<T> : ISteppableRunner, IRunner<T> where T : ISveltoTask
+    public class GenericSteppableRunner<TTask> : ISteppableRunner, IRunner<TTask> where TTask : ISveltoTask
     {
         public bool isStopping => _flushingOperation.stopping;
 
         //        public bool isKilled   => _flushingOperation.kill;
-        public bool hasTasks => numberOfProcessingTasks != 0;
+        public bool hasTasks => numberOfTasks != 0;
 
-        public uint   numberOfRunningTasks    => (uint)_runningCoroutines.count + (uint)_spawnedCoroutines.count;
-        public uint   numberOfQueuedTasks     => _newTaskRoutines.count;
-        public uint   numberOfProcessingTasks => numberOfRunningTasks + numberOfQueuedTasks;
+        public uint   numberOfRunningTasks    => _processor.numberOfRunningTasks;
+        public uint   numberOfQueuedTasks     => _processor.numberOfQueuedTasks;
+        public uint   numberOfTasks => _processor.numberOfTasks;
         public string name                    => _name;
 
-        public SteppableRunner(string name, int size = NUMBER_OF_INITIAL_COROUTINE)
+        public GenericSteppableRunner(string name)
         {
             _name              = name;
-            _flushingOperation = new SveltoTaskRunner<T>.FlushingOperation();
-            _newTaskRoutines   = new ThreadSafeQueue<T>(size);
-            _runningCoroutines = new FasterList<T>(size);
-            _spawnedCoroutines = new FasterList<T>(size);
-
-            UseFlowModifier(new StandardFlow
-            {
-                runnerName = name
-            });
+            _flushingOperation = new SveltoTaskRunner<TTask>.FlushingOperation();
         }
 
-        ~SteppableRunner()
+        ~GenericSteppableRunner()
         {
             Console.LogWarning(_name.FastConcat(" has been garbage collected, this could have serious" +
                 "consequences, are you sure you want this? "));
@@ -58,24 +48,24 @@ namespace Svelto.Tasks
         {
             using (_platformProfiler.Sample(_name))
             {
-                return _processEnumerator.MoveNext(_platformProfiler);
+                return _processor.MoveNext(_platformProfiler);
             }
         }
 
-        public void StartTask(in T task)
+        public void StartTask(in TTask task)
         {
             DBC.Tasks.Check.Require(_flushingOperation.kill == false,
                 $"can't schedule new routines on a killed scheduler {_name}");
 
-            _newTaskRoutines.Enqueue(task);
+            _processor.StartTask(task);
         }
 
-        public void SpawnContinuingTask(T task)
+        public void SpawnContinuingTask(in TTask task)
         {
             DBC.Tasks.Check.Require(_flushingOperation.kill == false,
                 $"can't schedule new routines on a killed scheduler {_name}");
 
-            _spawnedCoroutines.Add(task);
+            _processor.EnqueueContinuingTask(task);
         }
         
         public virtual void Stop() 
@@ -115,17 +105,11 @@ namespace Svelto.Tasks
         
         protected void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
-            _processEnumerator = new SveltoTaskRunner<T>.Process<TFlowModifier>(_newTaskRoutines, _runningCoroutines,
-                _spawnedCoroutines, _flushingOperation, modifier);
+            _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, NUMBER_OF_INITIAL_COROUTINE, _name);
         }
 
-        protected IProcessSveltoTasks _processEnumerator;
-
-        readonly ThreadSafeQueue<T> _newTaskRoutines;
-        readonly FasterList<T>      _runningCoroutines;
-        readonly FasterList<T>      _spawnedCoroutines;
-
-        readonly SveltoTaskRunner<T>.FlushingOperation _flushingOperation;
+        readonly SveltoTaskRunner<TTask>.FlushingOperation      _flushingOperation;
+        IProcessSveltoTasks<TTask> _processor;
 
         readonly string           _name;
         readonly PlatformProfiler _platformProfiler;

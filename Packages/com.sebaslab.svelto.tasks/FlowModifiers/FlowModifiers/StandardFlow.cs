@@ -16,7 +16,5 @@ namespace Svelto.Tasks.FlowModifiers
 
         public void Reset()
         {}
-
-        public string runnerName { get; set; }
     }
 }

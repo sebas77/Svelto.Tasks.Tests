@@ -1,17 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.FlowModifiers;
 
 namespace Svelto.Tasks
 {
     /// Generic Steppable Runners. They can be used to run tasks that can be stepped manually.
     namespace Lean
     {
-        public class SteppableRunner : SteppableRunner<LeanSveltoTask<IEnumerator<TaskContract>>>,
+        public class SteppableRunner : GenericSteppableRunner<LeanSveltoTask<IEnumerator<TaskContract>>>,
                 IEnumerator<TaskContract>, IGenericLeanRunner
         {
             public SteppableRunner(string name) : base(name)
             {
+                UseFlowModifier(new StandardFlow());
             }
 
             public bool MoveNext()
@@ -31,10 +33,11 @@ namespace Svelto.Tasks
 
     namespace ExtraLean
     {
-        public class SteppableRunner : SteppableRunner<ExtraLeanSveltoTask<IEnumerator>>, IEnumerator,IGenericExtraLeanRunner
+        public class SteppableRunner : GenericSteppableRunner<ExtraLeanSveltoTask<IEnumerator>>, IEnumerator,IGenericExtraLeanRunner
         {
             public SteppableRunner(string name) : base(name)
             {
+                UseFlowModifier(new StandardFlow());
             }
 
             public bool MoveNext()
@@ -43,8 +46,7 @@ namespace Svelto.Tasks
             }
 
             public void Reset()
-            {
-            }
+            { }
 
             public object Current => TaskContract.Yield.It;
         }
