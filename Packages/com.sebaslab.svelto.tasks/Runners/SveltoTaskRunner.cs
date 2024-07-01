@@ -152,16 +152,18 @@ namespace Svelto.Tasks.Internal
                 {
                     int index = 0;
 
-                    var coroutines = _runningCoroutines.ToArrayFast(out _);
+                    var coroutines = _runningCoroutines.ToArrayFast(out var count);
+                    
+                    DBC.Tasks.Check.Assert(count == coroutinesCount, "unexpected count");
 
-                    do
+                    do 
                     {
                         if (_info.CanProcessThis(ref index) == false)
                             break;
 
                         StepState result;
 
-                        ref var sveltoTask = ref coroutines[index];
+                        ref TTask sveltoTask = ref coroutines[index];
                         
                         if (_flushingOperation.stopping)
                             sveltoTask.Stop();
@@ -183,7 +185,6 @@ namespace Svelto.Tasks.Internal
                         {
                             Svelto.Console.LogException(e, $"catching exception for root task {sveltoTask.name}");
                             result = StepState.Completed; //todo: in future it could be faulted if makes sense
-                            
                         }
 
                         int previousIndex = index;

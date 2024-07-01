@@ -8,7 +8,7 @@ namespace Svelto.Tasks.Lean
 {
     public struct LeanSveltoTask<TTask> : ISveltoTask where TTask : IEnumerator<TaskContract>
     {
-        internal Continuation Run<TRunner>(TRunner runner, ref TTask task)
+        internal Continuation Run<TRunner>(TRunner runner, in TTask task)
             where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(task, runner);

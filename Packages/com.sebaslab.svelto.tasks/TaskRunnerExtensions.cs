@@ -32,13 +32,13 @@ namespace Svelto.Tasks.Lean
         public static Continuation RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
             where TTask : struct, IEnumerator<TaskContract> where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
-            return new LeanSveltoTask<TTask>().Run(runner, ref enumerator);
+            return new LeanSveltoTask<TTask>().Run(runner, enumerator);
         }
         
         public static Continuation RunOn<TRunner>(this IEnumerator<TaskContract> enumerator, TRunner runner)
             where TRunner : class, IRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
-            return new LeanSveltoTask<IEnumerator<TaskContract>>().Run(runner, ref enumerator);
+            return new LeanSveltoTask<IEnumerator<TaskContract>>().Run(runner, enumerator);
         }
     }
 }
@@ -50,6 +50,10 @@ public static class TaskRunnerExtensions
         return new TaskContract(task);
     }
     
+    //if task is continued with forget, the task will be executed but the caller will not wait for it to complete
+    //this method is used when you want to run, but not wait, a task on the same runner of the parent without knowing what it was
+    
+    //todo: unit test
     public static TaskContract Forget(this IEnumerator<TaskContract> task) 
     {
         return new TaskContract(task, true);
@@ -65,7 +69,7 @@ public static class TaskRunnerExtensions
         return iteratorBlock.Current.ToRef<T>();
     }
     
-    public static TaskContract Continue<T>(this T enumerator) where T:IEnumerator 
+    public static TaskContract Continue(this IEnumerator enumerator) 
     {
         return new TaskContract(enumerator);
     }

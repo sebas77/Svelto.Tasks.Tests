@@ -28,7 +28,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             IEnumerator<TaskContract> severalTasksParent = SeveralTasksParent();
-            severalTasksParent.Complete();
+            severalTasksParent.Complete(1000);
             
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
@@ -39,20 +39,20 @@ namespace Test
         public IEnumerator TestThatABreakAndStopBreaksTheWholeExecution()
         {
             var severalTasksParent = SeveralTasksParentBreak();
-            severalTasksParent.Complete();
+            severalTasksParent.Complete(10000);
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
             Assert.AreNotEqual(severalTasksParent.Current.ToInt(), 10);
 
-            yield break;
+            yield break; 
         }
         
         [UnityTest]
         public IEnumerator TestThatABreakItBreaksTheCurrentExecution()
         {
             var severalTasksParent = SeveralTasksBreakIt();
-            severalTasksParent.Complete();
+            severalTasksParent.Complete(1000);
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);

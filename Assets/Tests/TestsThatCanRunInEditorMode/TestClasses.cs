@@ -82,6 +82,44 @@ namespace Test
 
         public void Dispose() { throw new NotImplementedException(); }
     }
+    
+    class ExtraLeanEnumerator : IEnumerator
+    {
+        readonly int totalIterations;
+        public   int iterations;
+
+        public ExtraLeanEnumerator(int niterations)
+        {
+            iterations      = 0;
+            totalIterations = niterations;
+        }
+
+        public long endOfExecutionTime { get; private set; }
+
+        public bool AllRight => iterations == totalIterations;
+
+        public bool MoveNext()
+        {
+            if (totalIterations < 0) throw new Exception("can't handle this");
+
+            if (iterations < totalIterations)
+            {
+                ++iterations;
+
+                return true;
+            }
+
+            endOfExecutionTime = DateTime.Now.Ticks;
+
+            return false;
+        }
+
+        public void Reset() { iterations = 0; }
+
+        object IEnumerator.Current  => throw new NotSupportedException();
+
+        public void Dispose() { throw new NotImplementedException(); }
+    }
 
     class SimpleEnumeratorClassRefTime : IEnumerator
     {

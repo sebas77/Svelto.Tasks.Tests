@@ -225,6 +225,9 @@ namespace Svelto.Tasks
         internal bool hasValue    => _currentState == States.value || _currentState == States.reference || _currentState == States.exception;
         
         internal bool yieldIt     => _currentState == States.yieldit;
+
+        //if isContinued == true if Continue() task has been yielded
+        //if isContinued == false if RunOn() task has been yielded 
         internal bool isContinued => _currentState == States.sameRunnerContinuation;
         
         readonly FieldValues  _returnValue;

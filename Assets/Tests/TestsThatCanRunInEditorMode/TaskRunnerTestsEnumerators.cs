@@ -19,12 +19,12 @@ namespace Test
     ///  TaskRoutines should be exploited to enable advanced features. 
     /// </summary>
     [TestFixture]
-    public class TaskRunnerTestsWithPooledTasks
+    public class TaskRunnerTests
     {
         [SetUp]
         public void Setup()
         {
-            _iterable1 = new LeanEnumerator(10000);
+            _iterable1 = new LeanEnumerator(100);
         }
 
 #if PROFILE_SVELTO        
@@ -47,8 +47,128 @@ namespace Test
             runner.Dispose();
         }
 #endif
+        
+        /// <summary>
+        /// a Task Contract can return among the other things an IEnumerator.
+        /// the IEnumerator must complete correctly before returning to the caller
         [UnityTest]
-        public IEnumerator TestContinuatorSimple()
+        public IEnumerator TestTaskContractReturningIEnumerator()
+        {
+            yield return TaskContract.Yield.It;
+
+            int index = 0;
+
+            //careful, runners can be garbage collected if they are not referenced somewhere and the
+            //framework does not keep a reference
+            using (var updateMonoRunner = new SteppableRunner("update"))
+            {
+                var cont = TestEnum().RunOn(updateMonoRunner);
+
+                while (cont.isRunning)
+                    updateMonoRunner.Step();
+                
+                Assert.That(index, Is.EqualTo(3));
+            }
+            
+            IEnumerator<TaskContract> TestEnum()
+            {
+                yield return TaskContract.Yield.It;
+                yield return TaskContractReturningIEnumerator().Continue();
+                yield return TaskContract.Yield.It;
+            }            
+            
+            IEnumerator TaskContractReturningIEnumerator()
+            {
+                while (index < 3)
+                {
+                    yield return TaskContract.Yield.It;
+                    index++;
+                }
+            }
+        }
+        
+        [UnityTest]
+        public IEnumerator TestTaskContractReturningATaskContractReturningATaskContract()
+        {
+            yield return TaskContract.Yield.It;
+
+            //careful, runners can be garbage collected if they are not referenced somewhere and the
+            //framework does not keep a reference
+
+            using (var updateMonoRunner = new SteppableRunner("update"))
+            {
+                var testEnum = TestEnum();
+                var cont = testEnum.RunOn(updateMonoRunner);
+
+                while (cont.isRunning)
+                {
+                    updateMonoRunner.Step();
+                }
+
+                Assert.That(testEnum.Current.ToInt(), Is.EqualTo(10));
+            }
+            
+            IEnumerator<TaskContract> TestEnum()
+            {
+                yield return TaskContract.Yield.It;
+
+                var testEnum1 = TestEnum1();
+                yield return testEnum1.Continue();
+                
+                yield return testEnum1.Current;
+            }            
+            
+            IEnumerator<TaskContract> TestEnum1()
+            {
+                var subEnumerator = SubEnumerator(0, 10);
+                yield return subEnumerator.Continue();
+                yield return subEnumerator.Current;
+            }
+        }
+        
+        [UnityTest]
+        public IEnumerator TaskYieldingAnotherTaskRunningOnAnotherRunner()
+        {
+            yield return TaskContract.Yield.It;
+
+            int index = 0;
+
+            //careful, runners can be garbage collected if they are not referenced somewhere and the
+            //framework does not keep a reference
+            using var updateMonoRunner2 = new SteppableRunner("update2");
+            
+            using (var updateMonoRunner = new SteppableRunner("update"))
+            {
+                var cont = TestEnum().RunOn(updateMonoRunner);
+
+                while (cont.isRunning)
+                {
+                    updateMonoRunner.Step();
+                    updateMonoRunner2.Step();
+                }
+
+                Assert.That(index, Is.EqualTo(3));
+            }
+            
+            IEnumerator<TaskContract> TestEnum()
+            {
+                yield return TaskContract.Yield.It;
+                yield return TaskContractReturningIEnumerator().RunOn(updateMonoRunner2);
+                yield return TaskContract.Yield.It;
+            }            
+            
+            IEnumerator<TaskContract> TaskContractReturningIEnumerator()
+            {
+                while (index < 3)
+                {
+                    yield return TaskContract.Yield.It;
+                    index++;
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TestTaskContractJustYielding()
         {
             yield return TaskContract.Yield.It;
 
@@ -71,27 +191,27 @@ namespace Test
         }
 
         /// <summary>
-        /// basic way to run an Enumerator using a custom Runner.
-        /// This will force an allocation per run as the Enumerator is created dynamically
+        /// Test if Complete() works correctly on a simple IEnumerator
         /// </summary>
         /// <returns></returns>
         [UnityTest]
-        public IEnumerator TestUltraNaiveEnumerator()
+        public IEnumerator TestCompleteWithIEnumerator()
         {
             yield return TaskContract.Yield.It;
 
-            _iterable1.Complete();
+            var extraLeanEnumerator = new ExtraLeanEnumerator(10);
+            extraLeanEnumerator.Complete();
 
-            Assert.That(_iterable1.AllRight, Is.True);
+            Assert.That(extraLeanEnumerator.AllRight, Is.True);
         }
 
         /// <summary>
-        /// basic way to run an Enumerator using a custom Runner.
-        /// This will force an allocation per run as the Enumerator is created dynamically
+        /// Test if Complete() works correctly on a simple TaskContract
+        /// must return correct value in Current
         /// </summary>
         /// <returns></returns>
         [UnityTest]
-        public IEnumerator TestUltraNaiveEnumerator2()
+        public IEnumerator TestCompleteWithTaskContract()
         {
             yield return TaskContract.Yield.It;
 
@@ -107,11 +227,11 @@ namespace Test
         /// </summary>
         /// <returns></returns>
         [UnityTest]
-        public IEnumerator TestFancyEnumerator()
+        public IEnumerator TestFancyEnumerator() 
         {
             yield return TaskContract.Yield.It;
 
-            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete();
+            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete(1000);
         }
 
         /// <summary>
@@ -124,7 +244,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             var multiThreadRunner = new MultiThreadRunner("test");
-            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete();
+            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete(1000);
             multiThreadRunner.Dispose();
         }
 
@@ -140,7 +260,7 @@ namespace Test
             //you would normally write GameLoop().Run() to run on the standard scheduler, which changes
             //according the platform (on Unity the standard scheduler is the CoroutineMonoRunner, which
             //cannot run during these tests)
-            GameLoop().Complete();
+            GameLoop().Complete(1000);
 
             Assert.Pass();
         }
@@ -200,7 +320,7 @@ namespace Test
                 //start a loop, you can actually start multiple loops with different conditions so that
                 //you can wait for specific states to be valid before to start the real loop 
                 yield return smartFunctionEnumerator.Continue();
-                yield return smartFunctionEnumerator.Continue(); //it can be reused differently than a compiler generated iterator block
+                yield return smartFunctionEnumerator.Continue(); //it can be reused in opposition to a compiler generated iterator block
                 yield return smartFunctionEnumerator.value;
             }
 
@@ -289,7 +409,7 @@ namespace Test
             yield return TaskContract.Yield.It;
         }
 
-        static IEnumerator<TaskContract> GameLoop()
+        static IEnumerator GameLoop()
         {
             //initialization phase, for example you can precreate reusable enumerators or taskroutines
             //to avoid runtime allocations
