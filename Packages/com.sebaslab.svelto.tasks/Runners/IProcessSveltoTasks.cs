@@ -12,6 +12,5 @@ namespace Svelto.Tasks.Internal
         uint numberOfTasks { get; }
 
         void StartTask(in TTask task);
-        void EnqueueContinuingTask(in TTask task);
     }
 }

@@ -45,21 +45,24 @@ namespace Svelto.Tasks.Lean
 
 public static class TaskRunnerExtensions
 {
-    public static TaskContract Continue(this IEnumerator<TaskContract> task) 
+    public static TaskContract Continue<T>(this T enumerator) where T : class, IEnumerator //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing 
     {
-        return new TaskContract(task);
+        if (enumerator is IEnumerator<TaskContract> == true)
+            return new TaskContract((IEnumerator<TaskContract>) enumerator);
+        
+        return new TaskContract(enumerator);
     }
     
     //if task is continued with forget, the task will be executed but the caller will not wait for it to complete
     //this method is used when you want to run, but not wait, a task on the same runner of the parent without knowing what it was
     
     //todo: unit test
-    public static TaskContract Forget(this IEnumerator<TaskContract> task) 
+    public static TaskContract Forget<T>(this T task) where T : class, IEnumerator<TaskContract> //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing 
     {
         return new TaskContract(task, true);
     }
 
-    public static async Task<T> ToTask<T>(this IEnumerator<TaskContract> iteratorBlock) where T : class
+    public static async Task<T> ToTask<T>(this IEnumerator<TaskContract> iteratorBlock) where T:class //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing
     {
         while (iteratorBlock.MoveNext())
         {
@@ -67,11 +70,6 @@ public static class TaskRunnerExtensions
         }
         
         return iteratorBlock.Current.ToRef<T>();
-    }
-    
-    public static TaskContract Continue(this IEnumerator enumerator) 
-    {
-        return new TaskContract(enumerator);
     }
     
     public static void Complete(this IEnumerator<TaskContract> task, int _timeout = 0) 

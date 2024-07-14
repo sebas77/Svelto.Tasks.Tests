@@ -265,24 +265,24 @@ namespace Test
             Assert.Pass();
         }
 
+//        [Test] //this is valid only for SerialTaskCollection
+//        public void YieldingARootTaskOnTheSameRunnerThrowsException()
+//        {
+//            SyncRunner runner = new SyncRunner("test");
+//            
+//            IEnumerator<TaskContract> InitCompose()
+//            {
+//                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
+//
+//                yield return smartFunctionEnumerator.RunOn(runner);
+//            }
+//
+//            InitCompose().RunOn(runner);
+//            runner.ForceComplete(1000);
+//        }
+
         [Test]
-        public void YieldingARootTaskOnTheSameRunnerThrowsException()
-        {
-            SyncRunner runner = new SyncRunner("test");
-            
-            IEnumerator<TaskContract> InitCompose()
-            {
-                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
-
-                yield return smartFunctionEnumerator.RunOn(runner);
-            }
-
-            InitCompose().RunOn(runner);
-            runner.ForceComplete(1000);
-        }
-
-        [Test]
-        public void RunSeparateCoroutinesInParallelAndWaitForthem()
+        public void RunSeparateCoroutinesInParallelAndWaitForThem()
         {
             SyncRunner runner = new SyncRunner("test");
             
@@ -330,60 +330,47 @@ namespace Test
             Assert.That(gameLoop2.Current.ToInt(), Is.EqualTo(2));
         }
         
-        public class SerialSteppableRunner : SyncRunner
-        {
-            public SerialSteppableRunner(string name):base(name)
-            {
-                var modifier = new SerialFlow ();
-                
-                UseFlowModifier(modifier);
-            }
-        }
-        class RefHolder
-        {
-            public uint value;
-        }   
-        
-        
         [Test]
+        //Todo rewrite this with SerialTAskCollection
         public void SerialFlowModifierRunsTasksInSerial()
         {
-            IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
-            {
-                Assert.That(value.value, Is.EqualTo(testvalue));
-                
-                yield return TaskContract.Yield.It;
-                value.value++;
-                yield return TaskContract.Yield.It;
-                value.value++;
-                yield return TaskContract.Yield.It;
-                value.value++;
-                
-                Assert.That(value.value, Is.EqualTo(testvalue + 3));
-            }
+//            IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
+//            {
+//                Assert.That(value.value, Is.EqualTo(testvalue));
+//                
+//                yield return TaskContract.Yield.It;
+//                value.value++;
+//                yield return TaskContract.Yield.It;
+//                value.value++;
+//                yield return TaskContract.Yield.It;
+//                value.value++;
+//                
+//                Assert.That(value.value, Is.EqualTo(testvalue + 3));
+//            }
+//            
+//            IEnumerator<TaskContract> TestEnum2(RefHolder value, uint testvalue)
+//            {
+//                Assert.That(value.value, Is.EqualTo(testvalue));
+//
+//                yield return TestEnum(value, testvalue).Continue();
+//                yield return TestEnum(value, testvalue + 3).Continue();
+//                yield return TestEnum(value, testvalue + 6).Continue();
+//                
+//                Assert.That(value.value, Is.EqualTo(testvalue + 9));
+//            }
+//
+//            var                   refHolder = new RefHolder();
+//            SerialSteppableRunner runner    = new SerialSteppableRunner("test");
+//
+//            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 18, 9)
+//            TestEnum2(refHolder, 0).RunOn(runner);
+//            TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
+//            TestEnum2(refHolder, 9).RunOn(runner);
+//            
+//            runner.ForceComplete(10000);
             
-            IEnumerator<TaskContract> TestEnum2(RefHolder value, uint testvalue)
-            {
-                Assert.That(value.value, Is.EqualTo(testvalue));
-
-                yield return TestEnum(value, testvalue).Continue();
-                yield return TestEnum(value, testvalue + 3).Continue();
-                yield return TestEnum(value, testvalue + 6).Continue();
-                
-                Assert.That(value.value, Is.EqualTo(testvalue + 9));
-            }
-
-            var                   refHolder = new RefHolder();
-            SerialSteppableRunner runner    = new SerialSteppableRunner("test");
-
-            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 18, 9)
-            TestEnum2(refHolder, 0).RunOn(runner);
-            TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
-            TestEnum2(refHolder, 9).RunOn(runner);
-            
-            runner.ForceComplete(10000);
-            
-            Assert.That(refHolder.value, Is.EqualTo(27));
+//            Assert.That(refHolder.value, Is.EqualTo(27));
+            Assert.Fail();
         }
 
         [UnityTest]

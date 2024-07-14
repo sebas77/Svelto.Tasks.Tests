@@ -263,7 +263,7 @@ namespace Svelto.Tasks
 
             public void SpawnContinuingTask(in TTask task)
             {
-                _processor.EnqueueContinuingTask(task);
+                _processor.StartTask(task);
 
                 UnlockThread();
             }

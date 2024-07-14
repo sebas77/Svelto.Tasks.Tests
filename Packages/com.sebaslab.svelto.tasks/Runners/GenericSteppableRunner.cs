@@ -15,10 +15,10 @@ namespace Svelto.Tasks
         //        public bool isKilled   => _flushingOperation.kill;
         public bool hasTasks => numberOfTasks != 0;
 
-        public uint   numberOfRunningTasks    => _processor.numberOfRunningTasks;
-        public uint   numberOfQueuedTasks     => _processor.numberOfQueuedTasks;
-        public uint   numberOfTasks => _processor.numberOfTasks;
-        public string name                    => _name;
+        public uint   numberOfRunningTasks  => _processor.numberOfRunningTasks;
+        public uint   numberOfQueuedTasks   => _processor.numberOfQueuedTasks;
+        public uint   numberOfTasks         => _processor.numberOfTasks;
+        public string name                  => _name;
 
         public GenericSteppableRunner(string name)
         {
@@ -47,25 +47,12 @@ namespace Svelto.Tasks
         public bool Step()
         {
             using (_platformProfiler.Sample(_name))
-            {
                 return _processor.MoveNext(_platformProfiler);
-            }
         }
 
         public void StartTask(in TTask task)
         {
-            DBC.Tasks.Check.Require(_flushingOperation.kill == false,
-                $"can't schedule new routines on a killed scheduler {_name}");
-
             _processor.StartTask(task);
-        }
-
-        public void SpawnContinuingTask(in TTask task)
-        {
-            DBC.Tasks.Check.Require(_flushingOperation.kill == false,
-                $"can't schedule new routines on a killed scheduler {_name}");
-
-            _processor.EnqueueContinuingTask(task);
         }
         
         public virtual void Stop() 

@@ -32,7 +32,7 @@ namespace Svelto.Tasks.Enumerators
             {
                 var method = _func.GetMethodInfoEx();
 
-                _name = method.GetDeclaringType().Name.FastConcat(".", method.Name);
+                _name = "SmartFunctionEnumerator: ".FastConcat(method.GetDeclaringType().Name.FastConcat(".", method.Name));
             }
 
             return _name;

@@ -157,7 +157,7 @@ namespace Svelto.Tasks
         protected TaskState ProcessStackAndCheckIfDone(int currentindex)
         {
             _currentStackIndex = currentindex;
-            var arrayOfTasks = _listOfStacks.ToArrayFast(out _);
+            StructFriendlyStack[] arrayOfTasks = rawListOfStacks;
             ref var enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
 
             bool isDone  = !enumerator.MoveNext();

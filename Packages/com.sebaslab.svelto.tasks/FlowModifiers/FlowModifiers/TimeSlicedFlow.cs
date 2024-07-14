@@ -11,7 +11,7 @@ namespace Svelto.Tasks.FlowModifiers
             _stopWatch = new Stopwatch();
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref int nextIndex, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
             if (_stopWatch.ElapsedTicks > _maxTicks)

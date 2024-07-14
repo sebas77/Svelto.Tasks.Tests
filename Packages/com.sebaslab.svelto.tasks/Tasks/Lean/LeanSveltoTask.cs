@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using Svelto.Common;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
 
@@ -44,22 +42,22 @@ namespace Svelto.Tasks.Lean
 
             _threadSafeSveltoTaskStates.started = true;
 
-            runner.SpawnContinuingTask(this);
+            runner.StartTask(this);
         }
 
         public override string ToString()
         {
-            return TypeCache<TTask>.name;
+            return name;
         }
 
         public void Stop()
         {
-            _threadSafeSveltoTaskStates.explicitlyStopped = true;
+            _threadSafeSveltoTaskStates.explicitlyStopped = true; //will be completed next step
         }
         
         public bool isCompleted => _threadSafeSveltoTaskStates.completed;
 
-        public string name => ToString();
+        public string name => _sveltoTask.name;
 
         public StepState Step()
         {

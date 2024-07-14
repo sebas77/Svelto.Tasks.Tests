@@ -17,6 +17,5 @@ namespace Svelto.Tasks
     public interface IRunner<T> : IRunner where T : ISveltoTask
     {
         void StartTask(in T task);
-        void SpawnContinuingTask(in T task);
     }
 }

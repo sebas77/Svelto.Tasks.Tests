@@ -4,7 +4,7 @@ namespace Svelto.Tasks.FlowModifiers
 {
     public struct StandardFlow:IFlowModifier
     {
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             return true;
         }

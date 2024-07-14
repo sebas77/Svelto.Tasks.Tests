@@ -15,7 +15,7 @@ namespace Svelto.Tasks.FlowModifiers
             _iterations           = 0;
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             if (_iterations >= _maxTasksPerIteration - 1)
             {

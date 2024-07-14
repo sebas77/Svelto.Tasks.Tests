@@ -3,13 +3,15 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Svelto.Common;
 using Svelto.DataStructures;
-
+using Svelto.DataStructures.Experimental;
+using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Internal
 {
-    public static class SveltoTaskRunner<TTask> where TTask : ISveltoTask
+    //ISveltoTask can be Lean or ExtraLean
+    public static class SveltoTaskRunner<TSveltoTask> where TSveltoTask : ISveltoTask
     {
-        internal class Process<TFlowModifier> : IProcessSveltoTasks<TTask> where TFlowModifier : IFlowModifier
+        internal class Process<TFlowModifier> : IProcessSveltoTasks<TSveltoTask> where TFlowModifier : IFlowModifier
         {
             public override string ToString()
             {
@@ -18,10 +20,8 @@ namespace Svelto.Tasks.Internal
 
             public Process(FlushingOperation flushingOperation, TFlowModifier info, uint size, string runnerName)
             {
-                _newTaskRoutines   = new ConcurrentQueue<TTask>();
-                _runningCoroutines = new FasterList<TTask>(size);
-                _spawnedCoroutines = new FasterList<TTask>(size);
-                //_waitingCoroutines = new FasterList<TTask>(size);
+                _newTaskRoutines   = new ConcurrentQueue<TSveltoTask>();
+                _runningCoroutines = new FasterList<TSveltoTask>(size);
                 _flushingOperation = flushingOperation;
                 _info              = info;
                 _runnerName        = $"{typeof(TFlowModifier).FullName} - {runnerName} runner";
@@ -36,14 +36,13 @@ namespace Svelto.Tasks.Internal
                   , $"if a runner is killed, must be stopped {_runnerName}");
 
                 if (_flushingOperation.flush)
-                {
                     _newTaskRoutines.Clear();
-                }
 
-                //a stopped runner can restart and the design allows to queue new tasks in the stopped state
-                //although they won't be processed. In this sense it's similar to paused. For this reason
+                //a stopped runner can restart and the design allows queueing new tasks in the stopped state,
+                //although they won't be processed. In this sense, it's similar to paused. For this reason
                 //_newTaskRoutines cannot be cleared in paused and stopped state.
                 //This is done before the stopping check because all the tasks queued before stop will be stopped
+                else
                 if (_newTaskRoutines.Count > 0 && _flushingOperation.acceptsNewTasks == true)
                 {
                     var count = _runningCoroutines.count;
@@ -77,12 +76,7 @@ namespace Svelto.Tasks.Internal
                     }
                 }
 
-                var coroutinesCount        = _runningCoroutines.count;
-                var spawnedCoroutinesCount = _spawnedCoroutines.count;
-                //uint waitingRoutines = 0;
-
-                if ((spawnedCoroutinesCount + coroutinesCount == 0)
-                 || (_flushingOperation.paused == true && _flushingOperation.stopping == false))
+                if (numberOfRunningTasks == 0 || (_flushingOperation.paused == true && _flushingOperation.stopping == false))
                 {
                     return true;
                 }
@@ -92,70 +86,12 @@ namespace Svelto.Tasks.Internal
 #endif
                 _info.Reset();
 
-                bool mustExit;
-
-                //these are the child coroutines spawned by the main coroutines
-                if (spawnedCoroutinesCount > 0)
-                {
-                    var spawnedCoroutines = _spawnedCoroutines.ToArrayFast(out _);
-                    int index             = 0;
-
-                    do
-                    {
-                        StepState result;
-
-                        ref var spawnedCoroutine = ref spawnedCoroutines[index];
-                        
-                        if (_flushingOperation.stopping)
-                            spawnedCoroutine.Stop();
-
-                        try
-                        {
-#if ENABLE_PLATFORM_PROFILER
-                            using (platformProfiler.Sample(spawnedCoroutine.name))
-#endif
-#if TASKS_PROFILER_ENABLED
-                            result =
-                                Profiler.TaskProfiler.MonitorUpdateDuration(ref spawnedCoroutines[index], _info.runnerName);
-#else
-
-                            result = spawnedCoroutine.Step();
-#endif
-                        }
-                        catch (Exception e)
-                        {
-                            //note, the user code cannot catch exceptions thrown by the task
-                            //we could however add some extra information in the TaskContract
-                            
-                            //todo unit test exceptions
-                            
-                            Svelto.Console.LogException(e, $"catching exception for spawned task {spawnedCoroutine.name}");
-                            
-                            result = StepState.Completed; //todo: in future it could be faulted if makes sense
-                        }
-                        
-                        if (result == StepState.Completed)
-                        {
-                            _spawnedCoroutines.UnorderedRemoveAt((uint)index);
-
-                            spawnedCoroutinesCount--;
-                        }
-                        else
-                            index++;
-
-                        mustExit = (spawnedCoroutinesCount == 0 || index >= spawnedCoroutinesCount);
-                    } while (!mustExit);
-                }
-
                 //these are the main coroutines
-                if (coroutinesCount > 0)
+                if (_runningCoroutines.count > 0)
                 {
                     int index = 0;
 
-                    var coroutines = _runningCoroutines.ToArrayFast(out var count);
-                    
-                    DBC.Tasks.Check.Assert(count == coroutinesCount, "unexpected count");
-
+                    bool mustExit;
                     do 
                     {
                         if (_info.CanProcessThis(ref index) == false)
@@ -163,7 +99,7 @@ namespace Svelto.Tasks.Internal
 
                         StepState result;
 
-                        ref TTask sveltoTask = ref coroutines[index];
+                        ref TSveltoTask sveltoTask = ref _runningCoroutines[index];
                         
                         if (_flushingOperation.stopping)
                             sveltoTask.Stop();
@@ -176,70 +112,61 @@ namespace Svelto.Tasks.Internal
                     
 #if TASKS_PROFILER_ENABLED
                             result =
-                                Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName);
+                                Profiler.TaskProfiler.MonitorUpdateDuration(ref sveltoTask, _runnerName);
 #else
                             result = sveltoTask.Step();
 #endif
                         }
                         catch (Exception e)
                         {
+#if DEBUG && !PROFILE_SVELTO                            
                             Svelto.Console.LogException(e, $"catching exception for root task {sveltoTask.name}");
-                            result = StepState.Completed; //todo: in future it could be faulted if makes sense
+#endif                            
+                            result = StepState.Faulted; //todo: in future it could be faulted if makes sense
                         }
-
-                        int previousIndex = index;
-
-//                        if (result == StepState.Waiting)
-//                        {
-//                            _waitingCoroutines.Add(sveltoTask);
-//                            waitingRoutines++;
-//                            _runningCoroutines.UnorderedRemoveAt((uint)index);
-//
-//                            coroutinesCount--;
-//                        }
-//                        else
-                        if (result == StepState.Completed)
-                        {
+                        
+                        if (result == StepState.Completed || result == StepState.Faulted)
                             _runningCoroutines.UnorderedRemoveAt((uint)index);
-
-                            coroutinesCount--;
-                        }
                         else
                             index++;
 
-                        mustExit = ((coroutinesCount == 0 
-                                       //&& waitingRoutines == 0
-                                ) 
-                         || _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount, result == StepState.Completed) == false 
-                         || index >= coroutinesCount);
+                        mustExit = _runningCoroutines.count == 0 
+                             || index >= _runningCoroutines.count
+                             || _info.CanMoveNext<TSveltoTask>(ref index, _runningCoroutines.count,
+                                    (result & (StepState.Completed | StepState.Waiting)) != 0) == false;
                     } while (mustExit == false);
                 }
 
                 return true;
             }
-            
-            public void StartTask(in TTask task)
+
+            /// <summary>
+            /// Note: Svelto.Tasks 2.0 is based on the way SveltoTaskRunner works. However LeanTasks are quite heavy to iterate
+            /// At the moment of writing they take up to 104 bytes (for iterator as a class). This can be reduced, but it must be reduced
+            /// to 64bytes to be efficient. On trick could be to move as much data as possible inside the continuator class as long as the
+            /// data is not needed to be accessed every step (ideally)
+            /// REmember TSveltoTask can be also ExtraLean which are much smaller 
+            /// </summary>
+            /// <param name="task"></param>
+            public void StartTask(in TSveltoTask task)
             {
+                DBC.Tasks.Check.Require(_flushingOperation.kill == false,
+                    $"can't schedule new routines on a killed scheduler {_runnerName}");
+                
                 _newTaskRoutines.Enqueue(task);
             }
-
-            public void EnqueueContinuingTask(in TTask task)
-            {
-                _spawnedCoroutines.Add(task);
-            }
-
-            readonly ConcurrentQueue<TTask> _newTaskRoutines;
-            readonly FasterList<TTask>      _runningCoroutines;
-            readonly FasterList<TTask>      _spawnedCoroutines;
-          //  readonly FasterList<TTask>      _waitingCoroutines;
-            readonly FlushingOperation  _flushingOperation;
+            
+            //The only reason why spawnedCoroutine exist is to make FlowControl works. The most crucial is Serial. I can guarantee that the
+            //tasks added in the runner by the user are executed in serial as long as the spawned tasks are executed separately, otherwise
+            //I couldn't guarantee the order of the tasks executed one by one
+            readonly ConcurrentQueue<TSveltoTask> _newTaskRoutines;
+            readonly FasterList<TSveltoTask>      _runningCoroutines;
+            readonly FlushingOperation      _flushingOperation;
 
             TFlowModifier _info;
             string _runnerName;
 
-            public uint numberOfRunningTasks => (uint)_runningCoroutines.count + (uint)_spawnedCoroutines.count 
-                   //+ (uint)_waitingCoroutines.count
-                    ;
+            public uint numberOfRunningTasks => (uint)_runningCoroutines.count;
             public uint numberOfQueuedTasks => (uint)_newTaskRoutines.Count;
             public uint numberOfTasks => numberOfRunningTasks + numberOfQueuedTasks;
         }
@@ -253,6 +180,7 @@ namespace Svelto.Tasks.Internal
             public bool flush           => Volatile.Read(ref _flush);
             public bool acceptsNewTasks => paused == false && stopping == false && kill == false;
 
+            //todo: unit test. Test if the runner can be reused after this
             public void Stop(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot stop a runner that is killed {name}");
@@ -262,6 +190,7 @@ namespace Svelto.Tasks.Internal
                 Volatile.Write(ref _paused, false);
             }
 
+            //todo: unit test. Test if the runner can be reused after this
             public void StopAndFlush()
             {
                 Volatile.Write(ref _flush, true);
@@ -269,6 +198,7 @@ namespace Svelto.Tasks.Internal
                 Volatile.Write(ref _paused, false);
             }
 
+            //todo: unit test. Test if the runner can be reused after this
             public void Kill(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot kill a runner that is killed {name}");
@@ -296,6 +226,7 @@ namespace Svelto.Tasks.Internal
 
             internal void Unstop()
             {
+                Volatile.Write(ref _flush, false);
                 Volatile.Write(ref _stopped, false);
             }
 

@@ -21,31 +21,36 @@ namespace Svelto.Tasks.Profiler
         static readonly FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>> taskInfos =
             new FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>>();
 
-        public static bool MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName) where T : ISveltoTask
+        //canot be in, as sveltoTask will be modified inside
+        public static StepState MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName) where T : ISveltoTask
         {
             var taskName = sveltoTask.name;
 #if ENABLE_PIX_EVENTS
             PixWrapper.PIXBeginEventEx(0x11000000, key);
 #endif
             _stopwatch.Value.Start();
-            var result = sveltoTask.MoveNext();
+            StepState result = sveltoTask.Step();
             _stopwatch.Value.Stop();
 #if ENABLE_PIX_EVENTS
             PixWrapper.PIXEndEventEx();
 #endif
-            lock (LockObject)
+            if (result == StepState.Running)
             {
-                ref var infosPerRunnner = ref taskInfos.GetOrAdd(runnerName, () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
-                if (infosPerRunnner.TryGetValue(taskName, out var info) == false)
+                lock (LockObject)
                 {
-                    info = new TaskInfo(taskName, runnerName);
-                    infosPerRunnner.Add(taskName, info);
-                }
-                else
-                {
-                    info.AddUpdateDuration((float) _stopwatch.Value.Elapsed.TotalMilliseconds);
+                    ref FasterDictionary<RefWrapper<string>, TaskInfo> infosPerRunnner =
+                            ref taskInfos.GetOrAdd(runnerName, () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
+                    if (infosPerRunnner.TryGetValue(taskName, out var info) == false)
+                    {
+                        info = new TaskInfo(taskName, runnerName);
+                        infosPerRunnner.Add(taskName, info);
+                    }
+                    else
+                    {
+                        info.AddUpdateDuration((float) _stopwatch.Value.Elapsed.TotalMilliseconds);
 
-                    infosPerRunnner[taskName] = info;
+                        infosPerRunnner[taskName] = info;
+                    }
                 }
             }
 
@@ -73,7 +78,7 @@ namespace Svelto.Tasks.Profiler
         {
             lock (LockObject)
             {
-                taskInfos.FastClear();
+                taskInfos.Clear();
             }
         }
 

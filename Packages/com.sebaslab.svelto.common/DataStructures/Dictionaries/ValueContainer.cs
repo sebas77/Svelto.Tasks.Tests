@@ -24,6 +24,52 @@ namespace Svelto.DataStructures.Experimental
     /// The following class is not a sparse set, it's a more optimised dictionary for cases where the user
     /// cannot decide the key value.
     /// 
+    public class ManagedValueContainer<T>
+    {
+        ValueContainer<T, ManagedStrategy<T>, ManagedStrategy<SparseIndex>> _container;
+        
+        public ManagedValueContainer(uint initialSize)
+        {
+            _container = new ValueContainer<T, ManagedStrategy<T>, ManagedStrategy<SparseIndex>>(initialSize);
+        }
+
+        public int capacity => _container.capacity;
+
+        public int count => _container.count;
+
+        public T this[ValueIndex index] => _container[ index];
+
+        public void Clear()
+        {
+            _container.Clear();
+        }
+
+        public bool Has(ValueIndex index)
+        {
+            return _container.Has(index);
+        }
+
+        public ValueIndex Add(T val)
+        {
+            return _container.Add(val);
+        }
+
+        public void Remove(ValueIndex index)
+        {
+            _container.Remove(index);
+        }
+
+        public void Reserve(uint u)
+        {
+            _container.Reserve(u);
+        }
+
+        public void Dispose()
+        {
+            _container.Dispose();
+        }
+    }
+    
     public struct ValueContainer<T, StrategyD, StrategyS>
             where StrategyD : IBufferStrategy<T>, new()
             where StrategyS : IBufferStrategy<SparseIndex>, new()
