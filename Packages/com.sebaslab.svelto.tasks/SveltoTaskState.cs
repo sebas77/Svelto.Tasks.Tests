@@ -59,30 +59,6 @@ namespace Svelto.Tasks
                 }
             }
 
-            public bool started
-            {
-                get => BIT(STARTED_BIT);
-                set
-                {
-                    if (value) 
-                        SETBIT(STARTED_BIT);
-                    else 
-                        UNSETBIT(STARTED_BIT);
-                }
-            }
-
-            public bool taskEnumeratorJustSet
-            {
-                get => BIT(TASK_ENUMERATOR_JUST_SET);
-                set
-                {
-                    if (value) 
-                        SETBIT(TASK_ENUMERATOR_JUST_SET);
-                    else 
-                        UNSETBIT(TASK_ENUMERATOR_JUST_SET);
-                }
-            }
-
             void SETBIT(byte bitmask)
             {
                 System.Threading.Volatile.Write(ref _value, (byte) (_value | bitmask));

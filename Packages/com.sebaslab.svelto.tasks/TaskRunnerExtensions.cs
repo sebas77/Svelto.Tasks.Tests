@@ -12,15 +12,24 @@ namespace Svelto.Tasks.ExtraLean
     public static class TaskRunnerExtensions
     {
         public static void RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
-            where TTask : IEnumerator where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
+                where TTask : struct, IEnumerator where TRunner : class, IRunner<Struct.ExtraLeanSveltoTask<TTask>>
         {
-            new ExtraLeanSveltoTask<TTask>().Run(runner, ref enumerator);
+            new Struct.ExtraLeanSveltoTask<TTask>().Run(runner, ref enumerator);
         }
-        
+
         public static void RunOn<TRunner>(this IEnumerator enumerator, TRunner runner)
-            where TRunner : class, IRunner<ExtraLeanSveltoTask<IEnumerator>>
+                where TRunner : class, IRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
             new ExtraLeanSveltoTask<IEnumerator>().Run(runner, ref enumerator);
+        }
+    }
+    
+    public static class TaskRunnerExtensionsRef
+    {
+        public static void RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
+                where TTask : class, IEnumerator where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
+        {
+            new ExtraLeanSveltoTask<TTask>().Run(runner, ref enumerator);
         }
     }
 }
@@ -53,7 +62,7 @@ public static class TaskRunnerExtensions
         return new TaskContract(enumerator);
     }
     
-    //if task is continued with forget, the task will be executed but the caller will not wait for it to complete
+    //if task is continued with forget, the task will be executed, but the caller will not wait for it to complete
     //this method is used when you want to run, but not wait, a task on the same runner of the parent without knowing what it was
     
     //todo: unit test
@@ -62,9 +71,11 @@ public static class TaskRunnerExtensions
         return new TaskContract(task, true);
     }
 
-    public static async Task<T> ToTask<T>(this IEnumerator<TaskContract> iteratorBlock) where T:class //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing
+    public static async ValueTask<T> ToTask<T>(this IEnumerator<TaskContract> iteratorBlock, IGenericLeanRunner runner) where T:class //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing
     {
-        while (iteratorBlock.MoveNext())
+        var continuation = iteratorBlock.RunOn(runner);
+    
+        while (continuation.isRunning) 
         {
             await Task.Yield();
         }
@@ -72,27 +83,27 @@ public static class TaskRunnerExtensions
         return iteratorBlock.Current.ToRef<T>();
     }
     
-    public static void Complete(this IEnumerator<TaskContract> task, int _timeout = 0) 
+    public static void Complete(this IEnumerator<TaskContract> task, int MSTimeOut = 0) 
     {
         var syncRunnerValue = LocalSyncRunners<IEnumerator<TaskContract>>.syncRunner.Value;
         task.RunOn(syncRunnerValue);
-        syncRunnerValue.ForceComplete(_timeout);
+        syncRunnerValue.ForceComplete(MSTimeOut);
     }
 
-    public static void Complete<T>(this T enumerator, int _timeout = 0) where T:IEnumerator 
+    public static void Complete<T>(this T enumerator, int MSTimeOut = 0) where T:IEnumerator 
     {
         var quickIterations = 0;
 
-        if (_timeout > 0)
+        if (MSTimeOut > 0)
         {
-            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  then   = DateTime.UtcNow.AddMilliseconds(MSTimeOut);
             var  valid  = true;
             bool isDone = false;
 
             while (isDone == false && valid == true)
             {
-                valid  = DateTime.Now < then;
-                isDone = enumerator.MoveNext();
+                valid  = DateTime.UtcNow < then;
+                isDone = enumerator.MoveNext() == false;
                 ThreadUtility.Wait(ref quickIterations);    
             }
 
@@ -101,7 +112,7 @@ public static class TaskRunnerExtensions
         }
         else
         {
-            if (_timeout == 0)
+            if (MSTimeOut == 0)
                 while (enumerator.MoveNext())
                     ThreadUtility.Wait(ref quickIterations);
             else //careful, a tight loop may prevent other thread from running as it would take 100% of the core
@@ -109,24 +120,24 @@ public static class TaskRunnerExtensions
         }
     }
     
-    public static void Complete(this Continuation enumerator, int _timeout = 1000)
+    public static void Complete(this Continuation enumerator, int MSTimeOut = 1000)
     {
         var quickIterations = 0;
 
-        if (_timeout > 0)
+        if (MSTimeOut > 0)
         {
-            var then  = DateTime.Now.AddMilliseconds(_timeout);
+            var then  = DateTime.UtcNow.AddMilliseconds(MSTimeOut);
             var valid = true;
 
             while (enumerator.isRunning &&
-                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
+                   (valid = DateTime.UtcNow < then)) ThreadUtility.Wait(ref quickIterations);
 
             if (valid == false)
                 throw new SveltoTaskException("synchronous task timed out, increase time out or check if it got stuck");
         }
         else
         {
-            if (_timeout == 0)
+            if (MSTimeOut == 0)
                 while (enumerator.isRunning)
                     ThreadUtility.Wait(ref quickIterations);
             else
@@ -140,13 +151,13 @@ public static class TaskRunnerExtensions
 
         if (_timeout > 0)
         {
-            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  then   = DateTime.UtcNow.AddMilliseconds(_timeout);
             var  valid  = true;
             bool isDone = false;
 
             while (isDone == false && valid == true)
             {
-                valid  = DateTime.Now < then;
+                valid  = DateTime.UtcNow < then;
                 runner.Step();
                 isDone = runner.hasTasks == false;
                 ThreadUtility.Wait(ref quickIterations, frequency);    
@@ -187,13 +198,13 @@ public static class TaskRunnerExtensions
     {
         if (_timeout > 0)
         {
-            var  then   = DateTime.Now.AddMilliseconds(_timeout);
+            var  then   = DateTime.UtcNow.AddMilliseconds(_timeout);
             var  valid  = true;
             bool isDone = false;
 
             while (isDone == false && valid == true)
             {
-                valid = DateTime.Now < then;
+                valid = DateTime.UtcNow < then;
                 runner.Step();
                 isDone = runner.hasTasks == false;
                 ThreadUtility.Relax();    

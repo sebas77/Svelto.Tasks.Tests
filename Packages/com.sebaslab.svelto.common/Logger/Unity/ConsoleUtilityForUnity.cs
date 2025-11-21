@@ -11,9 +11,7 @@ namespace Svelto.Utilities
 {
     public static class ConsoleUtilityForUnity
     {
-        static readonly ThreadLocal<StringBuilder> stringBuilder;
-        static readonly string projectFolder;
-        static readonly int MAX_NUMBER_OF_STACK_LINES = 15;
+        const int MAX_NUMBER_OF_STACK_LINES = 3;
 
         static ConsoleUtilityForUnity()
         {
@@ -233,6 +231,9 @@ namespace Svelto.Utilities
         }
 
         public static ILogHandler defaultLogHandler;
+
+        static readonly ThreadLocal<StringBuilder> stringBuilder;
+        static readonly string projectFolder;
     }
 }
 #endif

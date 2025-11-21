@@ -17,15 +17,6 @@ namespace Svelto.Tasks
     public interface ITaskCollection<T> : IEnumerator<TaskContract>
         where T : IEnumerator
     {
-        // event Action                onComplete;
-        // event Func<Exception, bool> onException;
-        //
-        // ref T CurrentStack { get; }
-        //
-        // void Add(in T enumerator);
-        // void Clear();
-        //
-        // bool isRunning { get; }
     }
 
     public abstract partial class TaskCollection<T>:ITaskCollection<T>

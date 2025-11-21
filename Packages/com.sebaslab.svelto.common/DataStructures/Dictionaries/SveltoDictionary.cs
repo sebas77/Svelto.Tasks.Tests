@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using DBC.Common;
 using Svelto.Common;
 using Svelto.Utilities;
 
@@ -123,9 +124,18 @@ namespace Svelto.DataStructures
             return _values.ToBuffer();
         }
 
-        public int count => (int)_freeValueCellIndex;
-       
-        public bool isValid => _buckets.isValid;
+        public int count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (int)_freeValueCellIndex;
+        }
+
+        public bool isValid
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _buckets.isValid;
+        }
+
         public SveltoDictionaryKeyEnumerable keys => new SveltoDictionaryKeyEnumerable(this);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -523,11 +533,21 @@ namespace Svelto.DataStructures
         public bool TryFindIndex(TKey key, out uint findIndex)
         {
             DBC.Common.Check.Require(_buckets.capacity > 0, "Dictionary arrays are not correctly initialized (0 size)");
+            DBC.Common.Check.Require(_buckets.isValid == true, "Dictionary arrays are not correctly initialized (not allocated)");
 
             int hash = key.GetHashCode();
 
             uint bucketIndex = Reduce((uint)hash, (uint)_buckets.capacity, _fastModBucketsMultiplier);
 
+#if (DEBUG && !PROFILE_SVELTO)
+            if (bucketIndex >= _buckets.capacity)
+            {
+                var error =
+                        $"out of bounds bucket index {bucketIndex} - capacity {_buckets.capacity} - key {key} - hash {hash} - fastMod {_fastModBucketsMultiplier}";
+                throw new PreconditionException(error);
+            }
+#endif
+            
             int valueIndex = _buckets[bucketIndex] - 1;
 
             //even if we found an existing value we need to be sure it's the one we requested
@@ -535,6 +555,8 @@ namespace Svelto.DataStructures
             {
                 //Comparer<TKey>.default needs to create a new comparer, so it is much slower
                 //than assuming that Equals is implemented through IEquatable
+                DBC.Common.Check.Require(valueIndex < _valuesInfo.capacity, "out of bounds value index");
+                
                 ref var dictionaryNode = ref _valuesInfo[valueIndex];
                 if (dictionaryNode.hashcode == hash && dictionaryNode.key.Equals(key) == true)
                 {

@@ -3,7 +3,7 @@
 #if UNITY_EDITOR
 #define ISEDITOR
 #endif
-#if (!UNITY_EDITOR || DEBUG_FASTER) && (UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX || UNITY_ANDROID)
+#if (!UNITY_EDITOR || DEBUG_FASTER) && (UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX || UNITY_ANDROID || UNITY_IOS)
 #define REDIRECT_CONSOLE
 #endif
 
@@ -198,6 +198,8 @@ namespace Svelto.Utilities
     class FasterUnityLogger: ILogger
     {
         const uint SEED = 8938176;
+        
+        public static int CallsDepthToGetHere = 3;
 
         static bool _quitThread;
 
@@ -289,23 +291,7 @@ namespace Svelto.Utilities
 
             StackTrace stack = null;
             if (showLogStack)
-            {
-#if ISEDITOR
-                stack = new StackTrace(Console.StackDepth, true);
-#else
-                if (type == LogType.Error || type == LogType.Exception)
-                    stack = new StackTrace(Console.StackDepth, true);
-#endif
-            }
-            else
-            {
-#if ISEDITOR
-                stack = new StackTrace(Console.StackDepth, false);
-#else
-                if (type == LogType.Error || type == LogType.Exception)
-                    stack = new StackTrace(Console.StackDepth, false);
-#endif
-            }
+                stack = new StackTrace(CallsDepthToGetHere, true);
 
             if (Volatile.Read(ref Console.batchLog) == true)
             {
@@ -494,7 +480,7 @@ namespace Svelto.Utilities
 #endif
         public static void Init()
         {
-            Console.SetLogger(new FasterUnityLogger());
+            Console.AddLogger(new FasterUnityLogger());
         }
     }
 }

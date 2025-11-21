@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Svelto.DataStructures
@@ -20,22 +21,32 @@ namespace Svelto.DataStructures
 
         public static int GetPrime(int min)
         {
-            var primesLength = primes.Length;
-            for (int i = 0; i < primesLength; i++)
+            if (min <= primes[^1])
             {
-                int prime = primes[i];
-                if (prime >= min) //pay attention this is >= 
-                    return prime;
+                for (var index = 0; index < primes.Length; index++)
+                {
+                    var prime = primes[index];
+                    if (prime >= min)
+                        return prime;
+                }
+            }
+            else
+            {
+                if (min <= primesHigh[^1]) //pay attention this is < and NOT <=
+                    for (var index = 0; index < primesHigh.Length; index++)
+                    {
+                        var prime = primesHigh[index];
+                        if (prime >= min)
+                            return prime;
+                    }
             }
 
-            //outside of our predefined table, just leave it as it is 
-            return min;
+            throw new ArgumentException($"No prime found for {min}");
         }
 
-        // Returns size of hashtable to grow to.
         public static int Expand(int oldSize)
         {
-            if (oldSize < primes[primes.Length - 1]) //pay attention this is < and NOT <=
+            if (oldSize < primes[^1]) //pay attention this is < and NOT <=
             {
                 var primesLength = primes.Length;
                 for (int i = 0; i < primesLength; i++)
@@ -47,7 +58,7 @@ namespace Svelto.DataStructures
             }
             else
             {
-                if (oldSize < primesHigh[primesHigh.Length - 1]) //pay attention this is < and NOT <=
+                if (oldSize < primesHigh[^1]) //pay attention this is < and NOT <=
                 {
                     var primesLength = primesHigh.Length;
                     for (int i = 0; i < primesLength; i++)

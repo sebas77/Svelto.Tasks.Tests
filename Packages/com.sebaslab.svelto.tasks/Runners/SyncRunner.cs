@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Svelto.Tasks.Lean;
 using Svelto.Utilities;
 
 namespace Svelto.Tasks
@@ -15,12 +14,12 @@ namespace Svelto.Tasks
 
             if (timeout > 0)
             {
-                var then  = DateTime.Now.AddMilliseconds(timeout);
+                var then  = DateTime.UtcNow.AddMilliseconds(timeout);
                 var valid = true;
 
                 syncRunner.Step();
 
-                while (syncRunner.hasTasks && (valid = DateTime.Now < then))
+                while (syncRunner.hasTasks && (valid = DateTime.UtcNow < then))
                 {
                     ThreadUtility.Wait(ref quickIterations);
                     syncRunner.Step();
@@ -46,19 +45,6 @@ namespace Svelto.Tasks
         }
     }
 
-    namespace ExtraLean
-    {
-        public class SyncRunner : SteppableRunner
-        {
-            public SyncRunner(string name) : base(name) { }
-            
-            public void ForceComplete(int timeout)
-            {
-                SharedCode.Complete(this, timeout);
-            }
-        }
-    }
-
     namespace Lean
     {
         public class SyncRunner : SteppableRunner
@@ -71,10 +57,31 @@ namespace Svelto.Tasks
                 SharedCode.Complete(this, timeout);
             }
         }
-    }
+        
+        public class SyncRunner<T> : SteppableRunner<T> where T : IEnumerator<TaskContract>
+        {
+            public SyncRunner(string name) : base(name) { }
+            
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void ForceComplete(int timeout)
+            {
+                SharedCode.Complete(this, timeout);
+            }
+        }
+        
+        public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
+        {
+            public static  ThreadLocal<SyncRunner<T>> syncRunner  { get; private set; }
+        
+            static LocalSyncRunners() 
+            {
+                Reset();
+            }
 
-    public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
-    {
-        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName + " SyncRunner"));
+            public static void Reset()
+            {
+                syncRunner = new ThreadLocal<SyncRunner<T>>(() => new SyncRunner<T>(ThreadUtility.currentThreadName + " SyncRunner"));
+            }
+        }
     }
 }

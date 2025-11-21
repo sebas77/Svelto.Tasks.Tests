@@ -12,13 +12,13 @@ namespace Svelto.Tasks.FlowModifiers
     {
         public TimeBoundFlow(float maxMilliseconds) : this()
         {
-            _maxMilliseconds = (long) (maxMilliseconds * 10000);
+            _maxMilliseconds = maxMilliseconds;
             _stopWatch       = new Stopwatch();
         }
 
         public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
-            if (_stopWatch.ElapsedTicks > _maxMilliseconds)
+            if (_stopWatch.ElapsedMilliseconds > _maxMilliseconds)
                 return false;
 
             return true;
@@ -36,6 +36,6 @@ namespace Svelto.Tasks.FlowModifiers
         }
 
         readonly Stopwatch _stopWatch;
-        readonly long      _maxMilliseconds;
+        readonly float      _maxMilliseconds;
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Svelto.Common;
 using Svelto.Tasks.Internal;
 
@@ -31,7 +32,7 @@ namespace Svelto.Tasks
             Console.LogWarning(_name.FastConcat(" has been garbage collected, this could have serious" +
                 "consequences, are you sure you want this? "));
 
-            _flushingOperation.Kill(_name);
+            Kill();
         }
 
         public void Pause()
@@ -43,6 +44,7 @@ namespace Svelto.Tasks
         {
             _flushingOperation.Resume(_name);
         }
+        
 
         public bool Step()
         {
@@ -50,12 +52,13 @@ namespace Svelto.Tasks
                 return _processor.MoveNext(_platformProfiler);
         }
 
-        public void StartTask(in TTask task)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddTask(in TTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index)
         {
-            _processor.StartTask(task);
+            _processor.AddTask(task, index);
         }
         
-        public virtual void Stop() 
+        public void Stop() 
         {
             //even if there are 0 coroutines, this must marked as stopping as during the stopping phase I don't want
             //new task to be put in the processing queue. So in the situation of 0 processing tasks but N 
@@ -67,9 +70,9 @@ namespace Svelto.Tasks
         /// <summary>
         /// Stop the scheduler and Step once to clean up the tasks
         /// </summary>
-        public virtual void Flush()
+        public void Flush()
         {
-            _flushingOperation.StopAndFlush();
+            _flushingOperation.StopAndReset(_name);
             Step();
         }
 
@@ -77,6 +80,13 @@ namespace Svelto.Tasks
         /// a Disposed scheduler is not meant to stop ticking MoveNext, it's just not executing tasks
         /// </summary>
         public virtual void Dispose()
+        {
+            Kill();
+
+            GC.SuppressFinalize(this);
+        }
+
+        void Kill()
         {
             if (_flushingOperation.kill == true)
             {
@@ -86,10 +96,11 @@ namespace Svelto.Tasks
             }
 
             _flushingOperation.Kill(_name);
-
-            GC.SuppressFinalize(this);
+            Step(); //one last step to clean up the tasks
+            
+            _processor = null;
         }
-        
+
         protected void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
             _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, NUMBER_OF_INITIAL_COROUTINE, _name);

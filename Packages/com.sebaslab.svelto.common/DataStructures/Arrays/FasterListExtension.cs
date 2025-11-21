@@ -1,5 +1,6 @@
 ﻿#if NEW_C_SHARP || !UNITY_5_3_OR_NEWER
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -26,6 +27,42 @@ namespace Svelto.DataStructures
             Span<T> spanT = array.AsSpan(0, count);
 
             return spanT;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyFrom<T>(this FasterList<T> to, IList<T> from)
+            where T : unmanaged
+        {
+            to.SetCountTo((uint)from.Count);
+            var destArray = to.ToArrayFast(out _);
+            from.CopyTo(destArray, 0);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyFrom<T>(this FasterList<T> to, T[] from)
+            where T : unmanaged
+        {
+            to.SetCountTo((uint)from.Length);
+            var destArray = to.ToArrayFast(out _);
+            from.CopyTo(destArray, 0);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyFrom<T>(this FasterList<T> to, FasterList<T> from)
+            where T : unmanaged
+        {
+            to.SetCountTo((uint)from.count);
+            var destArray = to.ToArrayFast(out _);
+            from.CopyTo(destArray, 0);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyFrom<T>(this FasterList<T> to, FasterReadOnlyList<T> from)
+            where T : unmanaged
+        {
+            to.SetCountTo((uint)from.count);
+            var destArray = to.ToArrayFast(out _);
+            from.CopyTo(destArray, 0);
         }
 
 #if IF_THE_OTHER_SOLUTION_FAILS

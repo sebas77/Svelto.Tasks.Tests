@@ -47,7 +47,7 @@ namespace Svelto.Tasks.Enumerators
     {
         internal ContinuationEnumeratorInternal()
         {
-            signature = DateTime.Now;
+            signature = DateTime.UtcNow;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,7 +73,7 @@ namespace Svelto.Tasks.Enumerators
 
         void Reset()
         {
-            signature = DateTime.Now; //invalidate ContinuationEnumerator holding this object
+            signature = DateTime.UtcNow; //invalidate ContinuationEnumerator holding this object
         }
 
         ~ContinuationEnumeratorInternal()

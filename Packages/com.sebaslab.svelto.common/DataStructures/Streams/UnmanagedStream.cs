@@ -1,6 +1,7 @@
 ﻿#if NEW_C_SHARP || !UNITY_5_3_OR_NEWER
 using System;
 using System.Runtime.CompilerServices;
+using Svelto.Common;
 
 namespace Svelto.DataStructures
 {
@@ -39,12 +40,12 @@ namespace Svelto.DataStructures
         {
             unsafe
             {
-                return new Span<byte>(_ptr, _sveltoStream.count);
+                return new Span<byte>(_ptr, _sveltoStream.length);
             }
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal Span<byte> AsSpanInternal()
+        Span<byte> AsSpanInternal()
         {
             unsafe
             {
@@ -56,7 +57,6 @@ namespace Svelto.DataStructures
         public int AdvanceCursor(int sizeOf) => _sveltoStream.AdvanceCursor(sizeOf);
 
         SveltoStream _sveltoStream; //CANNOT BE READ ONLY
-
 #if UNITY_COLLECTIONS || UNITY_JOBS || UNITY_BURST    
 #if UNITY_BURST
         [Unity.Burst.NoAlias]

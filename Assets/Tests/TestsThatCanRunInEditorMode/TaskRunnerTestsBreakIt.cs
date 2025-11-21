@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Lean;
 using UnityEngine.TestTools;
 
 namespace Test
@@ -20,6 +21,8 @@ namespace Test
         {
             _iterable1 = new LeanEnumerator(10000);
             _iterable2 = new LeanEnumerator(10000);
+            
+            LocalSyncRunners<IEnumerator<TaskContract>>.Reset();
         }
 
         [UnityTest]
@@ -28,7 +31,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             IEnumerator<TaskContract> severalTasksParent = SeveralTasksParent();
-            severalTasksParent.Complete(1000);
+            severalTasksParent.Complete(1000); //ms
             
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
@@ -39,7 +42,7 @@ namespace Test
         public IEnumerator TestThatABreakAndStopBreaksTheWholeExecution()
         {
             var severalTasksParent = SeveralTasksParentBreak();
-            severalTasksParent.Complete(10000);
+            severalTasksParent.Complete(1000); //ms
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);
@@ -52,7 +55,7 @@ namespace Test
         public IEnumerator TestThatABreakItBreaksTheCurrentExecution()
         {
             var severalTasksParent = SeveralTasksBreakIt();
-            severalTasksParent.Complete(1000);
+            severalTasksParent.Complete(1000); //ms
 
             Assert.True(_iterable1.AllRight);
             Assert.False(_iterable2.AllRight);

@@ -8,7 +8,7 @@ using System;
 
 namespace Svelto.DataStructures
 {
-    public readonly struct WeakReference<T>:IEquatable<T> where T : class
+    public  struct WeakReference<T>:IEquatable<T> where T : class
     {
         public bool     IsValid => _weakReference != null && Target != null && _weakReference.IsAlive == true;
 
@@ -19,18 +19,34 @@ namespace Svelto.DataStructures
         {
             _weakReference = new WeakReference(target);
         }
+        
+        public bool TryGetTarget(out T target)
+        {
+            if (IsValid == false)
+            {
+                target = null;
+                return false;
+            }
+            target = Target;
+            return true;
+        }
 
         public int GetHashCode(T obj)
         {
             return obj.GetHashCode();
-        }
+        }   
 
         public bool Equals(T other)
         {
             DBC.Common.Check.Require(IsAlive);
             return Target.Equals(other);
         }
+        
+        public void Dispose()
+        {
+            _weakReference = null;
+        }
 
-        readonly WeakReference _weakReference;
+        WeakReference _weakReference;
     }
 }

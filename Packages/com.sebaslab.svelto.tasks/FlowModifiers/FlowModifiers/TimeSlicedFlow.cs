@@ -1,20 +1,21 @@
 using System.Diagnostics;
 using Svelto.Tasks.Internal;
+using Svelto.Utilities;
 
 namespace Svelto.Tasks.FlowModifiers
 {
     public struct TimeSlicedFlow : IFlowModifier
     {
-        public TimeSlicedFlow(float maxMilliseconds)
+        public TimeSlicedFlow(uint maxMilliseconds)
         {
-            _maxTicks = (long) (maxMilliseconds * 10000);
+            _maxMs = maxMilliseconds;
             _stopWatch = new Stopwatch();
         }
 
         public bool CanMoveNext<T>(ref int nextIndex, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
-            if (_stopWatch.ElapsedTicks > _maxTicks)
+            if (_stopWatch.ElapsedMilliseconds > _maxMs)
             {
                 _stopWatch.Reset();
                 _stopWatch.Start();
@@ -41,6 +42,6 @@ namespace Svelto.Tasks.FlowModifiers
         }
 
         readonly Stopwatch _stopWatch;
-        readonly long      _maxTicks;
+        readonly uint      _maxMs;
     }
 }

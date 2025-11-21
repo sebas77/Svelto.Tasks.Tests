@@ -196,6 +196,8 @@ namespace Svelto.DataStructures.Native
             }
         }
 
+        public bool isDisposed => _sharedDictionary == IntPtr.Zero;
+
 #if UNITY_COLLECTIONS || UNITY_JOBS || UNITY_BURST
 #if UNITY_BURST
         [Unity.Burst.NoAlias]

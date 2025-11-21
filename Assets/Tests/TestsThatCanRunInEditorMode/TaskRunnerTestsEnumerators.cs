@@ -25,6 +25,8 @@ namespace Test
         public void Setup()
         {
             _iterable1 = new LeanEnumerator(100);
+            
+            LocalSyncRunners<IEnumerator<TaskContract>>.Reset();
         }
 
 #if PROFILE_SVELTO        
@@ -47,6 +49,66 @@ namespace Test
             runner.Dispose();
         }
 #endif
+        [UnityTest]
+        public IEnumerator TestTaskReturningTheContinuationOfOtherTasks()
+        {
+            yield return TaskContract.Yield.It;
+
+            int index = 0;
+
+            //careful, runners can be garbage collected if they are not referenced somewhere and the
+            //framework does not keep a reference
+            using (var updateMonoRunner = new SteppableRunner("update"))
+            {
+                var cont = TestIt().RunOn(updateMonoRunner);
+
+                DateTime dateTime = DateTime.Now.AddSeconds(1);
+                while (cont.isRunning && DateTime.Now < dateTime)
+                    updateMonoRunner.Step();
+                
+                Assert.That(index, Is.EqualTo(7));
+            }
+            
+            IEnumerator<TaskContract> TestIt()
+            {
+                for (int i = 0; i < 3; i++)
+                    yield return TestContinuation(i);
+            }            
+            
+            TaskContract TestContinuation(int i)
+            {
+                switch (i)
+                {
+                    case 0:
+                        return TestEnum().Continue();
+                    case 1:
+                        Assert.That(index, Is.EqualTo(3));
+                        index++;
+                        return TaskContract.Continue.It;
+                    case 2:
+                        Assert.That(index, Is.EqualTo(4));
+                        return TaskContractReturningIEnumerator().Continue();
+                    default:
+                        throw new Exception();
+                }
+            }
+            
+            IEnumerator<TaskContract> TestEnum()
+            {
+                yield return TaskContract.Yield.It;
+                yield return TaskContractReturningIEnumerator().Continue();
+                yield return TaskContract.Yield.It;
+            }            
+            
+            IEnumerator TaskContractReturningIEnumerator()
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    yield return TaskContract.Yield.It;
+                    index++;
+                }
+            }
+        }
         
         /// <summary>
         /// a Task Contract can return among the other things an IEnumerator.
@@ -64,7 +126,8 @@ namespace Test
             {
                 var cont = TestEnum().RunOn(updateMonoRunner);
 
-                while (cont.isRunning)
+                DateTime dateTime = DateTime.Now.AddSeconds(1);
+                while (cont.isRunning && DateTime.Now < dateTime)
                     updateMonoRunner.Step();
                 
                 Assert.That(index, Is.EqualTo(3));
@@ -97,28 +160,32 @@ namespace Test
 
             using (var updateMonoRunner = new SteppableRunner("update"))
             {
-                var testEnum = TestEnum();
+                var testEnum = FirstEnum();
                 var cont = testEnum.RunOn(updateMonoRunner);
 
-                while (cont.isRunning)
+                DateTime dateTime = DateTime.Now.AddSeconds(1000);
+                while (cont.isRunning && DateTime.Now < dateTime)
                 {
                     updateMonoRunner.Step();
                 }
+                
+                if (cont.isRunning)
+                    Assert.Fail("timeout");
 
                 Assert.That(testEnum.Current.ToInt(), Is.EqualTo(10));
             }
             
-            IEnumerator<TaskContract> TestEnum()
+            IEnumerator<TaskContract> FirstEnum()
             {
                 yield return TaskContract.Yield.It;
 
-                var testEnum1 = TestEnum1();
+                var testEnum1 = SecondEnum();
                 yield return testEnum1.Continue();
                 
                 yield return testEnum1.Current;
             }            
             
-            IEnumerator<TaskContract> TestEnum1()
+            IEnumerator<TaskContract> SecondEnum()
             {
                 var subEnumerator = SubEnumerator(0, 10);
                 yield return subEnumerator.Continue();
@@ -141,7 +208,8 @@ namespace Test
             {
                 var cont = TestEnum().RunOn(updateMonoRunner);
 
-                while (cont.isRunning)
+                DateTime dateTime = DateTime.Now.AddSeconds(1);
+                while (cont.isRunning && DateTime.Now < dateTime)
                 {
                     updateMonoRunner.Step();
                     updateMonoRunner2.Step();
@@ -200,7 +268,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             var extraLeanEnumerator = new ExtraLeanEnumerator(10);
-            extraLeanEnumerator.Complete();
+            extraLeanEnumerator.Complete(1000); //ms
 
             Assert.That(extraLeanEnumerator.AllRight, Is.True);
         }
@@ -216,7 +284,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             var subEnumerator = SubEnumerator(0, 10);
-            subEnumerator.Complete(10000);
+            subEnumerator.Complete(1000); //ms
 
             Assert.That(subEnumerator.Current.ToInt(), Is.EqualTo(10));
         }
@@ -231,7 +299,7 @@ namespace Test
         {
             yield return TaskContract.Yield.It;
 
-            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete(1000);
+            ComplexEnumerator((i) => Assert.That(i, Is.EqualTo(100))).Complete(1000); //ms
         }
 
         /// <summary>
@@ -244,7 +312,7 @@ namespace Test
             yield return TaskContract.Yield.It;
 
             var multiThreadRunner = new MultiThreadRunner("test");
-            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete(1000);
+            MoreComplexEnumerator((i) => Assert.That(i, Is.EqualTo(20)), multiThreadRunner).Complete(1000); //ms
             multiThreadRunner.Dispose();
         }
 
@@ -260,26 +328,11 @@ namespace Test
             //you would normally write GameLoop().Run() to run on the standard scheduler, which changes
             //according the platform (on Unity the standard scheduler is the CoroutineMonoRunner, which
             //cannot run during these tests)
-            GameLoop().Complete(1000);
+            GameLoop().Complete(1000); //ms
 
             Assert.Pass();
         }
 
-//        [Test] //this is valid only for SerialTaskCollection
-//        public void YieldingARootTaskOnTheSameRunnerThrowsException()
-//        {
-//            SyncRunner runner = new SyncRunner("test");
-//            
-//            IEnumerator<TaskContract> InitCompose()
-//            {
-//                var smartFunctionEnumerator = new SmartFunctionEnumerator<int>(ExitTest, 0);
-//
-//                yield return smartFunctionEnumerator.RunOn(runner);
-//            }
-//
-//            InitCompose().RunOn(runner);
-//            runner.ForceComplete(1000);
-//        }
 
         [Test]
         public void RunSeparateCoroutinesInParallelAndWaitForThem()
@@ -301,7 +354,7 @@ namespace Test
             }
 
             InitCompose().RunOn(runner);
-            runner.ForceComplete(1000);
+            runner.ForceComplete(1000); //ms
         }
 
         [Test]
@@ -325,75 +378,88 @@ namespace Test
             }
 
             var gameLoop2 = GameLoop2();
-            gameLoop2.Complete(10000);
+            gameLoop2.Complete(1000); //ms
 
             Assert.That(gameLoop2.Current.ToInt(), Is.EqualTo(2));
         }
         
+        public class SerialSteppableRunner : SyncRunner
+        {
+            public SerialSteppableRunner(string name):base(name)
+            {
+                UseFlowModifier(new SerialFlow());
+            }
+        }
+        class RefHolder
+        {
+            public uint value;
+        }   
+
+        
         [Test]
-        //Todo rewrite this with SerialTAskCollection
         public void SerialFlowModifierRunsTasksInSerial()
         {
-//            IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
-//            {
-//                Assert.That(value.value, Is.EqualTo(testvalue));
-//                
-//                yield return TaskContract.Yield.It;
-//                value.value++;
-//                yield return TaskContract.Yield.It;
-//                value.value++;
-//                yield return TaskContract.Yield.It;
-//                value.value++;
-//                
-//                Assert.That(value.value, Is.EqualTo(testvalue + 3));
-//            }
-//            
-//            IEnumerator<TaskContract> TestEnum2(RefHolder value, uint testvalue)
-//            {
-//                Assert.That(value.value, Is.EqualTo(testvalue));
-//
-//                yield return TestEnum(value, testvalue).Continue();
-//                yield return TestEnum(value, testvalue + 3).Continue();
-//                yield return TestEnum(value, testvalue + 6).Continue();
-//                
-//                Assert.That(value.value, Is.EqualTo(testvalue + 9));
-//            }
-//
-//            var                   refHolder = new RefHolder();
-//            SerialSteppableRunner runner    = new SerialSteppableRunner("test");
-//
-//            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 18, 9)
-//            TestEnum2(refHolder, 0).RunOn(runner);
-//            TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
-//            TestEnum2(refHolder, 9).RunOn(runner);
-//            
-//            runner.ForceComplete(10000);
+            IEnumerator<TaskContract> TestEnum(RefHolder value, uint testvalue)
+            {
+                Assert.That(value.value, Is.EqualTo(testvalue));
+                
+                yield return TaskContract.Yield.It;
+                value.value++;
+                yield return TaskContract.Yield.It;
+                value.value++;
+                yield return TaskContract.Yield.It;
+                value.value++;
+                
+                Assert.That(value.value, Is.EqualTo(testvalue + 3));
+            }
             
-//            Assert.That(refHolder.value, Is.EqualTo(27));
-            Assert.Fail();
+            IEnumerator<TaskContract> TestEnum2(RefHolder value, uint testvalue)
+            {
+                Assert.That(value.value, Is.EqualTo(testvalue));
+
+                yield return TestEnum(value, testvalue).Continue();
+                yield return TestEnum(value, testvalue + 3).Continue();
+                yield return TestEnum(value, testvalue + 6).Continue();
+                
+                Assert.That(value.value, Is.EqualTo(testvalue + 9));
+            }
+
+            var                   refHolder = new RefHolder();
+            SerialSteppableRunner runner    = new SerialSteppableRunner("test");
+
+            //although the tasks run in serial, they order of execution is not guaranteed (that's why it's 0, 18, 9)
+            //task removed are shuffled
+            TestEnum2(refHolder, 0).RunOn(runner);
+            TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
+            TestEnum2(refHolder, 9).RunOn(runner);
+            
+            runner.ForceComplete(10000);
+            
+            Assert.That(refHolder.value, Is.EqualTo(27));
         }
-
+        
         [UnityTest]
-        public IEnumerator TestEnumeratorStartingFromEnumeratorIndependently()
+        public IEnumerator TestEnumeratorContinuingEnumeratorReturningValue()
         {
-            yield return TaskContract.Yield.It;
-
             using (var runner = new MultiThreadRunner("test"))
             {
-                var continuation = NestedEnumerator(runner).RunOn(runner);
+                var continuation = NestedEnumerator().RunOn(runner);
 
                 while ((continuation).isRunning)
                     yield return TaskContract.Yield.It;
             }
         }
 
-        static IEnumerator<TaskContract> NestedEnumerator(MultiThreadRunner runner)
+        static IEnumerator<TaskContract> NestedEnumerator()
         {
-            yield return TaskContract.Yield.It;
+            var simpleEnumerator = SimpleEnumerator();
+            yield return simpleEnumerator.Continue();
+            Assert.That(simpleEnumerator.Current.ToInt(), Is.EqualTo(10));
+        }
 
-            new WaitForSecondsEnumerator(0.1f).RunOn(runner);
-
-            yield return TaskContract.Yield.It;
+        static IEnumerator<TaskContract> SimpleEnumerator()
+        {
+            yield return 10;
         }
 
         static IEnumerator GameLoop()

@@ -1,6 +1,6 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using Svelto.Common;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
 
@@ -16,46 +16,31 @@ namespace Svelto.Tasks.Lean
         }
 
         internal string name => task.ToString();
+        
+        internal void Dispose()
+        {
+            try
+            {
+                if (EqualityComparer<TTask>.Default.Equals(task, default) == false)
+                    task?.Dispose();
+            }
+            catch (NotImplementedException )
+            {
+            }
 
-        internal StepState Step()
+            _continuingTask = default;
+            _current = default;
+        }
+
+        internal StepState Step(int runningTaskIndexToReplace, int parentSpawnedTaskIndex)
         {
             //if the tasks returned an extraLeanEnumerator, the parent task takes responsibility to run it. This is because extraLeanEnumerator
             //can run only on extra lean runners, while lean tasks runs only on lean runners.
-            if (_current.isExtraLeanEnumerator(out var extraLeanEnumerator) == true)
+            if (_current.isExtraLeanEnumerator(out IEnumerator extraLeanEnumerator) == true)
             {
-                //if the returned enumerator is NOT a taskcontract one, the continuing task cannot spawn new tasks,
-                //so we can simply iterate it here until is done. This MUST run instead of the normal task.MoveNext()
-                try
-                {
-                    if (extraLeanEnumerator.MoveNext() == false)
-                        _current = default;
-                    else
-                    {
-                        var extraLeanChildTaskCurrent = extraLeanEnumerator.Current;
-
-                        if (extraLeanChildTaskCurrent == TaskContract.Yield.It)
-                            return StepState.Running; //this task is not waiting, is running the child task
-
-                        //todo unit test this
-                        if (extraLeanChildTaskCurrent == TaskContract.Break.AndStop)
-                            return StepState.Completed;
-
-                        //todo unit test this
-                        if (extraLeanChildTaskCurrent == TaskContract.Break.It)
-                            _current = default; //reset the current task to null to signal the parent task to continue next step
-                        else
-                        //todo unit test this
-                        throw new SveltoTaskException($"ExtraLean enumerator {extraLeanEnumerator} can return only null, Yield.It, Break.It, Break.AndStop and yield break");
-                    }
-                }
-                catch (Exception e)
-                {
-                    Svelto.Console.LogException(e);
-
-                    throw;
-                }
-
-                DBC.Tasks.Check.Assert(_current.continuation.Equals(default));
+                var state = ProcessExtraLeanEnumerator(extraLeanEnumerator, ref _current);
+                if (state != StepState.Invalid)
+                    return state;
             }
             else
             //This task cannot continue until the spawned task is not finished.
@@ -65,12 +50,12 @@ namespace Svelto.Tasks.Lean
             if (_current.continuation != null)
             {
                 if (_current.continuation.Value.isRunning == true)
-                    return StepState.Waiting;
+                    return StepState.Running; //even if a child task replaces the parent task, a task can return directly a continuation (think about RunOn), in that case we can't do anything else than spinning 
                 
                 //todo: instead to do what I do in the test TestTaskContractReturningATaskContractReturningATaskContract
                 //I want to be able to read the value returned directly from the continuation. This requires a more sophisticated
                 //continuation that can reference the enumerator current value.
-                
+
                 //if isContinued == true a Continue() task has been yielded
                 //if isContinued == false a RunOn() task has been yielded 
                 //Break And Stop works only with .Continue() and not with .RunOn() 
@@ -81,28 +66,31 @@ namespace Svelto.Tasks.Lean
                     var currentBreakMode = _continuingTask.Current.breakMode;
 
                     _current = default; //the parent task must return the child task result. this value will be returned if the task completes next step
-                    _continuingTask = default; //finish to wait for the continuator, reset it
-                    
+                    _continuingTask = default; //finish waiting for the continuator, reset it
+
                     //the child task is telling to interrupt everything! No need to do the next move next
                     if (currentBreakMode == TaskContract.Break.AndStop)
                         return StepState.Completed;
                 }
             }
 
-            //child task is completed, continue the normal execution of this task continue the normal execution of this task
+            //child task is completed, continue the normal execution of this task
             try
             {
-                if (task.MoveNext() == false)
+                bool result;
+                while ((result = task.MoveNext()) == true && task.Current.continueIt) ;
+
+                if (result == false)
                     return StepState.Completed;
             }
             catch (Exception e)
             {
                 Svelto.Console.LogException(e);
-
+                
                 throw;
             }
 
-            _current = task.Current; //set current to whatever is yielded by the task (can be Continue(), RunOn(), Forget(), Break.It, Break.AndStop, Yield.it, null, a value)
+            _current = task.Current;
 #if DEBUG && !PROFILE_SVELTO //todo write unit test for this
             DBC.Tasks.Check.Assert(_current.continuation?._runner != _runner,
                 $"Cannot yield a new task running on the same runner of the spawning task, use Continue() instead {_current}");
@@ -114,6 +102,14 @@ namespace Svelto.Tasks.Lean
             if (_current.breakMode == TaskContract.Break.It || _current.breakMode == TaskContract.Break.AndStop || _current.hasValue)
                 return StepState.Completed;
 
+            //this exists to run IEnumerator that are set to run immediately!
+            if (_current.isExtraLeanEnumerator(out var extraLeanEnumerator1))
+            {
+                var state = ProcessExtraLeanEnumerator(extraLeanEnumerator1, ref _current);
+                if (state != StepState.Invalid)
+                    return state;
+            }
+            else
             //this means that the previous MoveNext returned an enumerator continued with .Continue().
             //Instead a RunOn() directly generates a continuation and doesn't pass through this if 
             //as _current.continuation is set instead. Continue() must be resolved in this way and not like RunOn() because
@@ -125,38 +121,77 @@ namespace Svelto.Tasks.Lean
 
                 //a new TaskContract is created, holding the continuationEnumerator of the new task
                 //it must be added in the runner as "spawned" task and must run separately from this task
-                DBC.Tasks.Check.Assert(tuple.enumerator != null);
+                var tupleEnumerator = tuple.enumerator;
+                
+                DBC.Tasks.Check.Assert(tupleEnumerator != null);
+                
+                LeanSveltoTask<TTask> leanSveltoTask = default;
+
                 //todo unit test this
                 //.Forget() case, a special case of .Continue()
-                var leanSveltoTask = new LeanSveltoTask<TTask>();
-                
                 if (tuple.isFireAndForget == true)
-                {
-                    leanSveltoTask.Run(_runner, (TTask)tuple.enumerator);
-                }
+                    leanSveltoTask.Run(_runner, (TTask)tupleEnumerator);
                 else
                 {
+                    //todo unit test this
+                    //if the task is not
 #if DEBUG && !PROFILE_SVELTO
                     var continuation = new Continuation(ContinuationPool.RetrieveFromPool(), _runner);
 #else
-                    var continuation = new Continuation(ContinuationPool.RetrieveFromPool());
+                     var continuation = new Continuation(ContinuationPool.RetrieveFromPool());
 #endif
                     //note: this is a struct and this must be completely set before calling SpawnContinuingTask
                     //as it can trigger a resize of the datastructure that contains this, invalidating this
                     //TestThatLeanTasksWaitForContinuesWhenRunnerListsResize unit test covers this case
                     _current = new TaskContract(continuation, true);
-                    _continuingTask = tuple.enumerator; //remember the child task
-                    //TODO:
-                    //I would like to remove the parent task from the coroutine list, before to spawn a continuation
-                    //in order to do this the task must be put back in the coroutine list once the continuation is completed
-                    //also why did I introduced the spawnedCoroutines list? How would flow modifiers work with this?
-                    leanSveltoTask.SpawnContinuingTask(_runner, (TTask)tuple.enumerator, continuation);
+                    _continuingTask = tupleEnumerator; //remember the child task
 
-                    return StepState.Waiting;
+                    leanSveltoTask.SpawnContinuingTask(_runner, (TTask)tupleEnumerator, continuation, (runningTaskIndexToReplace, parentSpawnedTaskIndex));
                 }
             }
 
             return StepState.Running;
+
+            static StepState ProcessExtraLeanEnumerator(IEnumerator extraLeanEnumerator, ref TaskContract current)
+            {
+                StepState state = StepState.Invalid;
+                //if the returned enumerator is NOT a taskcontract one, the continuing task cannot spawn new tasks,
+                //so we can simply iterate it here until is done. This MUST run instead of the normal task.MoveNext()
+                try
+                {
+                    if (extraLeanEnumerator.MoveNext() == false)
+                        current = default; //extra lean enumerator is done, reset the current task to null to signal the parent task (this object) to continue next step (basically the isExtraLeanEnumerator will return false next time)
+                    else
+                    {
+                        var extraLeanChildTaskCurrent = extraLeanEnumerator.Current;
+
+                        if (extraLeanChildTaskCurrent == TaskContract.Yield.It)
+                            state = StepState.Running; //this task is not waiting, is running the child task
+                        else
+                                //todo unit test this
+                        if (extraLeanChildTaskCurrent == TaskContract.Break.AndStop)
+                            state = StepState.Completed;
+                        else
+                                //todo unit test this
+                        if (extraLeanChildTaskCurrent == TaskContract.Break.It)
+                            current = default; //reset the current task to null to signal the parent task to continue next step
+                        else
+                                //todo unit test this
+                            throw new SveltoTaskException(
+                                $"ExtraLean enumerator {extraLeanEnumerator} can return only null, Yield.It, Break.It, Break.AndStop and yield break");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Svelto.Console.LogException(e);
+
+                    throw;
+                }
+
+                DBC.Tasks.Check.Assert(current.continuation.Equals(default));
+
+                return state;
+            }
         }
 
         TTask task { get; } //current task to wrap

@@ -98,7 +98,11 @@ namespace Svelto.DataStructures
             get => (int)_capacity;
         }
 
-        public bool isValid => _ptr != IntPtr.Zero;
+        public bool isValid
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _ptr != IntPtr.Zero;
+        }
 
         public ref T this[uint index]
         {

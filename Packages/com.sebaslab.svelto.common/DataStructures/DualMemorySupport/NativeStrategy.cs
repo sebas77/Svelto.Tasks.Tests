@@ -99,7 +99,11 @@ namespace Svelto.DataStructures.Native
             MemoryUtilities.MemMove<T>(array, index, index + 1, count - index);
         }
 
-        public bool isValid => _realBuffer.isValid;
+        public bool isValid
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _realBuffer.isValid;
+        }
 
         public void FastClear() {}
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

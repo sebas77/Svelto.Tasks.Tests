@@ -60,14 +60,15 @@ namespace Svelto.Tasks
         internal TaskContract(IEnumerator<TaskContract> enumerator, bool fireAndForget = false) : this()
         {
             DBC.Tasks.Check.Require(enumerator != null);
-            _currentState            = fireAndForget ? States.forgetLeanEnumerator : States.leanEnumerator;
+            _currentState = fireAndForget       ? States.forgetLeanEnumerator : States.leanEnumerator;
             _returnObjects.reference = enumerator;
         }
         
         internal TaskContract(IEnumerator enumerator) : this()
         {
             DBC.Tasks.Check.Require(enumerator != null);
-            _currentState            = States.extraLeanEnumerator;
+            _currentState = States.extraLeanEnumerator;
+            
             _returnObjects.reference = enumerator;
         }
 
@@ -80,6 +81,11 @@ namespace Svelto.Tasks
         TaskContract(Yield o) : this()
         {
             _currentState            = States.yieldit;
+        }
+        
+        TaskContract(Continue o) : this()
+        {
+            _currentState            = States.continueIt;
         }
         
         TaskContract(object reference, bool isReference): this() //I am using this convoluted way because I do not want the compiler to get confused and use an object constructor by mistake
@@ -121,6 +127,11 @@ namespace Svelto.Tasks
         public static implicit operator TaskContract(Yield yieldit)
         {
             return new TaskContract(yieldit);
+        }
+        
+        public static implicit operator TaskContract(Continue continueIt)
+        {
+            return new TaskContract(continueIt);
         }
 
         public static implicit operator TaskContract(string payload)
@@ -192,7 +203,7 @@ namespace Svelto.Tasks
             {
                 tuple.enumerator = (IEnumerator<TaskContract>)_returnObjects.reference;
                 tuple.isFireAndForget = false;
-
+  
                 return true;
             }
 
@@ -225,6 +236,7 @@ namespace Svelto.Tasks
         internal bool hasValue    => _currentState == States.value || _currentState == States.reference || _currentState == States.exception;
         
         internal bool yieldIt     => _currentState == States.yieldit;
+        public bool continueIt => _currentState == States.continueIt; //this is meaninful only if the task returns a TaskContract without being an Iterator block
 
         //if isContinued == true if Continue() task has been yielded
         //if isContinued == false if RunOn() task has been yielded 
@@ -236,7 +248,7 @@ namespace Svelto.Tasks
         readonly Continuation _continuation;
 
         public static IEnumerator<TaskContract> Empty { get; } = EmptyEnumerator();
-
+        
         static IEnumerator<TaskContract> EmptyEnumerator()
         {
             yield break;
@@ -270,13 +282,20 @@ namespace Svelto.Tasks
             reference,
             exception,
             forgetLeanEnumerator,
-            sameRunnerContinuation
+            sameRunnerContinuation,
+            continueIt, //immediate MoveNext without yielding //todo: must be unit tested
         }
         
         // ReSharper disable once ClassNeverInstantiated.Global
         public class Yield
         {
             public static readonly Yield It = null;
+        }
+        
+        //todo: must be unit tested
+        public class Continue
+        {
+            public static readonly Continue It = new Continue();
         }
         
         // ReSharper disable once ClassNeverInstantiated.Global

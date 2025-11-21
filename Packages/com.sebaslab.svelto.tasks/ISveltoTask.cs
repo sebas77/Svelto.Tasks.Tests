@@ -6,22 +6,21 @@ namespace Svelto.Tasks
     //ISveltoTask is not an enumerator just to avoid ambiguity and understand responsibilities in the other classes
     public interface ISveltoTask
     {
-        StepState Step();
+        internal StepState Step(int taskIndex, int currentSpawnedTaskToRunIndex);
+        internal void Stop();
+        internal void Dispose();
 
-        void Stop();
-        
         bool isCompleted { get; }
-        
         string name { get; }
     }
     
     [Flags]
     public enum StepState
     {
-        Running,
-        Completed,
-        Waiting,
-        Faulted
+        Invalid = 0,
+        Running = 1 << 0,
+        Completed = 1 << 1,
+        Faulted = 1 << 2,
     }
 }
 

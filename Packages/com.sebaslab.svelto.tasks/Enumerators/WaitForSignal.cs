@@ -61,10 +61,10 @@ namespace Svelto.Tasks.Enumerators
                 if (_started == false)
                 {
                     _started = true;
-                    _then    = DateTime.Now.AddMilliseconds(_initialTimeOut);
+                    _then    = DateTime.UtcNow.AddMilliseconds(_initialTimeOut);
                 }
 
-                var timedOut = DateTime.Now > _then;
+                var timedOut = DateTime.UtcNow > _then;
                 _isDone = Volatile.Read(ref _signal) || timedOut;
             
                 if (_isDone == true)

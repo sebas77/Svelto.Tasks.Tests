@@ -1,4 +1,4 @@
-#if UNITY_2018_3_OR_NEWER && ENABLE_PLATFORM_PROFILER
+#if UNITY_2018_3_OR_NEWER && ENABLE_PLATFORM_PROFILER && DEBUG
 using System;
 using Svelto.Common.Internal;
 using Unity.Profiling;
@@ -8,7 +8,7 @@ namespace Svelto.Common
     public struct DisposableSampler: IDisposable
     {
         ProfilerMarker _marker;
-
+        
         public DisposableSampler(ProfilerMarker marker)
         {
             _marker = marker;
@@ -28,11 +28,6 @@ namespace Svelto.Common
         public PlatformProfilerMT(string info)
         {
             _platformProfilerImplementation = new PlatformProfiler(info);
-        }
-
-        public void Dispose()
-        {
-            _platformProfilerImplementation.Dispose();
         }
 
         public DisposableSampler Sample(string samplerName)
@@ -55,14 +50,13 @@ namespace Svelto.Common
         public PlatformProfiler(string info)
         {
             _marker = new ProfilerMarker(info);
-            _marker.Value.Begin();
         }
 
         public static PlatformProfiler PreCreate(string info)
         {
             return new PlatformProfiler()
             {
-                    _marker = new ProfilerMarker(info)
+                _marker = new ProfilerMarker(info)
             };
         }
 
@@ -80,23 +74,6 @@ namespace Svelto.Common
         {
             return Sample(sampled.TypeName());
         }
-
-        public void Dispose()
-        {
-            _marker?.End();
-        }
-
-        public void Pause()
-        {
-            _marker?.End();
-        }
-
-        public void Resume()
-        {
-            _marker.Value.Begin();
-        }
-
-        public PauseProfiler Yield() { return new PauseProfiler(_marker.Value); }
     }
 
     public readonly struct PauseProfiler: IDisposable

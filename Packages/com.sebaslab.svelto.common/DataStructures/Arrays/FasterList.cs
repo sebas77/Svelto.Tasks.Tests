@@ -508,4 +508,11 @@ public static class NoVirt
 
         return fasterList._buffer;
     }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void UnorderedRemoveAt<T>(this List<T> list, int index)
+    {
+        list[index] = list[^1];
+        list.RemoveAt(list.Count - 1);
+    }
 }

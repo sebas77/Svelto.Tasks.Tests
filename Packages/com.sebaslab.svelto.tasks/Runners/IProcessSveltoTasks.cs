@@ -11,6 +11,6 @@ namespace Svelto.Tasks.Internal
         uint numberOfQueuedTasks { get; }
         uint numberOfTasks { get; }
 
-        void StartTask(in TTask task);
+        void AddTask(in TTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index);
     }
 }

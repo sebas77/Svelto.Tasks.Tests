@@ -59,6 +59,8 @@ namespace Svelto
         /// CatchEmAll is a replacement of the default logger. This is a problem if more loggers are injected
         /// in the chain. In this case the user must be sure that CatchEmAll is called before
         /// any other logger is registered
+        /// CatchEmAll catches all the Debug.Log not only the ones coming from Svelto Console, it means that
+        /// all the logs are processed by Svelto Console
         /// </summary>
         static void CatchEmAll()
         {
@@ -78,8 +80,7 @@ namespace Svelto
 
                 ConsoleUtilityForUnity.defaultLogHandler = Debug.unityLogger.logHandler;
                 Debug.unityLogger.logHandler = new SveltoConsoleLogHandler();
-                StackDepth = 5;
-
+                
 #if UNITY_EDITOR
                 EditorApplication.playModeStateChanged += EditorApplicationOnplayModeStateChanged;
 #endif
@@ -109,18 +110,21 @@ namespace Svelto
         
         public static class DefaultLog
         {
-            public static void Use(bool catchEmAll = false)
+            public static void Use(bool catchEmAll = false, bool keepLogHandlerInEditor = false)
             {
                 DefaultUnityLogger.Init(); //first set to the Default Logger to avoid stack overflow with SimpleLogger due to SveltoSystemOutInterceptor
 
                 if (catchEmAll)
                     CatchEmAll(); //this must happen first otherwise it will override the set out console of FasterUnityLogger
+                
+                _keepLogHandler = keepLogHandlerInEditor;
             }
         }
+        
 #if UNITY_EDITOR
         static void OnEditorChangedMode(PlayModeStateChange mode)
         {
-            if (mode == PlayModeStateChange.EnteredEditMode)
+            if (mode == PlayModeStateChange.EnteredEditMode && _initialized && _keepLogHandler == false)
             {
                 Debug.unityLogger.logHandler = ConsoleUtilityForUnity.defaultLogHandler;
 
@@ -135,14 +139,13 @@ namespace Svelto
         }
         
         static readonly Action<PlayModeStateChange> EditorApplicationOnplayModeStateChanged = OnEditorChangedMode;
-#endif
-#if UNITY_EDITOR
+        
         static (StackTraceLogType warning, StackTraceLogType assert, StackTraceLogType error, StackTraceLogType log, StackTraceLogType exception)
                 _originals;
-#endif
+#endif 
 
         static bool _initialized;
-        
+        static bool _keepLogHandler;
     }
 }
 #endif

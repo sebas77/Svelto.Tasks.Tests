@@ -1,4 +1,4 @@
-#if DEBUG && !PROFILE_SVELTO
+#if DEBUG && !PROFILE_SVELTO 
 #define ENABLE_DEBUG_CHECKS
 #endif
 
@@ -20,7 +20,7 @@ namespace Svelto.DataStructures
                     return _list != null;
                 }
             }
-        }
+        } 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Count<T>() where T : struct
@@ -31,7 +31,7 @@ namespace Svelto.DataStructures
                 if (_list == null)
                     throw new Exception("NativeDynamicArray: null-access");
                 if (_hashType != TypeHash<T>.hash)
-                    throw new Exception($"NativeDynamicArray: not expected type used");
+                    throw new Exception("NativeDynamicArray: not expected type used");
 
 #endif
                 return (_list->count / MemoryUtilities.SizeOf<T>());
@@ -503,12 +503,11 @@ namespace Svelto.DataStructures
         [Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
 #endif
         unsafe UnsafeArray* _list;
-#if DEBUG && !PROFILE_SVELTO
+#if ENABLE_DEBUG_CHECKS
         int _hashType;
-#endif
         
         Sentinel _threadSentinel; //A sentinel field must never be readonly and must always use the ENABLE_DEBUG_CHECKS. Using may prevent inline
-
+#endif
         Allocator _allocator;
     }
 }

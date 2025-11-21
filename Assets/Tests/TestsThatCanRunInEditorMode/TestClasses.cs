@@ -94,8 +94,6 @@ namespace Test
             totalIterations = niterations;
         }
 
-        public long endOfExecutionTime { get; private set; }
-
         public bool AllRight => iterations == totalIterations;
 
         public bool MoveNext()
@@ -108,8 +106,6 @@ namespace Test
 
                 return true;
             }
-
-            endOfExecutionTime = DateTime.Now.Ticks;
 
             return false;
         }

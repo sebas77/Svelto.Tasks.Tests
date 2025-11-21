@@ -9,7 +9,7 @@ using Svelto.Common;
 namespace Svelto.DataStructures
 {
     /// <summary>
-    ///     Burst friendly RingBuffer on steroid:
+    ///     Burst friendly RingBuffer on steroid (Note, it's basically Queue<T> for native code)
     ///     it can: Enqueue/Dequeue, it wraps around if there is enough space after dequeuing
     ///     It resizes if there isn't enough space left.
     ///     It's a "bag", you can queue and dequeue any type and mix them. Just be sure that you dequeue what you queue! No check on type

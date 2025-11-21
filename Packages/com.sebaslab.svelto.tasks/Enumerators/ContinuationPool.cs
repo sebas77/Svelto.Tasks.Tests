@@ -7,18 +7,18 @@ namespace Svelto.Tasks.Internal
 {
     static class ContinuationPool
     {
+        const int PREALLOCATED_ENUMERATORS_NUMBER = 1000;
+
         static ContinuationPool()
         {
-            for (int i = 0; i < 1000; i++) _pool.Enqueue(new ContinuationEnumeratorInternal());
+            for (int i = 0; i < PREALLOCATED_ENUMERATORS_NUMBER; i++) _pool.Enqueue(new ContinuationEnumeratorInternal());
         }
         
         public static ContinuationEnumeratorInternal RetrieveFromPool()
         {
-            ContinuationEnumeratorInternal task;
-
-            if (_pool.TryDequeue(out task))
+            if (_pool.TryDequeue(out var task))
             {
-                GC.ReRegisterForFinalize(task);
+                GC.ReRegisterForFinalize(task); //force them to return to the pool once they are not used anymore
 
                 return task;
             }
@@ -38,7 +38,9 @@ namespace Svelto.Tasks.Internal
             return new ContinuationEnumeratorInternal();
         }
 
+#pragma warning disable CLG001
         static readonly ConcurrentQueue<ContinuationEnumeratorInternal> _pool =
-            new ConcurrentQueue<ContinuationEnumeratorInternal>();
+#pragma warning restore CLG001
+                new ConcurrentQueue<ContinuationEnumeratorInternal>();
     }
 }

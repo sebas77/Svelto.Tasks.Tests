@@ -38,7 +38,7 @@ namespace Svelto.Tasks.Profiler
 
         const int SYSTEM_MONITOR_DATA_LENGTH = 300;
 
-        TaskInfo[] tasks;
+        TaskInfo[] tasks = Array.Empty<TaskInfo>();
         
         public override void OnInspectorGUI()
         {
@@ -110,9 +110,15 @@ namespace Svelto.Tasks.Profiler
                 }
             }
             double totalDuration = 0;
+            uint totalCount = 0;
             for (int i = 0; i < tasks.Length; i++)
             {
-                totalDuration += tasks[i].currentUpdateDuration;
+                var currentUpdateDuration = tasks[i].currentUpdateDuration;
+                totalDuration += currentUpdateDuration;
+                if (currentUpdateDuration > 0)
+                {
+                    totalCount = tasks[i].deltaCalls;
+                }
             }
 
             ProfilerEditorLayout.BeginVerticalBox();
@@ -121,7 +127,13 @@ namespace Svelto.Tasks.Profiler
 
                 ProfilerEditorLayout.BeginHorizontal();
                 {
-                    EditorGUILayout.LabelField("Total", totalDuration.ToString());
+                    EditorGUILayout.LabelField("Total Time", totalDuration.ToString());
+                }
+                ProfilerEditorLayout.EndHorizontal();
+                
+                ProfilerEditorLayout.BeginHorizontal();
+                {
+                    EditorGUILayout.LabelField("Active Tasks", totalCount.ToString());
                 }
                 ProfilerEditorLayout.EndHorizontal();
 
@@ -167,7 +179,7 @@ namespace Svelto.Tasks.Profiler
             {
                 ref TaskInfo taskInfo = ref tasks[i];
 
-                if (Mathf.Approximately(taskInfo.currentUpdateDuration, 0)) continue;
+                //if (Mathf.Approximately(taskInfo.currentUpdateDuration, 0)) continue;
                 
                 if (taskInfo.taskName.ToLower().Contains(_systemNameSearchTerm.ToLower()))
                 {

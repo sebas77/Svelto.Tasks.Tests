@@ -1,14 +1,16 @@
+#if !ENABLE_PLATFORM_PROFILER || !DEBUG
 using System;
+#endif
 
 namespace Svelto.Common
 {
-    public interface IPlatformProfiler: IDisposable
+    public interface IPlatformProfiler
     {
         DisposableSampler Sample(string samplerName);
         DisposableSampler Sample<W>(W sampled);
     }
 
-#if !ENABLE_PLATFORM_PROFILER
+#if !ENABLE_PLATFORM_PROFILER || !DEBUG
     public struct DisposableSampler: IDisposable
     {
         public void Dispose() { }
@@ -29,8 +31,6 @@ namespace Svelto.Common
         {
             return default;
         }
-
-        public void Dispose() { }
     }
 
     public struct PlatformProfiler: IPlatformProfiler
@@ -53,8 +53,6 @@ namespace Svelto.Common
         }
 
         public PauseProfiler Yield() { return default; }
-
-        public void Dispose() { }
 
         public static PlatformProfiler PreCreate(string p0)
         {

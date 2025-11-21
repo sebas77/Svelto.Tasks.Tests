@@ -8,9 +8,11 @@ namespace Svelto.Utilities
 {
     public class DefaultUnityLogger : ILogger
     {
+        public static int CallsDepthToGetHere = 4;
+        
         public static void Init()
         {
-            Console.SetLogger(new DefaultUnityLogger());
+            Console.AddLogger(new DefaultUnityLogger());
         }
 
         public void Log(string txt, LogType type = LogType.Log, bool showLogStack = true, Exception e = null,
@@ -38,15 +40,8 @@ namespace Svelto.Utilities
 
                 StackTrace stackTrace = null;
                 if (showLogStack)
-                {
-#if UNITY_EDITOR
-                    stackTrace = new StackTrace(Console.StackDepth, true);
-#else
-                if (type == LogType.Error || type == LogType.Exception)
-                    stackTrace = new StackTrace(Console.StackDepth, true);
-#endif
-                }
-
+                    stackTrace = new StackTrace(CallsDepthToGetHere, true);
+                
                 var logFormatter = ConsoleUtilityForUnity.LogFormatter(txt, type, showLogStack, e, frame, dataString, stackTrace);
 
                 var defaultLogHandler = ConsoleUtilityForUnity.defaultLogHandler;
@@ -136,17 +131,11 @@ namespace Svelto.Utilities
             //We want to keep the stack for not Svelto.Console log.
             //SlowLogger will disable the stack for Svelto.Console log, as Svelto.Console has it's own stack generator
             //If CatchEmAll is used, the external unity stack trace is passed instead
-#if !UNITY_EDITOR
-            Application.SetStackTraceLogType(UnityEngine.LogType.Warning, StackTraceLogType.None);
-            Application.SetStackTraceLogType(UnityEngine.LogType.Log, StackTraceLogType.None);
-#endif
             Console.Log("Svelto Default Unity Logger added");
         }
 
         public void CompressLogsToZipAndShow(string zipName)
-        {
-            
-        }
+        { }
 
         static int MAINTHREADID;
     }

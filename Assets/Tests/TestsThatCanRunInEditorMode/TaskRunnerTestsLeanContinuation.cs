@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Enumerators;
@@ -43,9 +44,16 @@ namespace Test
             }
 
             Continuation task = Task(1).RunOn(_taskRunner);
-            while (task.isRunning)
+            
+            DateTime timeout = DateTime.Now.AddSeconds(1);
+            while (task.isRunning && DateTime.Now < timeout)
             {
                 _taskRunner.Step();
+            }
+            
+            if (task.isRunning)
+            {
+                Assert.Fail("The task did not complete in time");
             }
         }
 

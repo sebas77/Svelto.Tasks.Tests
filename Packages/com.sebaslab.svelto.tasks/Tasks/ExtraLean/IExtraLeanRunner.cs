@@ -2,7 +2,12 @@
 
 namespace Svelto.Tasks.ExtraLean
 {
-    public interface IExtraLeanRunner<T>: IRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
+    namespace Struct
+    {
+        public interface IExtraLeanRunner<T>: IRunner<ExtraLeanSveltoTask<T>> where T : struct, IEnumerator { }
+    }
+
+    public interface IExtraLeanRunner<T>: IRunner<ExtraLeanSveltoTask<T>> where T : class, IEnumerator
     {
     }
     

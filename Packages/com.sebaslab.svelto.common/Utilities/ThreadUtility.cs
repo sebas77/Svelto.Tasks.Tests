@@ -1,5 +1,6 @@
-#if NETFX_CORE
-using System.Threading.Tasks;
+#if (UNITY_IOS || UNITY_ANDROID || UNITY_WEBGL)
+//On mobile all the assumptions in this code are wrong. The code is not going to work as expected
+#define MOBILE_SPIN
 #endif
 using System;
 using System.Diagnostics;
@@ -8,69 +9,92 @@ using System.Threading;
 
 namespace Svelto.Utilities
 {
+    /// <summary>
+    /// Note this code is not that dissimilar to what SpinWait.cs does in .net. I just decided to use my tailored solution instead
+    /// </summary>
     public static class ThreadUtility
     {
         public static uint processorNumber => (uint)Environment.ProcessorCount;
         public static string currentThreadName => Thread.CurrentThread.Name;
         public static int currentThreadId => Thread.CurrentThread.ManagedThreadId;
+        
         /// <summary>
         /// The main difference between Yield and Sleep(0) is that Yield doesn't allow a switch of context
-        /// that is the core is given to a thread that is already running on that core. Sleep(0) may cause
-        /// a context switch, yielding the processor to a thread from ANY process. Thread.Yield yields
-        /// the processor to any thread associated with the current core.
-        /// Remember that sleep(1) does FORCE a context switch instead, while with sleep(0) is only if required.
+        /// but allows the core to be given to a thread that is already running on that core. Sleep(0) may cause
+        /// a context switch, yielding the core to a thread from ANY process. Thread.Yield only yields
+        /// the core to any thread associated with the current core.
+        /// Remember that sleep(1) FORCES a context switch instead, while sleep(0) does it only if required.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Yield()
         {
-#if NETFX_CORE && !NET_STANDARD_2_0 && !NETSTANDARD2_0
-            #error Svelto doesn't support UWP without NET_STANDARD_2_0 support
-#endif
+#if MOBILE_SPIN
+            Thread.Sleep(1);
+#else            
             Thread.Yield();
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void TakeItEasy()
         {
-#if NETFX_CORE && !NET_STANDARD_2_0 && !NETSTANDARD2_0
-            #error Svelto doesn't support UWP without NET_STANDARD_2_0 support
-#endif
             Thread.Sleep(1);
         }
 
+        //In C#, Thread.Sleep(0) triggers the thread scheduler to switch the context. Basically,
+        //it hints the scheduler to check if there's another thread ready to run.
+        //If none, the current thread continues execution. It's like saying, “Hey, anyone else need the CPU?
+        //No? Okay, I'll keep going.” Useful for giving other threads a chance to execute without pausing the
+        //current thread's execution. Have you been working on threading issues?
+        //Sleep(1) instead definitely causes a context switch.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Relax()
         {
-#if NETFX_CORE && !NET_STANDARD_2_0 && !NETSTANDARD2_0
-            #error Svelto doesn't support UWP without NET_STANDARD_2_0 support
-#endif
             Thread.Sleep(0);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Spin()
+        {
+#if MOBILE_SPIN
+            Thread.Sleep(0);
+#else            
+            Thread.SpinWait(16);
+#endif
         }
 
         /// <summary>
-        /// Yield the thread every so often. Remember I don't do Spin because
-        /// Spin is equivalent of while(); and I don't see the point of it in most
+        /// Yield the thread every so often. Remember, I don't do Spin because
+        /// Spin is the equivalent of while(); and I don't see the point of it in most
         /// of the expected scenarios. I don't do Sleep(0) because it can still
         /// cause a context switch;
         /// </summary>
         /// <param name="quickIterations">will be increment by 1</param>
-        /// <param name="frequency">must be power of 2</param>
+        /// <param name="powerOf2Frequency">must be power of 2</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Wait(ref int quickIterations, int frequency = 256)
+        public static void Wait(ref int quickIterations, int powerOf2Frequency = 256)
         {
-            if ((quickIterations++ & (frequency - 1)) == 0)
+            if ((quickIterations++ & (powerOf2Frequency - 1)) == 0)
                 Yield();
+            else
+                Spin();
         }
+        
+        //note because I just realised this: when you use ticks with DateTime they are already converted to follow the .net contract
+        //that 1ms = 10000 ticks. However, when you use stopwatch ticks this conversion is not done and number of ticks per ms can change
+        //between machines. using StopWatch.Elapsed.Ticks just remove any kind of doubt (as the conversion happens in the TimeSpan)  
+        static readonly long _16MSInTicks = 160_000;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void LongestWaitLeft(float timeInTicks, ref int quickIterations, in Stopwatch watch, int frequency = 256)
+        public static void LongestWaitLeft(long timeToSleepInTicks, ref int quickIterations, in Stopwatch watch, int powerOf2Frequency = 256)
         {
-            if (timeInTicks - watch.ElapsedTicks <= 16_000)
+            var elapsedTicks = watch.Elapsed.Ticks;
+            if (timeToSleepInTicks - elapsedTicks <= _16MSInTicks)
             {
-                if ((quickIterations++ & (frequency - 1)) == 0)
-                    Relax();
-                else
+                if ((quickIterations++ & (powerOf2Frequency - 1)) == 0) 
                     Yield();
+                else
+                    Spin();                
             }
             else
                 TakeItEasy();
@@ -78,17 +102,20 @@ namespace Svelto.Utilities
 
         /// DO NOT TOUCH THE NUMBERS, THEY ARE THE BEST BALANCE BETWEEN CPU OCCUPATION AND RESUME SPEED
         /// DO NOT ADD THREAD.SLEEP(1) it KILLS THE RESUME
-       [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void LongWaitLeft(float timeInTicks, ref int quickIterations, in Stopwatch watch, int frequency = 256)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void LongWaitLeft(long timeToSleepInTicks, ref int quickIterations, in Stopwatch watch, int powerOf2Frequency = 256)
         {
-            if (timeInTicks - watch.ElapsedTicks <= 16_000)
+            var elapsedTicks = watch.Elapsed.Ticks;
+            if (timeToSleepInTicks - elapsedTicks <= _16MSInTicks)
             {
-                if ((quickIterations++ & (frequency - 1)) == 0)
+                if ((quickIterations++ & (powerOf2Frequency - 1)) == 0) //spinwait, yield every so often
                     Yield();
+                else
+                    Spin();
             }
             else
             {
-                if ((quickIterations++ & ((frequency << 3) - 1)) == 0)
+                if ((quickIterations++ & ((powerOf2Frequency << 3) - 1)) == 0) //yield, Sleep(0) every so often
                     Relax();
                 else
                     Yield();
@@ -100,10 +127,13 @@ namespace Svelto.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void LongWait(ref int quickIterations, in Stopwatch watch, int frequency = 256)
         {
-            if (watch.ElapsedTicks < 16_000)
+            var elapsedTicks = watch.Elapsed.Ticks;
+            if (elapsedTicks < _16MSInTicks)
             {
                 if ((quickIterations++ & (frequency - 1)) == 0)
                     Yield();
+                else
+                    Spin();
             }
             else
             {
@@ -114,16 +144,50 @@ namespace Svelto.Utilities
             }
         }
         
-        public static void SleepWithOneEyeOpen(float waitTimeMs, Stopwatch stopwatch, int frequency = 64)
+        public static void SleepWithOneEyeOpen(float waitTimeMs, in Stopwatch stopwatch, SyncStrategy strategy, int yieldFrequency = 64)
         {
-            int quickIterations = 0;
-            var timeInTicks = waitTimeMs * (Stopwatch.Frequency / 1000);
-            
+            if (waitTimeMs <= 0f) // nothing to wait
+                return;
+
             stopwatch.Restart();
-            while (stopwatch.ElapsedTicks < timeInTicks)
-                LongestWaitLeft(timeInTicks, ref quickIterations, stopwatch, frequency);
+
+#if MOBILE_SPIN 
+            //On Mobile any small amount of spin wait can cause throttling, however it seems that SpinWait is able to cope with it
+            //NEVER NEVER USE SPINNING ON MOBILE, SPIN WAIT IS FORBIDDEN!!!
+            //Sleep is anyway precise enough on mobile (different schedulers)
+            
+            Thread.Sleep((int)waitTimeMs);
+#else
+            int quickIterations = 0;
+            var timeInTicks = TimeSpan.FromMilliseconds(waitTimeMs).Ticks;
+            
+            var elapsedTicks = stopwatch.Elapsed.Ticks;
+            switch (strategy)
+            {
+                case SyncStrategy.Balanced:
+                    while (elapsedTicks < timeInTicks)
+                    {
+                        LongestWaitLeft(timeInTicks, ref quickIterations, stopwatch, yieldFrequency);
+                        elapsedTicks = stopwatch.Elapsed.Ticks;
+                    }
+
+                    break;
+                case SyncStrategy.SpinAggressive:
+                    while (elapsedTicks < timeInTicks)
+                    {
+                        LongWaitLeft(timeInTicks, ref quickIterations, stopwatch, yieldFrequency);
+                        elapsedTicks = stopwatch.Elapsed.Ticks;
+                    }
+
+                    break;
+            }
+#endif
         }
-        
-        public static void MemoryBarrier() => Interlocked.MemoryBarrier();
+    }
+
+    public enum SyncStrategy
+    {
+        Balanced,
+        SpinAggressive
     }
 }

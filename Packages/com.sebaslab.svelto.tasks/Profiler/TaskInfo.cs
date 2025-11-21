@@ -35,7 +35,7 @@ namespace Svelto.Tasks.Profiler
         
         public TaskInfo(string name, string runnerName) : this()
         {
-            _taskName = " ".FastConcat(name, ":", runnerName);
+            _taskName = " ".FastConcat(name, " [", runnerName, "]");
             times = new float[ITERATIONS];
         }
 

@@ -4,6 +4,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using Svelto.Common;
 
 namespace Svelto.DataStructures.Experimental
 {
@@ -42,71 +43,108 @@ namespace Svelto.DataStructures.Experimental
         public int count    => (int)_count;
         public int capacity => _buffer.Length;
 
-        public ref T this[int index]
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-#if ENABLE_DEBUG_CHECKS
-                if (index >= _largestUsedIndex)
-                    throw new Exception($"TombstoneList - out of bound access: index {index} - count {_largestUsedIndex}");
-#endif                
-                return ref _buffer[(uint)index].Item;
-            }
-        }
-
-        public ref T this[uint index]
-        {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
+        public ref T UnsafeGet(int index)
         {
 #if ENABLE_DEBUG_CHECKS
-                if (index >= _largestUsedIndex)
+                if ((uint)index > _largestUsedIndex)
                     throw new Exception($"TombstoneList - out of bound access: index {index} - count {_largestUsedIndex}");
 #endif                
-                return ref _buffer[index].Item;
-            }
+            return ref _buffer[(uint)index].Item;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public uint Add(in T item)
+        public ref T UnsafeGet(uint index)
+        {
+#if ENABLE_DEBUG_CHECKS
+                if (index > _largestUsedIndex)
+                    throw new Exception($"TombstoneList - out of bound access: index {index} - count {_largestUsedIndex}");
+#endif                
+            return ref _buffer[index].Item;
+        }
+
+        // -------------------------------------------------------------------------
+        // shared helper – returns the index of the slot that has just been taken
+        // -------------------------------------------------------------------------
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        uint TakeFreeSlot()
         {
             AllocateMore();
 
-            var indexToUse = _firstUnusedIndex - 1;
-            _buffer[indexToUse].Item = item;
+            uint indexToUse = _firstUnusedIndex - 1;  // convert base-1 → base-0
             _count++;
-            
-            var nextUnusedIndex = _buffer[indexToUse].NextUnusedIndex; //was the cell pointing to another unused cell?
-            if (nextUnusedIndex > 0) //yes
-                _firstUnusedIndex = nextUnusedIndex;
-            else //if this happens, the linked list is exhausted, all the empty slots are used and so nextUnusedIndex is the actual count (+1 because it's in base 1)
-                _firstUnusedIndex = _count; //no
-            
-            _buffer[indexToUse].NextUnusedIndex = 0; //mark the cell as used
 
-            if (_count > _largestUsedIndex)
-                _largestUsedIndex = _count;
+            uint nextUnused = _buffer[indexToUse].NextUnusedIndex;
+            _firstUnusedIndex = nextUnused > 0       // 0 means "already used"
+                ? nextUnused
+                : _count + 1;                        // list exhausted – point past end
 
+            _buffer[indexToUse].NextUnusedIndex = 0; // mark slot as used
+
+#if ENABLE_DEBUG_CHECKS
+            if (indexToUse > _largestUsedIndex)
+                _largestUsedIndex = indexToUse;
+#endif
             return indexToUse;
+        }
+
+        // -------------------------------------------------------------------------
+        // public API
+        // -------------------------------------------------------------------------
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint Add(in T item)
+        {
+            uint index = TakeFreeSlot();
+            _buffer[index].Item = item;
+#if ENABLE_DEBUG_CHECKS
+            _version++;
+#endif
+            return index;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T AddByRef()
+        {
+            uint index = TakeFreeSlot();
+#if ENABLE_DEBUG_CHECKS
+            _version++;
+#endif
+            return ref _buffer[index].Item;
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveAt(uint index)
         {
-            DBC.Common.Check.Require(index                          < _count, "out of bound index");
-            DBC.Common.Check.Require(index                          >= 0, "out of bound index");
-            DBC.Common.Check.Require(_buffer[index].NextUnusedIndex == 0, "trying to access a tombstone");
+            //Check if the index is within the buffer bounds
+            DBC.Common.Check.Require(index                          < _buffer.Length, $"out of bound index {index} - count {_buffer.Length}");
+            //Check if the index is not negative (although uint makes this check redundant)
+            DBC.Common.Check.Require(index                          >= 0, "index must be greater than 0");
+            //Check if the item at this index is currently in use (NextUnusedIndex == 0 means the slot is used)
+            DBC.Common.Check.Require(_buffer[index].NextUnusedIndex == 0, $"trying to access a tombstone at index {index} that is already removed");
             
+            //Link this newly freed slot to the previous first unused slot
             _buffer[index].NextUnusedIndex = _firstUnusedIndex;
+            _buffer[index].Item = default; //clear the item as it could hold references to other objects
+            //Make this slot the new first unused slot (add 1 because indices are stored in base 1)
             _firstUnusedIndex = index + 1; //updating linked list and first empty slot in base 1
+            //Decrease the total count of used slots
             _count--;
+            
+#if ENABLE_DEBUG_CHECKS
+            _version++;
+#endif
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveAt(int index)
+        {
+            RemoveAt((uint)index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TombstoneListEnumerator<T> GetEnumerator()
         {
-            return new TombstoneListEnumerator<T>(this, _largestUsedIndex);
+            return new TombstoneListEnumerator<T>(this);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -120,51 +158,74 @@ namespace Svelto.DataStructures.Experimental
                 _buffer = newList;
             }
         }
+        
+        public void Clear()
+        {
+            _count = 0;
+            _firstUnusedIndex = 1;
+
+            if (TypeCache<T>.isUnmanaged == false) 
+                Array.Clear(_buffer, 0, _buffer.Length);
+        }
 
         internal FlaggedItem<T>[]  _buffer;
         uint _firstUnusedIndex;
         uint _count;
+        
+#if ENABLE_DEBUG_CHECKS
         uint _largestUsedIndex;
+         internal int _version;
+#endif  
+       
     }
 
-    public ref struct TombstoneListEnumerator <T>
+    //todo: to be tested
+    public ref struct TombstoneListEnumerator<T>
     {
-        public TombstoneListEnumerator(TombstoneList<T> buffer, uint size)
+        internal TombstoneListEnumerator(TombstoneList<T> owner)
         {
-            _counter = 0;
-            _buffer = buffer;
-            _size = size;
+            _owner            = owner;
+#if ENABLE_DEBUG_CHECKS
+            _capturedVersion  = owner._version;
+#endif
+            _index            = -1;
+            _returned         = 0;
         }
-        
-        public ref T Current
-        {
-            get
-            {
-                DBC.Common.Check.Require(_counter <= _size);
-                return ref _buffer._buffer[(uint)_counter - 1].Item;
-            }
-        }
-        
-        public uint CurrentIndex => (uint)_counter - 1;
+
+        public ref T Current => ref _owner._buffer[_index].Item;
+        public uint CurrentIndex => (uint)_index;
 
         public bool MoveNext()
         {
-            while (_buffer._buffer[_counter++].NextUnusedIndex != 0)
-            {
-                if (_counter > _size)
-                    return false;
-            }
-            
-            return true;
-        }
-
-        public void Reset()
+#if ENABLE_DEBUG_CHECKS
+        if (_owner._version != _capturedVersion)
+            throw new InvalidOperationException("Collection was modified during enumeration");
+#endif
+        // advance to next used slot
+        while (++_index < _owner._buffer.Length)
         {
-            _counter = 0;
-        }
+            if (_owner._buffer[_index].NextUnusedIndex == 0) // live element
+            {
+                if (++_returned > _owner.count)             // safety net
+                    return false;
 
-        readonly TombstoneList<T>  _buffer;
-        int           _counter;
-        readonly uint _size;
+                return true;
+            }
+        }
+        return false; // end of buffer
     }
+
+    public void Reset()
+    {
+        _index    = -1;
+        _returned = 0;
+    }
+
+    readonly TombstoneList<T> _owner;   // gives us live access to version & data
+#if ENABLE_DEBUG_CHECKS
+    readonly int              _capturedVersion;
+#endif
+    int                       _index;
+    uint                      _returned;
+}
 }

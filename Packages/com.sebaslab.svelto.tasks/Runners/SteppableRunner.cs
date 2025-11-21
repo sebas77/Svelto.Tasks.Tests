@@ -29,6 +29,28 @@ namespace Svelto.Tasks
 
             object IEnumerator.Current => throw new NotImplementedException();
         }
+        
+        public class SteppableRunner<T> : GenericSteppableRunner<LeanSveltoTask<T>>, IEnumerator<TaskContract>, IGenericLeanRunner<T>
+            where T : IEnumerator<TaskContract>
+        {
+            public SteppableRunner(string name) : base(name)
+            {
+                UseFlowModifier(new StandardFlow());
+            }
+
+            public bool MoveNext()
+            {
+                return Step();
+            }
+
+            public void Reset()
+            {
+            }
+
+            public TaskContract Current => TaskContract.Yield.It;
+
+            object IEnumerator.Current => throw new NotImplementedException();
+        }
     }
 
     namespace ExtraLean
