@@ -98,7 +98,7 @@ namespace Svelto.Tasks.ExtraLean
                 _threadSafeSveltoTaskStates.explicitlyStopped = true;
             }
 
-            public void Dispose()
+            void ISveltoTask.Dispose()
             {
                 _threadSafeSveltoTaskStates.completed = true;
 
@@ -189,7 +189,7 @@ namespace Svelto.Tasks.ExtraLean
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
 
-        public void Dispose()
+        void ISveltoTask.Dispose()
         {
             _threadSafeSveltoTaskStates.completed = true;
             

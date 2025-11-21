@@ -45,12 +45,12 @@ namespace Svelto.Tasks.Lean
             return name;
         }
 
-        public void Stop()
+        void ISveltoTask.Stop()
         {
             _threadSafeSveltoTaskStates.explicitlyStopped = true; //will be completed next step
         }
 
-        public void Dispose() 
+        void ISveltoTask.Dispose() 
         { 
             _sveltoTask.Dispose();
             _continuation.ReturnToPool();
@@ -61,7 +61,7 @@ namespace Svelto.Tasks.Lean
 
         public string name => _sveltoTask.name;
 
-        public StepState Step(int runningTaskIndexToReplace, int parentSpawnedTaskIndex)
+        StepState ISveltoTask.Step(int runningTaskIndexToReplace, int parentSpawnedTaskIndex)
         {
             DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state");
             StepState stepState = StepState.Running;
