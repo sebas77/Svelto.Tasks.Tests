@@ -59,7 +59,7 @@ namespace Svelto.Utilities
 #if MOBILE_SPIN
             Thread.Sleep(0);
 #else            
-            Thread.SpinWait(16);
+            Thread.SpinWait(4);
 #endif
         }
 
@@ -151,7 +151,7 @@ namespace Svelto.Utilities
 
             stopwatch.Restart();
 
-#if MOBILE_SPIN 
+#if MOBILE_SPIN || UNITY_STANDALONE_LINUX
             //On Mobile any small amount of spin wait can cause throttling, however it seems that SpinWait is able to cope with it
             //NEVER NEVER USE SPINNING ON MOBILE, SPIN WAIT IS FORBIDDEN!!!
             //Sleep is anyway precise enough on mobile (different schedulers)

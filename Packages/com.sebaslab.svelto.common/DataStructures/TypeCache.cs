@@ -20,6 +20,11 @@ namespace Svelto.Common
         {
             return TypeCache<T>.isUnmanaged;
         }
+        
+        public static string name<T>(this T obj)
+        {
+            return TypeCache<T>.name;
+        }
     }
 
     public static class TypeHash<T>
