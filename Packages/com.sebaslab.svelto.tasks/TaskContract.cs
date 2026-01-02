@@ -316,6 +316,7 @@ namespace Svelto.Tasks
             public static readonly Break AndStop = new Break();
             
             //TODO URGENT: IS THERE ANY DIFFERENCE ANYMORE BETWEEN BREAK.IT AND BREAK.ANDSTOP? 
+            public bool AnyBreak => this == It || this == AndStop;
         }
     }
     

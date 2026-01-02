@@ -27,7 +27,7 @@ namespace Svelto.Common
             return new StandardDisposableSamplerHolder(_stopwatch.Value);
         }
 
-        public StandardDisposableSampler Sample(string samplerName)
+        public StandardDisposableSampler SampleAndLog(string samplerName)
         {
             return new StandardDisposableSampler(_info, samplerName, _stopwatch.Value);
         }
