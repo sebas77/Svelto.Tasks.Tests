@@ -144,6 +144,7 @@ namespace Svelto.Tasks.Internal
                         else 
                         if (result == StepState.Completed || result == StepState.Faulted)
                         {
+                            currentSpawnedTaskToRun.Dispose();
                             _spawnedCoroutines.RemoveAt(currentSpawnedTaskToRunIndex);
                             if (spawnedCoroutineParentTaskIndex == -1)
                             {

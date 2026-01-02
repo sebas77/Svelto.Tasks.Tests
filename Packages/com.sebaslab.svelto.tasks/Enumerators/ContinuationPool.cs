@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Internal

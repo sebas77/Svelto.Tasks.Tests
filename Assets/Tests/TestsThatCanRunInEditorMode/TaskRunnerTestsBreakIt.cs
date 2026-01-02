@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Lean;
 using UnityEngine.TestTools;
+using System.Threading.Tasks;
 
 namespace Test
 {
@@ -63,6 +64,7 @@ namespace Test
 
             yield break;
         }
+
 
         IEnumerator<TaskContract> SeveralTasksParent()
         {
