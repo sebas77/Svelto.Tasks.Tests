@@ -1,5 +1,8 @@
+using System;
 using Svelto.Tasks;
 using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Lean;
 using Svelto.Utilities;
@@ -61,8 +64,7 @@ public static class TaskRunnerExtensions
     
     //if task is continued with forget, the task will be executed, but the caller will not wait for it to complete
     //this method is used when you want to run, but not wait, a task on the same runner of the parent without knowing what it was
-    
-    //todo: unit test
+
     public static TaskContract Forget<T>(this T task) where T : class, IEnumerator<TaskContract> //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing 
     {
         return new TaskContract(task, true);
