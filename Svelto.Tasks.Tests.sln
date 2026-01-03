@@ -1,10 +1,11 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasks.Tests", "Tasks.Tests\Tasks.Tests.csproj", "{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}"
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Tasks.Tests", "Packages\com.sebaslab.svelto.tasks\Svelto.Tasks.Tests~\Svelto.Tasks.Tests.csproj", "{2C7D004F-E150-4144-AA68-B30522E0B036}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Tasks", "Packages\com.sebaslab.svelto.tasks\Svelto.Tasks.csproj", "{A02FEC52-FC0E-4991-963E-63B7C0D969C4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Common", "Packages\com.sebaslab.svelto.common\Svelto.Common\Svelto.Common.csproj", "{E1260335-3724-44E4-A92C-9AFF70E0E01D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Common", "Packages\com.sebaslab.svelto.common\Svelto.Common.csproj", "{5FE825E4-53BB-4B53-9698-7A0C511A41F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Tasks", "Packages\com.sebaslab.svelto.tasks\Svelto.Tasks\Svelto.Tasks.csproj", "{E185A3BF-3605-42C2-93C5-8E60499D1A90}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Common.Tests", "Packages\com.sebaslab.svelto.common\Svelto.Common.Tests~\Svelto.Common.Tests.csproj", "{EE575CAD-290F-4089-9836-CAA31C3E7BC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,17 +13,21 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C7D004F-E150-4144-AA68-B30522E0B036}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C7D004F-E150-4144-AA68-B30522E0B036}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C7D004F-E150-4144-AA68-B30522E0B036}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C7D004F-E150-4144-AA68-B30522E0B036}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1260335-3724-44E4-A92C-9AFF70E0E01D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1260335-3724-44E4-A92C-9AFF70E0E01D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1260335-3724-44E4-A92C-9AFF70E0E01D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1260335-3724-44E4-A92C-9AFF70E0E01D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E185A3BF-3605-42C2-93C5-8E60499D1A90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E185A3BF-3605-42C2-93C5-8E60499D1A90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E185A3BF-3605-42C2-93C5-8E60499D1A90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E185A3BF-3605-42C2-93C5-8E60499D1A90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE575CAD-290F-4089-9836-CAA31C3E7BC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE575CAD-290F-4089-9836-CAA31C3E7BC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE575CAD-290F-4089-9836-CAA31C3E7BC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE575CAD-290F-4089-9836-CAA31C3E7BC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
