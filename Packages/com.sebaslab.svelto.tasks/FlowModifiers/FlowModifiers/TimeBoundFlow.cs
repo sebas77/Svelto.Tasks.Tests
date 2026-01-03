@@ -18,7 +18,7 @@ namespace Svelto.Tasks.FlowModifiers
 
         public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
-            if (_stopWatch.ElapsedMilliseconds > _maxMilliseconds)
+            if ((float)_stopWatch.Elapsed.TotalMilliseconds > _maxMilliseconds)
                 return false;
 
             return true;

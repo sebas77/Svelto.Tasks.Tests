@@ -28,8 +28,6 @@ namespace Svelto
             _threadSafeStrings = new ThreadLocal<StringBuilder>(() => new StringBuilder(256));
             _loggers           = new FasterList<ILogger>();
             _loggersType = new HashSet<Type>();
-            
-            DefaultUnityLogger.Init(); //one logger must be inizialised here, otherwise the loggers will be null
         }
 
         static StringBuilder _stringBuilder

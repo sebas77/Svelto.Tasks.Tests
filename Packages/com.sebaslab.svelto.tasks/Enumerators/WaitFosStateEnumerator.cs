@@ -1,6 +1,4 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Svelto.Tasks.Enumerators
 {
@@ -65,8 +63,6 @@ namespace Svelto.Tasks.Enumerators
                 _state.SignalStateChange(state);
             }
         }
-
-        readonly WaitForEnumerator _wait;
 
         W _state;
     }

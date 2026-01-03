@@ -10,6 +10,7 @@ namespace Svelto.Utilities
     {
         public static int CallsDepthToGetHere = 4;
         
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Init()
         {
             Console.AddLogger(new DefaultUnityLogger());

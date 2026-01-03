@@ -5,11 +5,7 @@ namespace Svelto.Tasks.Profiler
 {
     static class InitTaskProfiler
     {
-#if UNITY_2018_3_OR_NEWER
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-#else
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-#endif
         static void InitTaskProfilerMethod()
         {
             if (Application.isPlaying)

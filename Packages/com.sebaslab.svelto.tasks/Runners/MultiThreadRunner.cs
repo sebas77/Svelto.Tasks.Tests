@@ -214,7 +214,7 @@ namespace Svelto.Tasks
             }.Start();
         }
         
-        protected void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
+        public void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
             _runnerData.UseFlowModifier(modifier);
         }

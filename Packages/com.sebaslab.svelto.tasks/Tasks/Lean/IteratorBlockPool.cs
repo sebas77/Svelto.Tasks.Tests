@@ -17,6 +17,11 @@ namespace Svelto.Tasks.Lean
             this.data = data;
         }
 
+        public void Refresh(IEnumerator<TaskContract> iEnumerator)
+        {
+            iteratorBlock = iEnumerator;
+        }
+
         public void Release()
         {
             pool.Release(data, this);
@@ -67,10 +72,12 @@ namespace Svelto.Tasks.Lean
             {
                 var data = new P();
 
-                Release(data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
+                return (data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
             }
 
-            return _pool.Pop();
+            var result = _pool.Pop();
+            result.pooledIteratorBlock.Refresh(_iteratorBlock(result.data));
+            return result;
         }
 
         public void Release(P data, PooledIteratorBlock<P> pooledIteratorBlock)

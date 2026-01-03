@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasks.Tests", "Tasks.Tests\Tasks.Tests.csproj", "{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Tasks", "Packages\com.sebaslab.svelto.tasks\Svelto.Tasks.csproj", "{A02FEC52-FC0E-4991-963E-63B7C0D969C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Svelto.Common", "Packages\com.sebaslab.svelto.common\Svelto.Common.csproj", "{5FE825E4-53BB-4B53-9698-7A0C511A41F7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89C5BAEA-D45E-4A50-87A5-417AFBDE9556}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A02FEC52-FC0E-4991-963E-63B7C0D969C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FE825E4-53BB-4B53-9698-7A0C511A41F7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

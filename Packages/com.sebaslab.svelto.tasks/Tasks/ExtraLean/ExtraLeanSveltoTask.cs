@@ -38,7 +38,8 @@ namespace Svelto.Tasks.ExtraLean
 
                     if (current == null)
                         completed = false;
-                    else if (current == TaskContract.Break.It || current == TaskContract.Break.AndStop)
+                    else 
+                    if (current == TaskContract.Break.It || current == TaskContract.Break.AndStop)
                         completed = true;
                     else
                         throw new SveltoTaskException(
@@ -134,7 +135,7 @@ namespace Svelto.Tasks.ExtraLean
             StepState ISveltoTask.Step(int runningTaskIndexToReplace, int currentSpawnedTaskToRunIndex)
             {
 #if DEBUG && !PROFILE_SVELTO
-    return ExtraLeanSveltoTaskCommon.Step(ref _threadSafeSveltoTaskStates,
+                return ExtraLeanSveltoTaskCommon.Step(ref _threadSafeSveltoTaskStates,
                                           ref _runningTask,
                                           IS_TASK_STRUCT);
 #else
