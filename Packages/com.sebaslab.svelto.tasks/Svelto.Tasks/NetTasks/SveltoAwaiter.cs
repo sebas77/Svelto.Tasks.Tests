@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Svelto.Tasks.Enumerators;
+﻿using System.Runtime.CompilerServices;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Lean

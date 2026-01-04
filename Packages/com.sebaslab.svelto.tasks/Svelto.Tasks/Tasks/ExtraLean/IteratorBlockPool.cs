@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Svelto.Common;
+﻿using System.Collections;
 
 namespace Svelto.Tasks.ExtraLean
 {

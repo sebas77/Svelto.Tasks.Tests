@@ -1,6 +1,4 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks
@@ -72,7 +70,6 @@ namespace Svelto.Tasks
             return false;
         }
 
-        //todo unit test this
         public void Add(in T enumerator)
         {
             DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
@@ -99,7 +96,6 @@ namespace Svelto.Tasks
         /// <summary>
         /// Restore the list of stacks to their original state
         /// </summary>
-        //todo unit test this
         public void Reset()
         {
             isRunning = false;

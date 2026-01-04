@@ -8,3 +8,7 @@ Tasks.Tests/obj/
 Svelto.Tasks.Tests.sln.DotSettings.user
 Svelto.Tasks.Tests.sln.DotSettings.user
 test_results.txt
+Packages/com.sebaslab.svelto.common/Svelto.Common.Tests~/bin
+Packages/com.sebaslab.svelto.common/Svelto.Common.Tests~/obj/
+Packages/com.sebaslab.svelto.tasks/Svelto.Tasks.Tests~/bin/
+Packages/com.sebaslab.svelto.tasks/Svelto.Tasks.Tests~/obj/

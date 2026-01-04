@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Svelto.Tasks.Lean
 {
     public interface ILeanRunner<T>: IRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
