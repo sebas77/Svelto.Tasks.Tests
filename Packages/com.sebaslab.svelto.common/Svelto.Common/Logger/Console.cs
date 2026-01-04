@@ -153,6 +153,7 @@ namespace Svelto
                 _loggers[i].Log(txt, type, showLogStack, e, extraData);
 
             if (logMessage != null) logMessage(txt, type, e);
+            if (type == LogType.Exception && onException != null) onException(e, txt);
         }
 
         public static void CompressLogsToZipAndShow(string zipName)
@@ -161,5 +162,6 @@ namespace Svelto
         }
 
         public static event Action<string, LogType, Exception> logMessage;
+        public static event Action<Exception, string> onException;
     }
 }
