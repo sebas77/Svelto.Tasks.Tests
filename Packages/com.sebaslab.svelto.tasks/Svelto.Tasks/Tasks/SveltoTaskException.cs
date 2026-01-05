@@ -1,3 +1,5 @@
+using System;
+
 namespace Svelto.Tasks
 {
     public class SveltoTaskException : Exception

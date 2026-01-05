@@ -1,3 +1,5 @@
+using System;
+
 namespace Svelto.Tasks
 {
     public abstract partial class TaskCollection<T>

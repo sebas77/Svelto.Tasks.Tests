@@ -1,5 +1,8 @@
+using System;
 using Svelto.Tasks;
 using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Utilities;
 

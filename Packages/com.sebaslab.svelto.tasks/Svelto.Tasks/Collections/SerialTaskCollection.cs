@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Svelto.Tasks
 {
     public class SerialTaskCollection : SerialTaskCollection<IEnumerator<TaskContract>>

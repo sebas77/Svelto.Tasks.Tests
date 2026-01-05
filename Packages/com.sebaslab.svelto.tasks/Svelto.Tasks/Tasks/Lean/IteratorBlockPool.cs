@@ -1,4 +1,7 @@
-﻿namespace Svelto.Tasks.Lean
+﻿using System;
+using System.Collections.Generic;
+
+namespace Svelto.Tasks.Lean
 {
     public class PooledIteratorBlock<P>:IEnumerator<TaskContract> where P : class, new()
     {

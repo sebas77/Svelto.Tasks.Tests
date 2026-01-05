@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Svelto.Tasks
 {
 #if TO_IMPLEMENT_PROPERLY

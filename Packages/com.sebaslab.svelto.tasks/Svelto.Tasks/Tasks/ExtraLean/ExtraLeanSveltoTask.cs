@@ -2,6 +2,7 @@
 #define GENERATE_NAME
 #endif
 
+using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using DBC.Tasks;
