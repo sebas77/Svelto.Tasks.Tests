@@ -1,3 +1,3 @@
 *.meta
-/bin/*
-/obj/*
+/bin~/*
+/obj~/*

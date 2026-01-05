@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
+        <BaseOutputPath>bin~\</BaseOutputPath>
         <TargetFramework>net9.0</TargetFramework>
         <LangVersion>10</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
