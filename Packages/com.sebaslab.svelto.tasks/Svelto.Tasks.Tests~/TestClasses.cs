@@ -78,7 +78,7 @@ namespace Svelto.Tasks.Tests
         public void Dispose() { }
     }
     
-    class ExtraLeanEnumerator : IEnumerator
+    struct ExtraLeanEnumerator : IEnumerator
     {
         readonly int totalIterations;
         public   int iterations;
@@ -262,6 +262,48 @@ namespace Svelto.Tasks.Tests
 
         public void Dispose()
         {
+        }
+    }
+
+    class WaitEnumeratorExtraLean : IEnumerator
+    {
+        DateTime       _future;
+        readonly int   _time;
+        readonly Token _token;
+
+        public WaitEnumeratorExtraLean(Token token, int time = 2)
+        {
+            _token  = token;
+            _future = DateTime.UtcNow.AddSeconds(time);
+            _time   = time;
+        }
+
+        public WaitEnumeratorExtraLean(int time)
+        {
+            _future = DateTime.UtcNow.AddSeconds(time);
+            _time   = time;
+        }
+
+        public void Reset()
+        {
+            _future = DateTime.UtcNow.AddSeconds(_time);
+            if (_token != null)
+                _token.count = 0;
+        }
+
+        public object Current => null;
+
+        public bool MoveNext()
+        {
+            if (_future <= DateTime.UtcNow)
+            {
+                if (_token != null)
+                    Interlocked.Increment(ref _token.count);
+
+                return false;
+            }
+
+            return true;
         }
     }
 }

@@ -11,8 +11,6 @@ namespace Svelto.Tasks
     public class GenericSteppableRunner<TTask> : ISteppableRunner, IRunner<TTask> where TTask : ISveltoTask
     {
         public bool isStopping => _flushingOperation.stopping;
-
-        //        public bool isKilled   => _flushingOperation.kill;
         public bool hasTasks => numberOfTasks != 0;
 
         public uint   numberOfRunningTasks  => _processor.numberOfRunningTasks;
@@ -54,6 +52,12 @@ namespace Svelto.Tasks
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTask(in TTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index)
         {
+            if (_flushingOperation.kill == true)
+                throw new DBC.Tasks.PreconditionException($"cannot add a task to a killed runner {_name}");
+            
+            if (_processor == null)
+                throw new DBC.Tasks.PreconditionException($"cannot add a task to a disposed runner {_name}");
+
             _processor.AddTask(task, index);
         }
         

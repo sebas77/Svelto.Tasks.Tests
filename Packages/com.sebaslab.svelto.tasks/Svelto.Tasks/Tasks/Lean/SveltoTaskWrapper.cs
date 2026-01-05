@@ -50,10 +50,6 @@ namespace Svelto.Tasks.Lean
                 if (_current.continuation.Value.isRunning == true)
                     return StepState.Running; //even if a child task replaces the parent task, a task can return directly a continuation (think about RunOn), in that case we can't do anything else than spinning 
                 
-                //todo: instead to do what I do in the test TestTaskContractReturningATaskContractReturningATaskContract
-                //I want to be able to read the value returned directly from the continuation. This requires a more sophisticated
-                //continuation that can reference the enumerator current value.
-
                 //if isContinued == true a Continue() task has been yielded
                 //if isContinued == false a RunOn() task has been yielded 
                 //Break And Stop works only with .Continue() and not with .RunOn() 
@@ -83,7 +79,7 @@ namespace Svelto.Tasks.Lean
             }
             catch (Exception e)
             {
-                Svelto.Console.LogException(e);
+                Console.LogException(e);
                 
                 throw;
             }
@@ -166,22 +162,19 @@ namespace Svelto.Tasks.Lean
                         if (extraLeanChildTaskCurrent == TaskContract.Yield.It)
                             state = StepState.Running; //this task is not waiting, is running the child task
                         else
-                                //todo unit test this
                         if (extraLeanChildTaskCurrent == TaskContract.Break.AndStop)
                             state = StepState.Completed;
                         else
-                                //todo unit test this
                         if (extraLeanChildTaskCurrent == TaskContract.Break.It)
                             current = default; //reset the current task to null to signal the parent task to continue next step
                         else
-                                //todo unit test this
                             throw new SveltoTaskException(
                                 $"ExtraLean enumerator {extraLeanEnumerator} can return only null, Yield.It, Break.It, Break.AndStop and yield break");
                     }
                 }
                 catch (Exception e)
                 {
-                    Svelto.Console.LogException(e);
+                    Console.LogException(e);
 
                     throw;
                 }

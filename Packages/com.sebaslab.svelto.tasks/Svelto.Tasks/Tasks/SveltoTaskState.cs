@@ -61,17 +61,17 @@ namespace Svelto.Tasks
 
             void SETBIT(byte bitmask)
             {
-                System.Threading.Volatile.Write(ref _value, (byte) (_value | bitmask));
+                Volatile.Write(ref _value, (byte) (_value | bitmask));
             }
 
             void UNSETBIT(int bitmask)
             {
-                System.Threading.Volatile.Write(ref _value, (byte) (_value & ~bitmask));
+                Volatile.Write(ref _value, (byte) (_value & ~bitmask));
             }
 
             bool BIT(byte bitmask)
             {
-                return (System.Threading.Volatile.Read(ref _value) & bitmask) == bitmask;
+                return (Volatile.Read(ref _value) & bitmask) == bitmask;
             }
 
             public bool isRunning
@@ -81,7 +81,7 @@ namespace Svelto.Tasks
                     byte completedAndStarted = STARTED_BIT | COMPLETED_BIT;
 
                     //started but not completed
-                    return (System.Threading.Volatile.Read(ref _value) & completedAndStarted) == STARTED_BIT;
+                    return (Volatile.Read(ref _value) & completedAndStarted) == STARTED_BIT;
                 }
             }
 
@@ -91,7 +91,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndStarted = COMPLETED_BIT | STARTED_BIT;
 
-                    return (System.Threading.Volatile.Read(ref _value) & completedAndStarted) == COMPLETED_BIT;
+                    return (Volatile.Read(ref _value) & completedAndStarted) == COMPLETED_BIT;
                 }
             }
 
@@ -101,7 +101,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndPaused = COMPLETED_BIT | PAUSED_BIT;
 
-                    return (System.Threading.Volatile.Read(ref _value) & completedAndPaused) == 0x0;
+                    return (Volatile.Read(ref _value) & completedAndPaused) == 0x0;
                 }
             }
             
@@ -111,7 +111,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndPaused = COMPLETED_BIT | PAUSED_BIT;
 
-                    return (System.Threading.Volatile.Read(ref _value) & completedAndPaused) == COMPLETED_BIT;
+                    return (Volatile.Read(ref _value) & completedAndPaused) == COMPLETED_BIT;
                 }
             }
         }

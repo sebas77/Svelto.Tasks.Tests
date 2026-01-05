@@ -1,9 +1,6 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Svelto.Common;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
@@ -20,17 +17,13 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator<TaskContract>>
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
-                tightTasks)
-            {
-            }
+                tightTasks) { }
 
-            public MultiThreadRunner(string name, uint intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            public MultiThreadRunner(string name, uint intervalInMs) : base(name, intervalInMs) { }
         }
 
         public class MultiThreadRunner<T> : Svelto.Tasks.MultiThreadRunner<LeanSveltoTask<T>>
-            where T : IEnumerator<TaskContract>
+                where T : IEnumerator<TaskContract>
         {
             protected MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
                 tightTasks)
@@ -50,13 +43,9 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner : MultiThreadRunner<IEnumerator>
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed,
-                tightTasks)
-            {
-            }
+                tightTasks) { }
 
-            public MultiThreadRunner(string name, uint intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            public MultiThreadRunner(string name, uint intervalInMs) : base(name, intervalInMs) { }
         }
 
         namespace Struct
@@ -207,16 +196,20 @@ namespace Svelto.Tasks
         {
             _runnerData = runnerData;
 
+            Pause();
+
             new Thread(runnerData.RunCoroutineFiber)
             {
                 IsBackground = true,
                 Name         = _runnerData.name
             }.Start();
         }
-        
+
         public void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
             _runnerData.UseFlowModifier(modifier);
+
+            Resume();
         }
 
         class RunnerData
@@ -286,17 +279,20 @@ namespace Svelto.Tasks
                         {
                             if (_intervalInTicks > 0)
                                 _watchForInterval?.Restart();
-                            
+
+                            //if the runner is paused enable the locking mechanism
+                            if (_flushingOperation.paused == true && _flushingOperation.stopping == false)
+                                _lockingMechanism();
+
+                            if (_processor == null)
+                                throw new MultiThreadRunnerException("No flow modifier has been set for the runner ".FastConcat(name));
+
                             if (_processor.MoveNext(_profiler) == false)
                                 break;
 
                             //If the runner is not stopped
                             if (_flushingOperation.stopping == false)
                             {
-                                //if the runner is paused enable the locking mechanism
-                                if (_flushingOperation.paused == true)
-                                    _lockingMechanism();
-
                                 //if there is an interval time between calls we need to wait for it
                                 if (_intervalInTicks > 0)
                                     WaitForInterval();
@@ -306,8 +302,7 @@ namespace Svelto.Tasks
                                 {
                                     if (numberOfQueuedTasks == 0)
                                         _lockingMechanism();
-                                    else 
-                                    if (_isRunningTightTasks == false)
+                                    else if (_isRunningTightTasks == false)
                                         ThreadUtility.Wait(ref _yieldingCount, 16);
                                 }
                                 else
@@ -323,7 +318,8 @@ namespace Svelto.Tasks
                 }
                 catch
                 {
-                    Kill(null);
+                    if (_flushingOperation.kill == false)
+                        Kill(null);
 
                     _processor = null;
 
@@ -340,7 +336,10 @@ namespace Svelto.Tasks
                 get => _flushingOperation.paused;
                 set
                 {
-                    _flushingOperation.Pause(name);
+                    if (value)
+                        _flushingOperation.Pause(name);
+                    else
+                        _flushingOperation.Resume(name);
 
                     if (value == false)
                         UnlockThread();
@@ -348,7 +347,7 @@ namespace Svelto.Tasks
             }
 
             internal bool waitForStop => _flushingOperation.stopping;
-            
+
             public void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
             {
                 _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, NUMBER_OF_INITIAL_COROUTINE, name);
@@ -356,7 +355,9 @@ namespace Svelto.Tasks
 
             /// <summary>
             /// More reacting pause/resuming system. It spins for a while before reverting to the relaxing locking
-            /// TODO: I CHANGED THIS AND DIDN'T PROPERLY TESTED IT, MUST UNIT TESTED PROPERLY 
+            /// _quickThreadSpinning is used as a lock-free synchronization primitive.
+            /// Acquire: The thread is spinning/waiting.
+            /// Release: The thread has been signaled to wake up (by AddTask, Resume, Stop, etc.).
             /// </summary>
             void QuickLockingMechanism()
             {
@@ -366,12 +367,12 @@ namespace Svelto.Tasks
                 Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
 
                 while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire &&
-                       quickIterations < 4096)
+                       quickIterations                         < 4096)
                 {
-                    ThreadUtility.Wait(ref quickIterations, frequency);
-
                     if (waitForStop) //we need to flush the queue, so the thread cannot stop
                         return;
+
+                    ThreadUtility.Wait(ref quickIterations, frequency);
                 }
 
                 //After the spinning, just revert to the normal locking mechanism
@@ -410,22 +411,29 @@ namespace Svelto.Tasks
                         return;
                 }
             }
-            
+
             internal readonly string name;
 
             readonly long                   _intervalInTicks;
             readonly bool                   _isRunningTightTasks;
             readonly Action                 _lockingMechanism;
             PlatformProfilerMT              _profiler;
-            
+
             Action             _onThreadKilled;
             readonly Stopwatch _watchForInterval;
             readonly Stopwatch _watchForLocking;
+
+            /// <summary>
+            /// _quickThreadSpinning is used as a lock-free synchronization primitive.
+            /// Acquire: The thread is spinning/waiting.
+            /// Release: The thread has been signaled to wake up (by AddTask, Resume, Stop, etc.).
+            /// </summary>
             int                _quickThreadSpinning;
+
             int                _yieldingCount;
 
             readonly SveltoTaskRunner<TTask>.FlushingOperation      _flushingOperation;
-            IProcessSveltoTasks<TTask> _processor;
+            volatile IProcessSveltoTasks<TTask> _processor;
 
             enum QuckLockinSpinningState
             {
@@ -441,8 +449,6 @@ namespace Svelto.Tasks
 
     public class MultiThreadRunnerException : Exception
     {
-        public MultiThreadRunnerException(string message) : base(message)
-        {
-        }
+        public MultiThreadRunnerException(string message) : base(message) { }
     }
 }

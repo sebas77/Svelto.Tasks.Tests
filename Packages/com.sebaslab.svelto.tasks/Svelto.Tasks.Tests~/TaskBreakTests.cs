@@ -1,23 +1,13 @@
-using Svelto.Tasks.Lean;
-
-namespace Svelto.Tasks.Tests
+﻿namespace Svelto.Tasks.Tests
 {
-    /// <summary>
-    /// Svelto tasks essentially should return:
-    /// null (skip an iteration)
-    /// another enumerator (keep on running it)
-    /// a Break value. These tests test the Break return
-    /// </summary>
     [TestFixture]
-    public class TaskRunnerTestsBreakIt
+    public class TaskBreakTests
     {
         [SetUp]
         public void Setup()
         {
             _iterable1 = new LeanEnumerator(10000);
             _iterable2 = new LeanEnumerator(10000);
-            
-            LocalSyncRunners<IEnumerator<TaskContract>>.Reset();
         }
 
         [Test]
@@ -99,11 +89,12 @@ namespace Svelto.Tasks.Tests
             yield return _iterable1.Continue();
 
             yield return TaskContract.Break.It;
-
-            yield return 10;
+            
+            yield return _iterable2.Continue();
         }
 
         LeanEnumerator _iterable1;
         LeanEnumerator _iterable2;
     }
 }
+

@@ -1,10 +1,10 @@
-using Svelto.Tasks.Lean;
+﻿using Svelto.Tasks.Lean;
 using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Tests
 {
     [TestFixture]
-    public class TaskRunnerAwaiterTests
+    public class AwaiterTests
     {
         class testClass
         {
@@ -30,7 +30,6 @@ namespace Svelto.Tasks.Tests
             Assert.That(task.IsCompleted, Is.False, "Continuation should not run when the runner is stopped");
         }
 
-        //todo check if tasks can run on other threads too
         async Task SomeAsyncOperation(testClass continued, SteppableRunner runner)
         {
             await Task.Delay(10).GetAwaiter(runner);
@@ -41,3 +40,4 @@ namespace Svelto.Tasks.Tests
         }
     }
 }
+

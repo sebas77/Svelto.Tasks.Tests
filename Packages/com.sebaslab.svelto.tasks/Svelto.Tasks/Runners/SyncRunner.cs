@@ -1,75 +1,36 @@
-using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Threading;
+using System.Collections;
 using Svelto.Utilities;
 
 namespace Svelto.Tasks
 {
-    static internal class SharedCode
-    {
-        public static void Complete(ISteppableRunner syncRunner, int timeout)
-        {
-            var quickIterations = 0;
-
-            if (timeout > 0)
-            {
-                var then  = DateTime.UtcNow.AddMilliseconds(timeout);
-                var valid = true;
-
-                syncRunner.Step();
-
-                while (syncRunner.hasTasks && (valid = DateTime.UtcNow < then))
-                {
-                    ThreadUtility.Wait(ref quickIterations);
-                    syncRunner.Step();
-                }
-
-                if (valid == false)
-                    throw new SveltoTaskException("synchronous task timed out, increase time out or check if it got stuck");
-            }
-            else
-            {
-                if (timeout == 0)
-                    while (syncRunner.hasTasks)
-                    {
-                        syncRunner.Step();
-                        ThreadUtility.Wait(ref quickIterations);
-                    }
-                else
-                    while (syncRunner.hasTasks)
-                    {
-                        syncRunner.Step();
-                    }
-            }
-        }
-    }
-
-    namespace Lean
+   namespace Lean
     {
         public class SyncRunner : SteppableRunner
         {
             public SyncRunner(string name) : base(name)   { }
-            
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void ForceComplete(int timeout)
-            {
-                SharedCode.Complete(this, timeout);
-            }
         }
         
-        public class SyncRunner<T> : SteppableRunner<T> where T : IEnumerator<TaskContract>
+        public class SyncRunner<T> : SteppableRunner<T> where T : struct, IEnumerator<TaskContract>
         {
             public SyncRunner(string name) : base(name) { }
-            
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void ForceComplete(int timeout)
+        }
+        
+        public static class LocalSyncRunners 
+        {
+            public static  ThreadLocal<SyncRunner> syncRunner  { get; private set; }
+        
+            static LocalSyncRunners() 
             {
-                SharedCode.Complete(this, timeout);
+                Reset();
+            }
+
+            public static void Reset()
+            {
+                syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName + "Lean SyncRunner"));
             }
         }
         
-        public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
+        public static class LocalSyncRunners<T> where T : struct, IEnumerator<TaskContract>
         {
             public static  ThreadLocal<SyncRunner<T>> syncRunner  { get; private set; }
         
@@ -80,7 +41,50 @@ namespace Svelto.Tasks
 
             public static void Reset()
             {
-                syncRunner = new ThreadLocal<SyncRunner<T>>(() => new SyncRunner<T>(ThreadUtility.currentThreadName + " SyncRunner"));
+                syncRunner = new ThreadLocal<SyncRunner<T>>(() => new SyncRunner<T>(ThreadUtility.currentThreadName + $"Lean SyncRunner {typeof(T).Name}"));
+            }
+        }
+    }
+   
+    namespace ExtraLean
+    {
+        public class SyncRunner : SteppableRunner
+        {
+            public SyncRunner(string name) : base(name)   { }
+        }
+        
+        public class SyncRunner<T> : SteppableRunner<T> where T : struct, IEnumerator
+        {
+            public SyncRunner(string name) : base(name) { }
+        }
+        
+        public static class LocalSyncRunners 
+        {
+            public static  ThreadLocal<SyncRunner> syncRunner  { get; private set; }
+        
+            static LocalSyncRunners() 
+            {
+                Reset();
+            }
+
+            public static void Reset()
+            {
+                syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.currentThreadName + " Extra lean SyncRunner"));
+            }
+        }
+        
+        public static class LocalSyncRunners<T> where T : struct, IEnumerator
+        {
+            public static  ThreadLocal<SyncRunner<T>> syncRunner  { get; private set; }
+        
+            static LocalSyncRunners() 
+            {
+                Reset();
+            }
+
+            public static void Reset()
+            {
+                syncRunner = new ThreadLocal<SyncRunner<T>>(() => new SyncRunner<T>(ThreadUtility.currentThreadName + $" Extra lean SyncRunner {typeof(T).Name}"));
             }
         }
     }

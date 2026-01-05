@@ -3,7 +3,7 @@
 namespace Svelto.Tasks.Tests
 {
     [TestFixture]
-    public class TaskRunnerTestsIteratorBlockPool
+    public class IteratorBlockPoolTests
     {
         class PoolData
         {
@@ -11,7 +11,7 @@ namespace Svelto.Tasks.Tests
         }
 
         [Test]
-        public void IteratorBlockPool_RecyclesBlocks()
+        public void Lean_IteratorBlockPool_RecyclesBlocks()
         {
             // What we are testing:
             // IteratorBlockPool should reuse PooledIteratorBlock instances after they are released.
@@ -81,3 +81,4 @@ namespace Svelto.Tasks.Tests
         }
     }
 }
+

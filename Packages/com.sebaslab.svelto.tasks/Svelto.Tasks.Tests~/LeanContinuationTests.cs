@@ -1,10 +1,10 @@
-﻿using Svelto.Tasks.Enumerators;
-using Svelto.Tasks.Lean;
+﻿using Svelto.Tasks.Lean;
+using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Tests
 {
     [TestFixture]
-    public class TaskRunnerTestsLeanContinuation
+    public class LeanContinuationTests
     {
         [SetUp]
         public void Setup()
@@ -41,11 +41,7 @@ namespace Svelto.Tasks.Tests
 
             Continuation task = Task(1).RunOn(_taskRunner);
             
-            DateTime timeout = DateTime.Now.AddSeconds(1);
-            while (task.isRunning && DateTime.Now < timeout)
-            {
-                _taskRunner.Step();
-            }
+            _taskRunner.WaitForTasksDoneRelaxed(1000);
             
             if (task.isRunning)
             {
@@ -62,3 +58,4 @@ namespace Svelto.Tasks.Tests
         SteppableRunner _taskRunner;
     }
 }
+

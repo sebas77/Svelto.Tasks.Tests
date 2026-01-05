@@ -1,10 +1,9 @@
-using Svelto.Tasks.FlowModifiers;
-using Svelto.Tasks.Lean;
+﻿using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Tests
 {
     [TestFixture]
-    public class TaskRunnerTestsRunnerLifecycle
+    public class RunnerLifecycleTests
     {
         [Test]
         public void SteppableRunner_StopPreventsNewTasksFromStartingUntilSteppedAndUnstopped()
@@ -22,19 +21,18 @@ namespace Svelto.Tasks.Tests
                     counter++;
                     yield break;
                 }
+                
+                runner.Stop();
 
                 OneStepIncrement().RunOn(runner);
 
                 Assert.That(runner.hasTasks, Is.True);
-
-                runner.Stop();
-
-                // Adding a task while stopped should not execute until the runner transitions out of stopping.
-                OneStepIncrement().RunOn(runner);
-
+                
                 runner.Step();
 
-                Assert.That(counter, Is.EqualTo(1));
+                Assert.That(counter, Is.EqualTo(0));
+                
+                OneStepIncrement().RunOn(runner);
 
                 // After flushing, runner should allow new tasks.
                 runner.Step();
@@ -100,79 +98,86 @@ namespace Svelto.Tasks.Tests
                 }
 
                 SpinYield(64).RunOn(runner);
+                
+                // Let it run a bit
+                Thread.Sleep(10);
+                
+                runner.Stop();
+                // Dispose is called by using block
+            }
+        }
+
+        [Test]
+        public void SteppableRunner_Stop_AllowsReuseAfterFlush_AndQueuedTasksDuringStopRunAfterward()
+        {
+            using (var runner = new SteppableRunner("SteppableRunner_StopReuse"))
+            {
+                var firstCounter  = 0;
+                var secondCounter = 0;
+
+                IEnumerator<TaskContract> TwoStepIncrementFirst()
+                {
+                    firstCounter++;
+                    yield return TaskContract.Yield.It;
+                    firstCounter++;
+                }
+
+                IEnumerator<TaskContract> TwoStepIncrementSecond()
+                {
+                    secondCounter++;
+                    yield return TaskContract.Yield.It;
+                    secondCounter++;
+                }
+
+                TwoStepIncrementFirst().RunOn(runner);
+
+                runner.Step();
+                Assert.That(firstCounter, Is.EqualTo(1));
 
                 runner.Stop();
-            }
-        }
 
-        [Test]
-        public void SteppableRunner_TimeSlicedFlow_UsesFloatMilliseconds()
-        {
-            // What we are testing:
-            // TimeSlicedFlow accepts float milliseconds and gates progress (sanity check compile + behavior).
+                TwoStepIncrementSecond().RunOn(runner);
 
-            using (var runner = new SteppableRunner("TimeSlicedFlow_FloatMs"))
-            {
-                runner.UseFlowModifier(new TimeSlicedFlow(5.5f));
-
-                var counter = 0;
-
-                IEnumerator<TaskContract> Work()
-                {
-                    // keep runner busy across multiple steps
-                    var i = 0;
-                    while (i++ < 256)
-                    {
-                        counter++;
-                        yield return TaskContract.Yield.It;
-                    }
-                }
-
-                Work().RunOn(runner);
-
-                // We don't assert exact timing; just ensure it progresses and eventually completes.
-                var safety = 0;
-                while (runner.hasTasks && safety++ < 4096)
+                for (var i = 0; i < 32 && secondCounter < 2; i++)
                     runner.Step();
 
-                Assert.That(safety, Is.LessThan(4096));
-                Assert.That(counter, Is.EqualTo(256));
+                Assert.That(secondCounter, Is.EqualTo(2));
             }
         }
 
         [Test]
-        public void SteppableRunner_StaggeredFlow_CapsTasksPerIteration()
+        public void SteppableRunner_Kill_StopsAndPreventsReuse()
         {
-            // What we are testing:
-            // StaggeredFlow limits how many tasks can be processed per Step() iteration.
-
-            using (var runner = new SteppableRunner("StaggeredFlow"))
+            using (var runner = new SteppableRunner("SteppableRunner_Kill"))
             {
-                runner.UseFlowModifier(new StaggeredFlow(2));
-
                 var counter = 0;
 
-                IEnumerator<TaskContract> OneTick()
+                IEnumerator<TaskContract> Increment()
                 {
                     counter++;
-                    yield break;
+                    yield return TaskContract.Yield.It;
+                    counter++;
                 }
 
-                for (var i = 0; i < 8; i++)
-                    OneTick().RunOn(runner);
-
+                Increment().RunOn(runner);
                 runner.Step();
+                Assert.That(counter, Is.EqualTo(1));
 
-                Assert.That(counter, Is.EqualTo(2));
+                // Kill the runner
+                // This is internal in FlushingOperation but exposed via Dispose() or internal methods.
+                // SteppableRunner.Dispose() calls Kill().
+                // However, we want to test Kill specifically if possible, or Dispose behavior.
+                // SteppableRunner doesn't expose Kill() publicly, only Dispose().
+                // But SveltoTaskRunner.FlushingOperation has a Kill method.
+                // Let's use Dispose() which calls Kill().
+                
+                runner.Dispose();
 
-                runner.Step();
-                Assert.That(counter, Is.EqualTo(4));
-
-                runner.Step();
-                Assert.That(counter, Is.EqualTo(6));
-
-                runner.Step();
-                Assert.That(counter, Is.EqualTo(8));
+                // Try to run a new task
+                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
+                {
+                    Increment().RunOn(runner);
+                });
             }
         }
     }

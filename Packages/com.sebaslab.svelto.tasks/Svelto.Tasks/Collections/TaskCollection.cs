@@ -72,7 +72,8 @@ namespace Svelto.Tasks
 
         public void Add(in T enumerator)
         {
-            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            if (isRunning == true)
+                throw new DBC.Tasks.PreconditionException("can't modify a task collection while its running");
             
             var buffer = _listOfStacks.ToArrayFast(out _);
             var count = _listOfStacks.count;
@@ -145,7 +146,7 @@ namespace Svelto.Tasks
         {
             _currentStackIndex = currentindex;
             StructFriendlyStack[] arrayOfTasks = rawListOfStacks;
-            ref var enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
+            ref T enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
 
             bool isDone  = !enumerator.MoveNext();
             

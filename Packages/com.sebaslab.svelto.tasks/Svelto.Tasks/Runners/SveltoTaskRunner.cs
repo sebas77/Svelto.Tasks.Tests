@@ -1,8 +1,6 @@
 //#define DEBUG_TASKS_FLOW
 
-using System;
 using System.Collections.Concurrent;
-using System.Threading;
 using Svelto.Common;
 using Svelto.DataStructures;
 using Svelto.DataStructures.Experimental;
@@ -55,14 +53,15 @@ namespace Svelto.Tasks.Internal
                 //although they won't be processed. In this sense, it's similar to paused. For this reason
                 //_newTaskRoutines cannot be cleared in paused and stopped state.
                 //This is done before the stopping check because all the tasks queued before stop will be stopped
-                else
+
                 if (_newTaskRoutines.Count > 0 && _flushingOperation.acceptsNewTasks == true)
                 {
-                    while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
+                    while (_newTaskRoutines.TryPeek(out TSveltoTask task))
                     {
                         //only root tasks are added at this point
                         int index = (int)_spawnedCoroutines.Add((task, -1));
                         _runningCoroutines.Add(index);
+                        _newTaskRoutines.TryDequeue(out _); //Peek + dequeue to avoid race conditions when MT runner is used and the number of tasks is queried
 #if DEBUG_TASKS_FLOW                        
                         Svelto.Console.Log($"spawn root task {_spawnedCoroutines[index].task} at location {_runningCoroutines.count - 1}");
 #endif
@@ -129,7 +128,7 @@ namespace Svelto.Tasks.Internal
                         }
                         catch (Exception e)
                         {
-                            Svelto.Console.LogException(e, $"catching exception for root task {currentSpawnedTaskToRun.name}");
+                            Console.LogException(e, $"catching exception for root task {currentSpawnedTaskToRun.name}");
 
                             result = StepState.Faulted;
                         }
@@ -150,7 +149,7 @@ namespace Svelto.Tasks.Internal
                             }
                             catch (Exception e)
                             {
-                                Svelto.Console.LogException(e, $"catching exception while disposing task {currentSpawnedTaskToRun.name}");
+                                Console.LogException(e, $"catching exception while disposing task {currentSpawnedTaskToRun.name}");
                             }
 
                             _spawnedCoroutines.RemoveAt(currentSpawnedTaskToRunIndex);
@@ -246,7 +245,6 @@ namespace Svelto.Tasks.Internal
             public bool reset           => Volatile.Read(ref _reset);   //will be set to false in Unstop()
             public bool acceptsNewTasks => paused == false && stopping == false && kill == false;
 
-            //todo: unit test. Test if the runner can be reused after this
             public void Stop(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot stop a runner that is killed {name}");
@@ -256,7 +254,6 @@ namespace Svelto.Tasks.Internal
                 Volatile.Write(ref _paused, false);
             }
 
-            //todo: unit test. Test if the runner can be reused after this
             public void StopAndReset(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot flush a runner that is killed {name}");
@@ -266,7 +263,6 @@ namespace Svelto.Tasks.Internal
                 Volatile.Write(ref _paused, false);
             }
 
-            //todo: unit test. Test if the runner can be reused after this
             public void Kill(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot kill a runner that is killed {name}");
@@ -306,3 +302,4 @@ namespace Svelto.Tasks.Internal
         }
     }
 }
+

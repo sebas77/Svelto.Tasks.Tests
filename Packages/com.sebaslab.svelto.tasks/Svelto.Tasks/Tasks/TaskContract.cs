@@ -230,7 +230,6 @@ namespace Svelto.Tasks
             }
         }
 
-        //Todo: Unit Test return object with TaskContract
         internal bool hasValue    => _currentState == States.value || _currentState == States.reference || _currentState == States.exception;
         
         internal bool yieldIt     => _currentState == States.yieldit;
@@ -281,7 +280,7 @@ namespace Svelto.Tasks
             exception,
             forgetLeanEnumerator,
             sameRunnerContinuation,
-            continueIt, //immediate MoveNext without yielding //todo: must be unit tested
+            continueIt, //immediate MoveNext without yielding
         }
         
         // ReSharper disable once ClassNeverInstantiated.Global
@@ -290,7 +289,6 @@ namespace Svelto.Tasks
             public static readonly Yield It = null;
         }
         
-        //todo: must be unit tested
         public class Continue
         {
             public static readonly Continue It = new Continue();

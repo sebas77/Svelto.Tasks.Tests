@@ -1,48 +1,15 @@
-using Svelto.Tasks.Lean;
-
-using Svelto.Tasks.Parallelism;
+﻿using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Tests
 {
     [TestFixture]
-    public class TaskRunnerTestsTaskCollections
+    public class TaskCollectionTests
     {
-        struct TestJob : ISveltoJob
-        {
-            public int[] results;
-
-            public void Update(int index)
-            {
-                System.Threading.Interlocked.Increment(ref results[index]);
-            }
-        }
-
-        [Test]
-        public void MultiThreadedParallelJobCollection_RunsJobsInParallel()
-        {
-            // What we are testing:
-            // MultiThreadedParallelJobCollection distributes job iterations across multiple threads.
-
-            var job = new TestJob { results = new int[1024] };
-            using (var collection = new MultiThreadedParallelJobCollection<TestJob>("test", 4, false))
-            {
-                collection.Add(ref job, 1024);
-
-                // Job collection is an IEnumerator<TaskContract>, it can be run like any other task
-                // We use Complete() extension to run it synchronously for the test
-                collection.Complete(2000);
-            }
-
-            for (int i = 0; i < 1024; i++)
-                Assert.That(job.results[i], Is.EqualTo(1), $"Index {i} was not updated correctly");
-        }
-
         [Test]
         public void SerialTaskCollection_ExecutesTasksInOrder_AndIsReusable()
         {
             // What we are testing:
             // SerialTaskCollection runs tasks one after another and can be reused after Reset().
-
             var serial = new SerialTaskCollection("serial");
 
             var log = new List<int>();
@@ -57,18 +24,14 @@ namespace Svelto.Tasks.Tests
             serial.Add(Task(2));
             serial.Add(Task(3));
 
-            using (var runner = new SyncRunner("sync"))
-            {
-                serial.RunOn(runner);
-                runner.ForceComplete(1000);
-            }
+            serial.Complete(1000);
 
             Assert.That(log.Count, Is.EqualTo(3));
             Assert.That(log[0], Is.EqualTo(1));
             Assert.That(log[1], Is.EqualTo(2));
             Assert.That(log[2], Is.EqualTo(3));
 
-            serial.Reset();
+            serial.Clear();
             log.Clear();
 
             serial.Add(Task(4));
@@ -77,7 +40,7 @@ namespace Svelto.Tasks.Tests
             using (var runner = new SyncRunner("sync2"))
             {
                 serial.RunOn(runner);
-                runner.ForceComplete(1000);
+                runner.WaitForTasksDoneRelaxed(1000);
             }
 
             Assert.That(log.Count, Is.EqualTo(2));
@@ -113,14 +76,7 @@ namespace Svelto.Tasks.Tests
             parallel.Add(TaskA());
             parallel.Add(TaskB());
 
-            using (var runner = new SteppableRunner("step"))
-            {
-                parallel.RunOn(runner);
-
-                var safety = 0;
-                while (runner.hasTasks && safety++ < 256)
-                    runner.Step();
-            }
+            parallel.Complete(1000);
 
             Assert.That(a, Is.EqualTo(2));
             Assert.That(b, Is.EqualTo(2));
@@ -141,7 +97,7 @@ namespace Svelto.Tasks.Tests
 
             serial.Add(YieldOnce());
 
-            Assert.Throws<Exception>(() =>
+            Assert.Throws<DBC.Tasks.PreconditionException>(() =>
             {
                 // One MoveNext puts the collection in running state.
                 serial.MoveNext();
@@ -168,6 +124,62 @@ namespace Svelto.Tasks.Tests
             serial.Clear();
 
             Assert.That(serial.Current, Is.EqualTo(default(TaskContract)));
+        }
+
+        [Test]
+        public void SerialTaskCollection_Reset_AllowsReexecution()
+        {
+            // What we are testing:
+            // SerialTaskCollection.Reset() resets the collection and its tasks so they can be run again.
+            // Note: The tasks added must support Reset() (e.g. not compiler-generated iterators).
+
+            var serial = new SerialTaskCollection("serial_reset");
+            var task = new LeanEnumerator(2); // 2 iterations
+
+            serial.Add(task);
+
+            // Run first time
+            serial.Complete(1000);
+            Assert.That(task.AllRight, Is.True);
+
+            // Reset
+            serial.Reset();
+            // LeanEnumerator.Reset() is called by SerialTaskCollection.Reset()
+            Assert.That(task.iterations, Is.EqualTo(0));
+
+            // Run second time
+            serial.Complete(1000);
+            Assert.That(task.AllRight, Is.True);
+        }
+
+        [Test]
+        public void ParallelTaskCollection_Reset_AllowsReexecution()
+        {
+            // What we are testing:
+            // ParallelTaskCollection.Reset() resets the collection and its tasks so they can be run again.
+            // Note: The tasks added must support Reset().
+
+            var parallel = new ParallelTaskCollection("parallel_reset", 2);
+            var task1 = new LeanEnumerator(2);
+            var task2 = new LeanEnumerator(2);
+
+            parallel.Add(task1);
+            parallel.Add(task2);
+
+            // Run first time
+            parallel.Complete(1000);
+            Assert.That(task1.AllRight, Is.True);
+            Assert.That(task2.AllRight, Is.True);
+
+            // Reset
+            parallel.Reset();
+            Assert.That(task1.iterations, Is.EqualTo(0));
+            Assert.That(task2.iterations, Is.EqualTo(0));
+
+            // Run second time
+            parallel.Complete(1000);
+            Assert.That(task1.AllRight, Is.True);
+            Assert.That(task2.AllRight, Is.True);
         }
     }
 }

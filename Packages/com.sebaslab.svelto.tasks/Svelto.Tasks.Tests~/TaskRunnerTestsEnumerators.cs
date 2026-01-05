@@ -19,7 +19,7 @@ namespace Svelto.Tasks.Tests
         {
             _iterable1 = new LeanEnumerator(100);
             
-            LocalSyncRunners<IEnumerator<TaskContract>>.Reset();
+            LocalSyncRunners.Reset();
         }
 
 #if PROFILE_SVELTO        
@@ -29,9 +29,8 @@ namespace Svelto.Tasks.Tests
             IEnumerator<TaskContract> enumerator = new WaitForSecondsEnumerator(0.1f);
 
             var runner = new MultiThreadRunner("test");
-            var RunOn  = enumerator.RunOn(runner);
-            while ((RunOn).isRunning == true)
-                RunOn.Complete();
+            enumerator.RunOn(runner);
+            Assert.That(runner.WaitForTasksDone(2000), Is.True);
 
             /*Assert.That(() =>
             {
@@ -53,9 +52,7 @@ namespace Svelto.Tasks.Tests
             {
                 var cont = TestIt().RunOn(updateMonoRunner);
 
-                DateTime dateTime = DateTime.Now.AddSeconds(1);
-                while (cont.isRunning && DateTime.Now < dateTime)
-                    updateMonoRunner.Step();
+                updateMonoRunner.WaitForTasksDoneRelaxed(1000);
                 
                 Assert.That(index, Is.EqualTo(7));
             }
@@ -116,9 +113,7 @@ namespace Svelto.Tasks.Tests
             {
                 var cont = TestEnum().RunOn(updateMonoRunner);
 
-                DateTime dateTime = DateTime.Now.AddSeconds(1);
-                while (cont.isRunning && DateTime.Now < dateTime)
-                    updateMonoRunner.Step();
+                updateMonoRunner.WaitForTasksDoneRelaxed(1000);
                 
                 Assert.That(index, Is.EqualTo(3));
             }
@@ -143,19 +138,12 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void TestTaskContractReturningATaskContractReturningATaskContract()
         {
-            //careful, runners can be garbage collected if they are not referenced somewhere and the
-            //framework does not keep a reference
-
             using (var updateMonoRunner = new SteppableRunner("update"))
             {
                 var testEnum = FirstEnum();
                 var cont = testEnum.RunOn(updateMonoRunner);
 
-                DateTime dateTime = DateTime.Now.AddSeconds(1000);
-                while (cont.isRunning && DateTime.Now < dateTime)
-                {
-                    updateMonoRunner.Step();
-                }
+                updateMonoRunner.WaitForTasksDoneRelaxed(1000);
                 
                 if (cont.isRunning)
                     Assert.Fail("timeout");
@@ -242,15 +230,46 @@ namespace Svelto.Tasks.Tests
             }
         }
 
+        class ItsAllRight
+        { 
+        
+            public bool AllRight = false;
+        }
         /// <summary>
-        /// Test if Complete() works correctly on a simple IEnumerator
+        /// Test if Complete() works correctly with a simple IEnumerator
         /// </summary>
         /// <returns></returns>
         [Test]
         public void TestCompleteWithIEnumerator()
         {
+            IEnumerator SimpleIEnumerator(ItsAllRight itsAllRight)
+            {
+                int i = 0;
+                while (i < 10)
+                {
+                    i++;
+                    yield return null;
+                }
+                
+                itsAllRight.AllRight = true;
+            }
+
+            var allRight = new ItsAllRight();
+            var simpleIEnumerator = SimpleIEnumerator(allRight);
+            simpleIEnumerator.Complete( 1000); //ms
+
+            Assert.That(allRight.AllRight, Is.True);
+        }
+        
+        /// <summary>
+        /// Test if Complete() works correctly with a struct IEnumerator
+        /// </summary>
+        /// <returns></returns>
+        [Test]
+        public void TestCompleteWithStructEnumerator()
+        {
             var extraLeanEnumerator = new ExtraLeanEnumerator(10);
-            extraLeanEnumerator.Complete(1000); //ms
+            extraLeanEnumerator.Complete( 1000); //ms
 
             Assert.That(extraLeanEnumerator.AllRight, Is.True);
         }
@@ -330,7 +349,7 @@ namespace Svelto.Tasks.Tests
             }
 
             InitCompose().RunOn(runner);
-            runner.ForceComplete(1000); //ms
+            runner.WaitForTasksDoneRelaxed(1000); //ms
         }
 
         [Test]
@@ -409,7 +428,7 @@ namespace Svelto.Tasks.Tests
             TestEnum2(refHolder, 18).RunOn(runner); //Serial flow doesn't guarantee the order of execution
             TestEnum2(refHolder, 9).RunOn(runner);
             
-            runner.ForceComplete(10000);
+            runner.WaitForTasksDoneRelaxed(10000);
             
             Assert.That(refHolder.value, Is.EqualTo(27));
         }
@@ -419,10 +438,9 @@ namespace Svelto.Tasks.Tests
         {
             using (var runner = new MultiThreadRunner("test"))
             {
-                var continuation = NestedEnumerator().RunOn(runner);
+                NestedEnumerator().RunOn(runner);
 
-                while ((continuation).isRunning)
-                    continuation.Complete();
+                Assert.That(runner.WaitForTasksDone(2000), Is.True);
             }
         }
 

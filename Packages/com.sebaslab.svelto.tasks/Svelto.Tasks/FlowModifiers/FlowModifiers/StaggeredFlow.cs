@@ -17,7 +17,12 @@ namespace Svelto.Tasks.FlowModifiers
 
         public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
-            if (_iterations >= _maxTasksPerIteration - 1)
+            return true;
+        }
+
+        public bool CanProcessThis(ref int index)
+        {
+            if (_iterations >= _maxTasksPerIteration)
             {
                 _iterations = 0;
 
@@ -29,17 +34,12 @@ namespace Svelto.Tasks.FlowModifiers
             return true;
         }
 
-        public bool CanProcessThis(ref int index)
-        {
-            return true;
-        }
-
         public void Reset()
         {
             _iterations = 0;
         }
 
         int            _iterations;
-        readonly float _maxTasksPerIteration;
+        readonly int   _maxTasksPerIteration;
     }
 }

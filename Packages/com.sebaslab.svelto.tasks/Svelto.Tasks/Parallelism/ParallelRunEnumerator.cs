@@ -2,18 +2,18 @@ using System.Collections;
 
 namespace Svelto.Tasks.Parallelism.Internal
 {
-    public class ParallelRunEnumerator<T> : IEnumerator<TaskContract> where T:struct, ISveltoJob
+    public struct ParallelRunEnumerator<T> : IEnumerator where T:struct, ISveltoJob
     {
-        public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations)
+        public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations):this()
         {
             _startIndex = startIndex;
-            _numberOfITerations = numberOfIterations;
+            _numberOfIterations = numberOfIterations;
             _job = job;
         }
 
         public bool MoveNext()
         {
-            _endIndex = _startIndex + _numberOfITerations;
+            _endIndex = _startIndex + _numberOfIterations;
 
             Loop();
 
@@ -29,19 +29,13 @@ namespace Svelto.Tasks.Parallelism.Internal
         public void Reset()
         {}
 
-        public TaskContract Current => TaskContract.Yield.It;
-
-        object IEnumerator.Current => null;
+        public object Current => null;
 
         readonly int _startIndex;
-        readonly int _numberOfITerations;
+        readonly int _numberOfIterations;
         readonly T _job;
         
         int _index;
         int _endIndex;
-        
-        public void Dispose()
-        {
-        }
     }
 }
