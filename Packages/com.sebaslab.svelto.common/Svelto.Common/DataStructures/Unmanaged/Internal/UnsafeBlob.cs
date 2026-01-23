@@ -212,6 +212,7 @@ namespace Svelto.DataStructures
                     {
                         var newReaderHead = _readIndex % newCapacity;
                         
+                        //Note: I use CopyBloc here because the memory is always aliogned thanks to MemoryUtilities.Pad4
                         Unsafe.CopyBlock(newPointer + newReaderHead, ptr + oldReaderHead, (uint) currentSize);
                     }
                     else
@@ -229,6 +230,7 @@ namespace Svelto.DataStructures
 #endif                  
                         //I am leaving on purpose gap at the begin of the new array if there is any, it will be 
                         //anyway used once it's time to wrap. 
+                        //Note: I use CopyBloc here because the memory is always aliogned thanks to MemoryUtilities.Pad4
                         Unsafe.CopyBlock(newPointer + newReaderHead, ptr + oldReaderHead, byteCountToEnd); //from the old reader head to the end of the old array
                         Unsafe.CopyBlock(newPointer + newReaderHead + byteCountToEnd, ptr + 0, (uint) oldWriterHead); //from the begin of the old array to the old writer head (rember the writerHead wrapped)
                     }

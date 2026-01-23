@@ -48,5 +48,11 @@ namespace Svelto.Utilities
         {
             System.Console.WriteLine(txt);
         }
+        
+        public static void Init()
+        {
+            Console.AddLogger(new SimpleLogger());
+        }
+
     }
 }

@@ -1,7 +1,6 @@
 ﻿#if NEW_C_SHARP || !UNITY_5_3_OR_NEWER
 using System;
 using System.Runtime.CompilerServices;
-using Svelto.Common;
 
 namespace Svelto.DataStructures
 {
@@ -34,11 +33,17 @@ namespace Svelto.DataStructures
         public void UnsafeRead<T>(ref T item, int unmanagedStructSize) where T : struct => _sveltoStream.UnsafeRead(ref item, AsSpanInternal(), unmanagedStructSize);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsafeRead<T>(ref T item, int unmanagedStructSize, int destOffset) where T : struct => _sveltoStream.UnsafeRead(ref item, AsSpanInternal(), unmanagedStructSize, destOffset);
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> ReadSpan<T>() where T : unmanaged => _sveltoStream.ReadSpan<T>(AsSpanInternal());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write<T>(in T value) where T : unmanaged => _sveltoStream.Write(AsSpanInternal(), value);
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OverwriteAt<T>(in T value, uint cursor)where T : unmanaged => _sveltoStream.OverwriteAt(AsSpanInternal(), value, cursor);
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSpan<T>(in Span<T> valueSpan) where T : unmanaged => _sveltoStream.WriteSpan(AsSpanInternal(), valueSpan);
 
@@ -50,6 +55,9 @@ namespace Svelto.DataStructures
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanAdvance() => _sveltoStream.CanAdvance();
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanAdvance(int elementSize) => _sveltoStream.CanAdvance(elementSize);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanAdvance<T>() where T : unmanaged => _sveltoStream.CanAdvance<T>();
@@ -60,6 +68,9 @@ namespace Svelto.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> AsMemory() => new(_ptr, _offset, _sveltoStream.length); //returns what has been written so far in the buffer
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ArraySegment<byte> AsArraySegment() => new(_ptr, _offset, _sveltoStream.length); //returns what has been written so far in the buffer
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int AdvanceCursor(int sizeOf) => _sveltoStream.AdvanceCursor(sizeOf);
 

@@ -10,7 +10,6 @@ namespace Svelto.Utilities
     {
         public static int CallsDepthToGetHere = 4;
         
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Init()
         {
             Console.AddLogger(new DefaultUnityLogger());
@@ -132,7 +131,7 @@ namespace Svelto.Utilities
             //We want to keep the stack for not Svelto.Console log.
             //SlowLogger will disable the stack for Svelto.Console log, as Svelto.Console has it's own stack generator
             //If CatchEmAll is used, the external unity stack trace is passed instead
-            Console.Log("Svelto Default Unity Logger added");
+            Console.Log("-------------------->Svelto Default Unity Logger added");
         }
 
         public void CompressLogsToZipAndShow(string zipName)

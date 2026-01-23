@@ -2,28 +2,35 @@
 //In fact I would have used Queue instead, but I need the Span support
 
 using System;
+using Svelto.Utilities;
 
 namespace Svelto.DataStructures
 {
-    public class RingBuffer<T>
+    public class CircularQueue<T>
     {
-        public RingBuffer(int capacity)
+        public CircularQueue(int capacity)
         {
-            capacity = NextPowerOfTwo(capacity);
+            //todo: probably better to move to prime and fasts mod
+            capacity = Utils.NextPowerOfTwo(capacity);
             _entries = new T[capacity];
         }
 
         public int capacity => _entries.Length;
-        public int count => (int) (_producerCursor - _consumerCursor);
+        public int count
+        {
+            get
+            {
+                uint prod = _producerCursor;
+                uint cons = _consumerCursor;
+                if (prod >= cons)
+                    return (int)(prod - cons);
+                return _entries.Length - (int)(cons - prod);
+            }
+        }
         
         public RingBufferEnumerator GetEnumerator()
         {
             return new RingBufferEnumerator(this);   
-        }
-        
-        public ReadOnlySpan<T> AsReadOnlySpan()
-        {
-            return new ArraySegment<T>(_entries, 0, count);
         }
         
         public void CopyTo(Span<T> destination)
@@ -46,14 +53,14 @@ namespace Svelto.DataStructures
             }
         }
         
-        public void CopyTo(ref SpanList<T> pingTimes)
+        public void AddTo(ref SpanList<T> result)
         {
             if (_producerCursor == _consumerCursor)
                 return;
             
             if (_producerCursor > _consumerCursor) //no wrap
             {
-                pingTimes.AddRange(_entries.AsSpan((int)_consumerCursor, count));
+                result.AddRange(_entries.AsSpan((int)_consumerCursor, count));
             }
             else
             {
@@ -62,8 +69,8 @@ namespace Svelto.DataStructures
                 var firstPart = _entries.AsSpan(start);
                 var secondPart = _entries.AsSpan(0, end);
                 
-                pingTimes.AddRange(firstPart);
-                pingTimes.AddRange(secondPart);
+                result.AddRange(firstPart);
+                result.AddRange(secondPart);
             }
         }
         
@@ -86,23 +93,15 @@ namespace Svelto.DataStructures
 
         public void Enqueue(in T item)
         {
+            var next = (uint)((_producerCursor + 1) & _modMask);
+            if (next == _consumerCursor)
+                throw new Exception("Queue is full");
+            
             _entries[_producerCursor] = item;
             
-            _producerCursor = (uint) ((_producerCursor + 1) & _modMask);
+            _producerCursor = next;
         }
 
-        //todo: probably better to move to prime and fasts mod
-        static int NextPowerOfTwo(int x)
-        {
-            var result = 2;
-            while (result < x)
-            {
-                result <<= 1;
-            }
-
-            return result;
-        }
-        
         int  _modMask => _entries.Length - 1;
         
         readonly T[]        _entries;
@@ -112,28 +111,33 @@ namespace Svelto.DataStructures
         
         public struct RingBufferEnumerator
         {
-            readonly RingBuffer<T> _ringBuffer;
+            readonly CircularQueue<T> _circularQueue;
+            readonly uint _end;
+            readonly int _modMask;
             uint _index;
-            uint _end;
+            bool _started;
 
-            public RingBufferEnumerator(RingBuffer<T> ringBuffer)
+            public RingBufferEnumerator(CircularQueue<T> circularQueue)
             {
-                _ringBuffer = ringBuffer;
-                _index = _ringBuffer._consumerCursor;
-                _end = _ringBuffer._producerCursor;
+                _circularQueue = circularQueue;
+                _index = _circularQueue._consumerCursor;
+                _end = _circularQueue._producerCursor;
+                _modMask = _circularQueue._modMask;
+                _started = false;
             }
 
-            public ref T Current => ref _ringBuffer._entries[_index];
+            public ref T Current => ref _circularQueue._entries[_index];
 
             public bool MoveNext()
             {
-                if (_index >= _end)
+                if (_started == false)
                 {
-                    return false;
+                    _started = true;
+                    return _index != _end;
                 }
-
-                _index++;
-                return true;
+                
+                _index = (uint)((_index + 1) & _modMask);
+                return _index != _end;
             }
         }
     }

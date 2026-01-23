@@ -53,6 +53,31 @@ namespace Svelto.DataStructures
 
             _cursor += currentSize;
         }
+        
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsafeRead<T>(ref T item, Span<byte> source, int currentSize, int destOffset)
+            where T : struct
+        {
+            if (_cursor + currentSize > capacity)
+                throw new Exception($"TRYING TO READ PAST THE END OF THE STREAM (cursor: {_cursor}, read size: {currentSize}, capacity: {capacity})!");
+    
+    #if DEBUG
+            if (destOffset < 0 || currentSize < 0)
+                throw new Exception("invalid offset/size");
+    
+            if (destOffset + currentSize > Unsafe.SizeOf<T>())
+                throw new Exception("read would overflow destination struct");
+    #endif
+    
+            ref byte dst = ref Unsafe.Add(ref Unsafe.As<T, byte>(ref item), destOffset);
+            ref byte src = ref Unsafe.Add(ref MemoryMarshal.GetReference(source), _cursor);
+    
+            Unsafe.CopyBlockUnaligned(ref dst, ref src, (uint)currentSize);
+    
+            _cursor += currentSize;
+        }
+        
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write<T>(in Span<byte> destinationSpan, in T value) where T : unmanaged
@@ -66,6 +91,17 @@ namespace Svelto.DataStructures
             Unsafe.As<byte, T>(ref Unsafe.Add(ref MemoryMarshal.GetReference(destinationSpan), _cursor)) = value;
             _cursor += size;
             length = _cursor;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OverwriteAt<T>(in Span<byte> destinationSpan, in T value, uint start) where T : unmanaged
+        {
+            int size = MemoryUtilities.SizeOf<T>();
+            
+            if ((start > (uint)length || start + size > length))
+                throw new InvalidOperationException("OverwriteAt can only overwrite already-written data.");
+        
+            Unsafe.As<byte, T>(ref Unsafe.Add(ref MemoryMarshal.GetReference(destinationSpan), start)) = value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -147,6 +183,12 @@ namespace Svelto.DataStructures
         public bool CanAdvance()
         {
             return _cursor < capacity;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanAdvance(int elementSize)
+        {
+            return _cursor + elementSize < capacity;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using UnityEngine;
 
 public static class StringBuilderUtils 
 {
@@ -65,7 +66,7 @@ public static class StringBuilderUtils
 
         int pow10 = decimals == 0 ? 1 : (decimals == 1 ? 10 : (decimals == 2 ? 100 : Pow10(decimals)));
         // Round to required decimals
-        long scaled = (long)System.MathF.Round(value * pow10);
+        long scaled = (long)Mathf.Round(value * pow10);
         long whole = scaled / pow10;
         long frac = scaled  % pow10;
 

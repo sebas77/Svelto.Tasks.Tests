@@ -90,7 +90,7 @@ namespace Svelto
 
         public static class FasterLog
         {
-            public static void Use(bool catchEmAll)
+            public static void UseGlobally(bool catchEmAll)
             {
                 DefaultUnityLogger.Init(); //first set to the Default Logger to avoid stack overflow with SimpleLogger due to SveltoSystemOutInterceptor
 
@@ -110,7 +110,7 @@ namespace Svelto
         
         public static class DefaultLog
         {
-            public static void Use(bool catchEmAll = false, bool keepLogHandlerInEditor = false)
+            public static void UseGlobally(bool catchEmAll = false, bool keepLogHandlerInEditor = false)
             {
                 DefaultUnityLogger.Init(); //first set to the Default Logger to avoid stack overflow with SimpleLogger due to SveltoSystemOutInterceptor
 

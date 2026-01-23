@@ -1,4 +1,3 @@
-#if UNITY_2019_3_OR_NEWER
 using UnityEngine;
 using UnityEngine.LowLevel;
 using System;
@@ -559,4 +558,3 @@ public static class PlayerLoopUtility
         return false;
     }
 }
-#endif
