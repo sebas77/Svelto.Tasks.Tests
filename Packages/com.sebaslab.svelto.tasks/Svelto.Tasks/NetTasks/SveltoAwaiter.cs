@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Lean
         public ValueTaskRunnerAwaiter GetAwaiter() => this;
     }
     
-    public struct TaskRunnerAwaiter : ICriticalNotifyCompletion
+    public readonly struct TaskRunnerAwaiter : ICriticalNotifyCompletion
     {
         readonly SteppableRunner _runner;
         readonly TaskAwaiter _taskAwaiter;
@@ -63,12 +63,12 @@ namespace Svelto.Tasks.Lean
 // extension method to get our awaiter
     public static class SveltoAwaiterExtensions
     {
-        public static ValueTaskRunnerAwaiter GetAwaiter(this ValueTask task, SteppableRunner runner)
+        public static ValueTaskRunnerAwaiter RunOn(this ValueTask task, SteppableRunner runner)
         {
             return new ValueTaskRunnerAwaiter(task, runner);
         }
         
-        public static TaskRunnerAwaiter GetAwaiter(this Task task, SteppableRunner runner)
+        public static TaskRunnerAwaiter RunOn(this Task task, SteppableRunner runner)
         {
             return new TaskRunnerAwaiter(task, runner);
         }

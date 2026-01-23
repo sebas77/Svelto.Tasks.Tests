@@ -4,7 +4,7 @@ namespace Svelto.Tasks.Parallelism.Internal
 {
     public struct ParallelRunEnumerator<T> : IEnumerator where T:struct, ISveltoJob
     {
-        public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations):this()
+        public ParallelRunEnumerator(in T job, int startIndex, int numberOfIterations):this()
         {
             _startIndex = startIndex;
             _numberOfIterations = numberOfIterations;

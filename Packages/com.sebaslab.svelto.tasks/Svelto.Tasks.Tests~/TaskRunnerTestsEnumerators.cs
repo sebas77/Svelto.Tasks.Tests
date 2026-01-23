@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
+using Svelto.Tasks.Parallelism;
 
 #if !NETFX_CORE
 namespace Svelto.Tasks.Tests
@@ -559,6 +562,85 @@ namespace Svelto.Tasks.Tests
             } while (++i < count);
 
             yield return i; //careful it will be boxed;
+        }
+
+        [Test]
+        public void TestTaskDisposeCalledOnCompletion()
+        {
+            var disposableTask = new DisposableEnumerator();
+            using (var runner = new SteppableRunner("test"))
+            {
+                disposableTask.RunOn(runner);
+                // Run until completion
+                runner.WaitForTasksDoneRelaxed(1000);
+                Assert.That(disposableTask.disposed, Is.True);
+            }
+        }
+
+        [Test]
+        public void TestTaskDisposeCalledOnRunnerDispose()
+        {
+            var disposableTask = new DisposableEnumerator();
+            var runner = new SteppableRunner("test");
+            disposableTask.RunOn(runner);
+            // Don't complete, just dispose runner
+            runner.Dispose();
+            Assert.That(disposableTask.disposed, Is.True);
+        }
+
+        [Test]
+        public void TestTaskDisposeCalledOnMultiThreadRunnerDispose()
+        {
+            var disposableTask = new DisposableEnumerator();
+            var runner         = new MultiThreadRunner("test");
+
+            disposableTask.RunOn(runner);
+
+            runner.Dispose();
+
+            Assert.That(disposableTask.disposed, Is.True);
+        }
+
+        [Test]
+        public void TestJobDisposeCalledOnMultiThreadRunnerDispose()
+        {
+            var disposableJobTask = new DisposableJobEnumerator();
+            var runner            = new MultiThreadRunner("test");
+
+            disposableJobTask.RunOn(runner);
+
+            runner.Dispose();
+
+            Assert.That(disposableJobTask.disposed, Is.True);
+        }
+
+        class DisposableJobEnumerator : IEnumerator<TaskContract>, IDisposable, ISveltoJob
+        {
+            public TaskContract Current => TaskContract.Yield.It;
+            object IEnumerator.Current  => Current;
+
+            public bool MoveNext() => ++count < 3;
+
+            public void Reset() { count = 0; }
+
+            public void Update(int jobIndex) { }
+
+            public void Dispose() { disposed = true; }
+
+            public bool disposed = false;
+
+            int count = 0;
+        }
+
+        class DisposableEnumerator : IEnumerator<TaskContract>, IDisposable
+        {
+            public TaskContract Current => TaskContract.Yield.It;
+            object IEnumerator.Current => Current;
+            public bool MoveNext() => ++count < 3;
+            public void Reset() { count = 0; }
+            public void Dispose() { disposed = true; }
+            public bool disposed = false;
+            int count = 0;
         }
 
         [TearDown]

@@ -1,8 +1,13 @@
 #if DISABLE_DBC || !DEBUG || PROFILE_SVELTO
 #define DISABLE_CHECKS
+#endif
+
 using System;
+
+#if DISABLE_DBC || !DEBUG || PROFILE_SVELTO
 using System.Diagnostics;
 #endif
+
 namespace DBC.Tasks
 {
 	/// <summary>

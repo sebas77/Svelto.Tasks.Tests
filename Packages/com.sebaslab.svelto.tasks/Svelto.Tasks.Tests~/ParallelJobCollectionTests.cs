@@ -1,4 +1,5 @@
-﻿using Svelto.Tasks.Parallelism;
+﻿using System.Threading;
+using Svelto.Tasks.Parallelism;
 
 namespace Svelto.Tasks.Tests
 {
@@ -24,7 +25,7 @@ namespace Svelto.Tasks.Tests
             var job = new TestJob { results = new int[1024] };
             using (var collection = new MultiThreadedParallelJobCollection<TestJob>("test", 4, false))
             {
-                collection.Add(ref job, 1024);
+                collection.Add(job, 1024);
 
                 // Job collection is an IEnumerator<TaskContract>, it can be run like any other task
                 // We use Complete() extension to run it synchronously for the test
@@ -34,6 +35,32 @@ namespace Svelto.Tasks.Tests
             for (int i = 0; i < 1024; i++)
                 Assert.That(job.results[i], Is.EqualTo(1), $"Index {i} was not updated correctly");
         }
+
+        struct DisposableJob : ISveltoJob, System.IDisposable
+        {
+            public int disposeCounter;
+
+            public void Update(int index)
+            {
+            }
+
+            public void Dispose()
+            {
+                Interlocked.Increment(ref disposeCounter);
+            }
+        }
+
+        [Test]
+        public void MultiThreadedParallelJobCollection_Dispose_DisposesJobs()
+        {
+            var job = new DisposableJob();
+
+            var collection = new MultiThreadedParallelJobCollection<DisposableJob>("dispose-test", 4, false);
+            collection.Add(job, 1024);
+
+            collection.Dispose();
+
+            Assert.That(job.disposeCounter, Is.EqualTo(1));
+        }
     }
 }
-

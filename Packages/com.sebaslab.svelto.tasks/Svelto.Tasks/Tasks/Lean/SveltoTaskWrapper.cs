@@ -87,7 +87,7 @@ namespace Svelto.Tasks.Lean
             }
 
             _current = task.Current;
-#if DEBUG && !PROFILE_SVELTO //todo write unit test for this
+#if DEBUG && !PROFILE_SVELTO
             DBC.Tasks.Check.Assert(_current.continuation?._runner != _runner,
                 $"Cannot yield a new task running on the same runner of the spawning task, use Continue() instead {_current}");
 #endif
@@ -123,14 +123,11 @@ namespace Svelto.Tasks.Lean
                 
                 LeanSveltoTask<TTask> leanSveltoTask = default;
 
-                //todo unit test this
                 //.Forget() case, a special case of .Continue()
                 if (tuple.isFireAndForget == true)
                     leanSveltoTask.Run(_runner, (TTask)tupleEnumerator);
                 else
                 {
-                    //todo unit test this
-                    //if the task is not
 #if DEBUG && !PROFILE_SVELTO
                     var continuation = new Continuation(ContinuationPool.RetrieveFromPool(), _runner);
 #else

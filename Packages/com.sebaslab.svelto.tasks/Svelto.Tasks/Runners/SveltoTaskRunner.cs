@@ -12,7 +12,12 @@ namespace Svelto.Tasks.Internal
     //ISveltoTask can be Lean or ExtraLean
     public static class SveltoTaskRunner<TSveltoTask> where TSveltoTask : ISveltoTask
     {
-        internal class Process<TFlowModifier> : IProcessSveltoTasks<TSveltoTask> where TFlowModifier : IFlowModifier
+        internal interface IQueueDrainer
+        {
+            void DrainAndDisposeQueuedTasks();
+        }
+
+        internal class Process<TFlowModifier> : IProcessSveltoTasks<TSveltoTask>, IQueueDrainer where TFlowModifier : IFlowModifier
         {
             public override string ToString()
             {
@@ -41,6 +46,9 @@ namespace Svelto.Tasks.Internal
                 {
                     foreach ((TSveltoTask task, int parentTaskindex) task in _spawnedCoroutines)
                         task.task.Dispose();  
+
+                    while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
+                        task.Dispose();
 
                     _runningCoroutines.Clear();
                     _spawnedCoroutines.Clear();
@@ -218,6 +226,21 @@ namespace Svelto.Tasks.Internal
                 }
             }
 
+            public void DrainAndDisposeQueuedTasks()
+            {
+                while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
+                {
+                    try
+                    {
+                        task.Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.LogException(e, $"catching exception while disposing task {task.name}");
+                    }
+                }
+            }
+
             //these are tasks that are not running yet, but are queued to be run
             readonly ConcurrentQueue<TSveltoTask> _newTaskRoutines;
             //these are just the running tasks, not all the spawned tasks. Only the leaves of spawned tasks run. RunningCoroutines contain the index into _spawnedCoroutines of the running task
@@ -234,17 +257,16 @@ namespace Svelto.Tasks.Internal
             public uint numberOfTasks => (uint)_runningCoroutines.count + (uint)_newTaskRoutines.Count;
         }
 
-        //todo as soon as I go back testing multi-threaded runners, this must copy the SveltoTaskState pattern
         public class FlushingOperation
         {
             //simply pause the runner
-            public bool paused          => Volatile.Read(ref _paused);
+            public bool paused          => (Volatile.Read(ref _state) & (int)StateFlags.Paused) != 0;
             //stop the current running tasks, but not the newly queued ones
-            public bool stopping        => Volatile.Read(ref _stopped); //will be set to false in Unstop()
+            public bool stopping        => (Volatile.Read(ref _state) & (int)StateFlags.Stopped) != 0; //will be set to false in Unstop()
             //reset everything, the runner cannot be reused
-            public bool kill            => Volatile.Read(ref _killed);
+            public bool kill            => (Volatile.Read(ref _state) & (int)StateFlags.Killed) != 0;
             //reset everything, the runner can be reused
-            public bool reset           => Volatile.Read(ref _reset);   //will be set to false in Unstop()
+            public bool reset           => (Volatile.Read(ref _state) & (int)StateFlags.Reset) != 0;   //will be set to false in Unstop()
             public bool acceptsNewTasks => paused == false && stopping == false && kill == false;
 
             public void Stop(string name)
@@ -252,55 +274,67 @@ namespace Svelto.Tasks.Internal
                 DBC.Tasks.Check.Require(kill == false, $"cannot stop a runner that is killed {name}");
 
                 //maybe I want both flags to be set in a thread safe way This must be bitmask
-                Volatile.Write(ref _stopped, true);
-                Volatile.Write(ref _paused, false);
+                var current = Volatile.Read(ref _state);
+                var next    = (current | (int)StateFlags.Stopped) & ~(int)StateFlags.Paused;
+                Volatile.Write(ref _state, next);
             }
 
             public void StopAndReset(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot flush a runner that is killed {name}");
                 
-                Volatile.Write(ref _reset, true);
-                Volatile.Write(ref _stopped, true);
-                Volatile.Write(ref _paused, false);
+                var current = Volatile.Read(ref _state);
+                var next    = (current | (int)(StateFlags.Reset | StateFlags.Stopped)) & ~(int)StateFlags.Paused;
+                Volatile.Write(ref _state, next);
             }
 
             public void Kill(string name)
             {
-                DBC.Tasks.Check.Require(kill == false, $"cannot kill a runner that is killed {name}");
+                if (kill == true)
+                    return;
 
-                //maybe I want both flags to be set in a thread safe way, meaning that the
-                //flags must all be set at once. This must be bitmask
-                Volatile.Write(ref _stopped, true);
-                Volatile.Write(ref _killed, true);
-                Volatile.Write(ref _reset, true);
-                Volatile.Write(ref _paused, false);
+                //Atomic transition so other threads can never observe kill==true with stopping==false
+                var current = Volatile.Read(ref _state);
+                var next    = (current | (int)(StateFlags.Reset | StateFlags.Stopped | StateFlags.Killed)) & ~(int)StateFlags.Paused;
+                Volatile.Write(ref _state, next);
             }
 
             public void Pause(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot pause a runner that is killed {name}");
 
-                Volatile.Write(ref _paused, true);
+                var current = Volatile.Read(ref _state);
+                var next    = current | (int)StateFlags.Paused;
+                Volatile.Write(ref _state, next);
             }
 
             public void Resume(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot resume a runner that is killed {name}");
 
-                Volatile.Write(ref _paused, false);
+                var current = Volatile.Read(ref _state);
+                var next    = current & ~(int)StateFlags.Paused;
+                Volatile.Write(ref _state, next);
             }
 
             internal void Unstop()
             {
-                Volatile.Write(ref _reset, false);
-                Volatile.Write(ref _stopped, false);
+                var current = Volatile.Read(ref _state);
+                var next    = current & ~((int)StateFlags.Reset | (int)StateFlags.Stopped);
+                Volatile.Write(ref _state, next);
             }
 
-            bool _paused;
-            bool _stopped;
-            bool _killed;
-            bool _reset;
+            [Flags]
+            enum StateFlags
+            {
+                None   = 0,
+                Paused = 1 << 0,
+                Stopped= 1 << 1,
+                Killed = 1 << 2,
+                Reset  = 1 << 3
+            }
+
+            int _state;
         }
     }
 }

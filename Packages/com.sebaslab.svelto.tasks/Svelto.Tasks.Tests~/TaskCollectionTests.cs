@@ -1,4 +1,5 @@
-﻿using Svelto.Tasks.Lean;
+﻿using System.Collections.Generic;
+using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Tests
 {

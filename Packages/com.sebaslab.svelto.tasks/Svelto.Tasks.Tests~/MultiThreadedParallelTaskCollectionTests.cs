@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System;
+using NUnit.Framework;
 using Svelto.Tasks.Parallelism;
 
 namespace Svelto.Tasks.Tests
@@ -12,7 +13,7 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // MultiThreadedParallelTaskCollection runs tasks on multiple threads.
             
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumerator>("test_parallel", 4, false))
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_parallel", 4, false))
             {
                 bool done = false;
                 collection.onComplete += () => done = true;
@@ -45,7 +46,7 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // Reset() clears the collection and allows adding new tasks.
             
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumerator>("test_reset", 4, false))
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_reset", 4, false))
             {
                 Token token = new Token();
                 collection.Add(new WaitEnumerator(token, 0)); // Instant task
@@ -71,7 +72,7 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_AddWhileRunning_Throws()
         {
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumerator>("test_add_running", 4, false))
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_add_running", 4, false))
             {
                 collection.Add(new WaitEnumerator(1));
 
@@ -93,22 +94,22 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_Stop_StopsExecution()
         {
-             using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumerator>("test_stop", 4, false))
-            {
-                // Add long running tasks
-                collection.Add(new WaitEnumerator(5)); 
-                collection.Add(new WaitEnumerator(5));
+             using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_stop", 4, false))
+             {
+                 // Add long running tasks
+                 collection.Add(new WaitEnumerator(5)); 
+                 collection.Add(new WaitEnumerator(5));
 
-                // Start
-                collection.MoveNext();
-                Assert.That(collection.isRunning, Is.True);
+                 // Start
+                 collection.MoveNext();
+                 Assert.That(collection.isRunning, Is.True);
 
-                collection.Stop();
+                 collection.Stop();
 
-                Assert.That(collection.isRunning, Is.False);
+                 Assert.That(collection.isRunning, Is.False);
                 
-                // Verify we can dispose without issues
-            }
+                 // Verify we can dispose without issues
+             }
         }
 
         [Test]
@@ -117,7 +118,7 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // MultiThreadedParallelTaskCollection (ExtraLean) runs tasks on multiple threads.
             
-            using (var collection = new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_parallel_extralean", 4, false))
+            using (var collection = new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_parallel_extralean", 4, false))
             {
                 bool done = false;
                 collection.onComplete += () => done = true;
@@ -144,7 +145,7 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_Stop_DoesNotClearAndAllowsReuse()
         {
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumerator>("test_stop_reuse", 2, false))
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_stop_reuse", 2, false))
             {
                 var token = new Token();
                 collection.Add(new WaitEnumerator(token, 0));

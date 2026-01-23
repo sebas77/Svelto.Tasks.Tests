@@ -1,4 +1,6 @@
-﻿namespace Svelto.Tasks.Tests
+﻿using System.Collections.Generic;
+
+namespace Svelto.Tasks.Tests
 {
     [TestFixture]
     public class TaskBreakTests

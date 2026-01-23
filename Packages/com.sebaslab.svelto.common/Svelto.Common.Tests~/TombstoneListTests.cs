@@ -86,7 +86,7 @@ namespace Svelto.Common.Tests
             uint index = list.Add(123);
             list.RemoveAt(index);
 
-            Assert.That(() => list.RemoveAt(index), Throws.Exception);
+            Assert.That(() => list.RemoveAt(index), Throws.TypeOf<DBC.Common.PreconditionException>());
         }
     }
 }

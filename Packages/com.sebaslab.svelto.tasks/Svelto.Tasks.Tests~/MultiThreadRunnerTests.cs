@@ -1,4 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
 using Svelto.Tasks.ExtraLean;
 using Svelto.Tasks.Lean;
 
@@ -193,6 +196,71 @@ namespace Svelto.Tasks.Tests
                 Assert.That(runner.WaitForTasksDone(2000), Is.True);
 
                 Assert.That(runner.hasTasks, Is.False);
+            }
+        }
+
+        class DisposableEnumerator : IEnumerator<TaskContract>, IDisposable
+        {
+            public TaskContract Current => TaskContract.Yield.It;
+            object IEnumerator.Current => Current;
+            public bool MoveNext() => ++count < 4;
+            public void Reset() { count = 0; disposed = false; }
+            public void Dispose() { disposed = true; }
+            public bool disposed = false;
+            int count = 0;
+        }
+
+        [Test]
+        public void MultiThreadRunner_DisposesTasksOnCompletion_NotOnlyOnDispose()
+        {
+            var disposableTask = new DisposableEnumerator();
+
+            using (var runner = new Lean.MultiThreadRunner("MT_DisposesTasksOnCompletion"))
+            {
+                disposableTask.RunOn(runner);
+
+                Assert.That(runner.WaitForTasksDone(2000), Is.True);
+                Assert.That(runner.hasTasks, Is.False);
+
+                Assert.That(disposableTask.disposed, Is.True);
+            }
+        }
+
+        [Test]
+        public void MultiThreadRunner_Dispose_DisposesQueuedTasks()
+        {
+            var disposableTask = new DisposableEnumerator();
+            var runner = new Lean.MultiThreadRunner("MT_Dispose_DisposesQueuedTasks");
+            disposableTask.RunOn(runner);
+            
+            runner.Dispose();
+            
+            Assert.That(disposableTask.disposed, Is.True);
+        }
+
+        class DisposableExtraLeanEnumerator : IEnumerator, IDisposable
+        {
+            public object Current => null;
+            public bool MoveNext() => ++count < 4;
+            public void Reset() { count = 0; disposed = false; }
+            public void Dispose() { disposed = true; }
+            public bool disposed = false;
+            int count = 0;
+        }
+
+        [Test]
+        public void ExtraLean_MultiThreadRunner_DisposesTasksOnCompletion_NotOnlyOnDispose()
+        {
+            var disposableTask = new DisposableExtraLeanEnumerator();
+
+            using (var runner = new ExtraLean.MultiThreadRunner("EL_MT_DisposesTasksOnCompletion"))
+            {
+                disposableTask.RunOn(runner);
+
+                Assert.That(runner.WaitForTasksDone(2000), Is.True);
+                Assert.That(runner.hasTasks, Is.False);
+
+                Assert.That(disposableTask.disposed, Is.True);
             }
         }
     }

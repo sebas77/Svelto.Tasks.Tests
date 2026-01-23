@@ -1,4 +1,5 @@
-﻿using Svelto.Tasks.Lean;
+﻿using System.Threading.Tasks;
+using Svelto.Tasks.Lean;
 using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Tests
@@ -32,11 +33,11 @@ namespace Svelto.Tasks.Tests
 
         async Task SomeAsyncOperation(testClass continued, SteppableRunner runner)
         {
-            await Task.Delay(10).GetAwaiter(runner);
+            await Task.Delay(10).RunOn(runner);
             
             continued.continued = true;
             runner.Stop();
-            await Task.Delay(10).GetAwaiter(runner);
+            await Task.Delay(10).RunOn(runner);
         }
     }
 }

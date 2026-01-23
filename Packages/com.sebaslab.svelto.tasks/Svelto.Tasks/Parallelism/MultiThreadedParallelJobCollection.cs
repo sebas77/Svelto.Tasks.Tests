@@ -7,12 +7,12 @@ namespace Svelto.Tasks.Parallelism;
 /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
 /// </summary>
 ///
-
 public class
         MultiThreadedParallelJobCollection<TJob> : ExtraLean.MultiThreadedParallelTaskCollection<ParallelRunEnumerator<TJob>>
         where TJob : struct, ISveltoJob
 {
-    public void Add(ref TJob job, int iterations)
+    //works similarly to Unity Jobs, the same job is split into different iterations, the work is then divided according to the indexed iterations
+    public void Add(in TJob job, int iterations)
     {
         if (isRunning == true)
             throw new MultiThreadedParallelTaskCollectionException(
@@ -23,10 +23,10 @@ public class
         int reminder           = iterations % runnersLength;
 
         for (int i = 0; i < runnersLength; i++)
-            Add(new ParallelRunEnumerator<TJob>(ref job, tasksPerThread * i, tasksPerThread));
+            Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * i, tasksPerThread));
 
         if (reminder > 0)
-            Add(new ParallelRunEnumerator<TJob>(ref job, tasksPerThread * runnersLength, reminder));
+            Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * runnersLength, reminder));
     }
 
     public MultiThreadedParallelJobCollection(string name, uint numberOfThreads, bool tightTasks) : base(name,
