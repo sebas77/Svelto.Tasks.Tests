@@ -1,6 +1,8 @@
-﻿namespace Svelto.Tasks.Parallelism
+﻿using System;
+
+namespace Svelto.Tasks.Parallelism
 {
-    public interface ISveltoJob
+    public interface ISveltoJob: IDisposable
     {
         void Update(int jobIndex);
     }

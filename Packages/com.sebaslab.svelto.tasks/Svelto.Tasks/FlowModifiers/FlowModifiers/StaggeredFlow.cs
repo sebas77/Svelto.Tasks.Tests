@@ -1,3 +1,4 @@
+using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.FlowModifiers    
@@ -15,12 +16,12 @@ namespace Svelto.Tasks.FlowModifiers
             _iterations           = 0;
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref TombstoneHandle nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             return true;
         }
 
-        public bool CanProcessThis(ref int index)
+        public bool CanProcessThis(ref TombstoneHandle index)
         {
             if (_iterations >= _maxTasksPerIteration)
             {

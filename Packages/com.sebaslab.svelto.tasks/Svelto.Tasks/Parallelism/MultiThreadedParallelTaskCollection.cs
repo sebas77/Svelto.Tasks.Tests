@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Svelto.Tasks.ExtraLean;
-using Svelto.Utilities;
 
 namespace Svelto.Tasks.Parallelism
 {
@@ -15,29 +15,12 @@ namespace Svelto.Tasks.Parallelism
         {
         }
     }
-
-    public struct WrapEnumerator<TTask> : IEnumerator, IDisposable where TTask : IEnumerator
+    
+    public interface IParallelTask: IEnumerator, IDisposable
     {
-        public WrapEnumerator(TTask task, Action decrementConcurrentOperationsCounter)
-        {
-            _task = task;
-            _decrementConcurrentOperationsCounter = decrementConcurrentOperationsCounter;
-        }
-
-        public bool MoveNext() => _task.MoveNext();
-        public void Reset()    => _task.Reset();
-        public object Current  => _task.Current;
-
-        public void Dispose()
-        {
-            _decrementConcurrentOperationsCounter();
-        }
-
-        TTask          _task;
-        readonly Action _decrementConcurrentOperationsCounter;
     }
 
-    public abstract class BaseMultiThreadedParallelTaskCollection<TTask> where TTask : IEnumerator
+    public abstract class BaseMultiThreadedParallelTaskCollection<TTask> where TTask : IParallelTask
     {
         public event Action onComplete;
 
@@ -54,7 +37,6 @@ namespace Svelto.Tasks.Parallelism
         /// </param>
         public BaseMultiThreadedParallelTaskCollection(string name, uint numberOfThreads, bool tightTasks)
         {
-            _decrementRunningThread = DecrementRunningThread;
             _decrementConcurrentOperationsCounterDelegate = DecrementConcurrentOperationsCounter;
             DBC.Tasks.Check.Require(numberOfThreads > 0, "doesn't make much sense to use this with 0 threads");
 
@@ -72,7 +54,7 @@ namespace Svelto.Tasks.Parallelism
         /// </summary>
         /// <param name="enumerator"></param>
         /// <exception cref="MultiThreadedParallelTaskCollectionException"></exception>
-        public void Add(TTask enumerator)
+        public void Add(in TTask enumerator)
         {
             if (isRunning == true)
                 throw new MultiThreadedParallelTaskCollectionException(
@@ -88,10 +70,11 @@ namespace Svelto.Tasks.Parallelism
 
             if (RunMultiThreadParallelTasks()) return true;
 
+            // finished naturally: runners can be reused, so don't dispose them here
+            isRunning = false;
+
             if (onComplete != null)
                 onComplete();
-
-            isRunning = false;
 
             return false;
         }
@@ -129,16 +112,22 @@ namespace Svelto.Tasks.Parallelism
             if (Volatile.Read(ref _isDisposed) == true) return;
 
             Volatile.Write(ref _isDisposed, true);
-            _disposingThreads = _runners.Length;
- 
-            for (int i = 0; i < _runners.Length; i++)
-                _runners[i].Kill(_decrementRunningThread);
 
-            while (Volatile.Read(ref _disposingThreads) > 0)
-                ThreadUtility.TakeItEasy();
+            // If tasks were never started, the only place they exist is _parallelTasks.
+            // If tasks were started, their Dispose will be called by the runners.
+            if (isRunning == false)
+            {
+                for (int i = 0; i < _parallelTasks.Count; i++)
+                    _parallelTasks[i].Dispose();
+            }
 
-            for (int i = 0; i < _runners.Length; i++)
-                _runners[i].Dispose();
+            _parallelTasks.Clear();
+
+            if (_runners != null)
+            {
+                for (int i = 0; i < _runners.Length; i++)
+                    _runners[i].Dispose();
+            }
 
             _runners            = null;
             onComplete          = null;
@@ -156,7 +145,7 @@ namespace Svelto.Tasks.Parallelism
         {
             Console.LogWarning(
                 $"MultiThreadedParallelTaskCollection {_name} wasn't disposed of correctly. You forgot to call Dispose()");
-            
+
             Dispose();
         }
 
@@ -174,8 +163,7 @@ namespace Svelto.Tasks.Parallelism
         bool RunMultiThreadParallelTasks()
         {
             if (_isDisposed == true)
-                throw new MultiThreadedParallelTaskCollectionException(
-                    "can't run a MultiThreadedParallelTaskCollection once killed");
+                return false;
 
             if (isRunning == false)
             {
@@ -202,11 +190,6 @@ namespace Svelto.Tasks.Parallelism
             return new WrapEnumerator<TTask>(task, _decrementConcurrentOperationsCounterDelegate);
         }
 
-        void DecrementRunningThread()
-        {
-            Interlocked.Decrement(ref _disposingThreads);
-        }
-
         void DecrementConcurrentOperationsCounter()
         {
             Interlocked.Decrement(ref _counter);
@@ -216,20 +199,50 @@ namespace Svelto.Tasks.Parallelism
         readonly List<TTask>  _parallelTasks = new List<TTask>();
 
         int  _counter;
-        int  _disposingThreads;
         bool _isDisposed;
 
         readonly string _name;
-        readonly Action _decrementRunningThread;
         readonly Action _decrementConcurrentOperationsCounterDelegate;
-    }
+        
+        protected struct WrapEnumerator<TTask> : IEnumerator, IDisposable where TTask : IParallelTask
+        {
+            public WrapEnumerator(TTask task, Action decrementConcurrentOperationsCounter)
+            {
+                _task = task;
+                _decrementConcurrentOperationsCounter = decrementConcurrentOperationsCounter;
+            }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext() => _task.MoveNext();
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Reset()    => _task.Reset();
+        
+            public object Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get
+                {
+                    return _task.Current;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Dispose()
+            {
+                _task.Dispose();
+                _decrementConcurrentOperationsCounter();
+            }
+
+            TTask          _task;
+            readonly Action _decrementConcurrentOperationsCounter;
+        }
+    }
 }
 
 namespace Svelto.Tasks.Parallelism.Lean
 {
     public class MultiThreadedParallelTaskCollection<TTask> : BaseMultiThreadedParallelTaskCollection<TTask>, IEnumerator<TaskContract>
-        where TTask : struct, IEnumerator<TaskContract>
+        where TTask : struct, IEnumerator<TaskContract>, IParallelTask
     {
         public TaskContract Current
         {
@@ -250,7 +263,7 @@ namespace Svelto.Tasks.Parallelism.Lean
         { }
     }
     
-    public class MultiThreadedParallelTaskCollection: BaseMultiThreadedParallelTaskCollection<IEnumerator>, IEnumerator<TaskContract>
+    public class MultiThreadedParallelTaskCollection: BaseMultiThreadedParallelTaskCollection<IParallelTask>, IEnumerator<TaskContract>
     {
         public TaskContract Current
         {
@@ -275,7 +288,7 @@ namespace Svelto.Tasks.Parallelism.Lean
 namespace Svelto.Tasks.Parallelism.ExtraLean
 {
     public class MultiThreadedParallelTaskCollection<TTask> : BaseMultiThreadedParallelTaskCollection<TTask>, IEnumerator, IDisposable
-        where TTask : struct, IEnumerator
+        where TTask : struct, IParallelTask
     {
         public object Current
         {
@@ -291,7 +304,7 @@ namespace Svelto.Tasks.Parallelism.ExtraLean
         { }
     }
     
-    public class MultiThreadedParallelTaskCollection : BaseMultiThreadedParallelTaskCollection<IEnumerator>, IEnumerator, IDisposable
+    public class MultiThreadedParallelTaskCollection : BaseMultiThreadedParallelTaskCollection<IParallelTask>, IEnumerator, IDisposable
     {
         public object Current
         {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
 
@@ -20,13 +21,13 @@ namespace Svelto.Tasks.Lean
             _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
 #endif
 
-            runner.AddTask(this, (-1, -1));
+            runner.AddTask(this, (TombstoneHandle.Invalid, TombstoneHandle.Invalid));
 
             return _continuation;
         }
         
         //This is now meant to be used ALWAYS FROM THE SAME RUNNER OF THE PARENT TASK THAT IS SPAWNING THIS TASK
-        internal void SpawnContinuingTask<TRunner>(  TRunner runner, in TTask task, Continuation continuation, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index)
+        internal void SpawnContinuingTask<TRunner>(  TRunner runner, in TTask task, Continuation continuation, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
             where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(in task, runner);
@@ -61,7 +62,7 @@ namespace Svelto.Tasks.Lean
 
         public string name => _sveltoTask.name;
 
-        StepState ISveltoTask.Step(int runningTaskIndexToReplace, int parentSpawnedTaskIndex)
+        StepState ISveltoTask.Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex)
         {
             DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state");
             StepState stepState = StepState.Running;

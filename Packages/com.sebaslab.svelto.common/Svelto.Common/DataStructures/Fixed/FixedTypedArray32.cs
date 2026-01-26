@@ -1,7 +1,6 @@
 ﻿#if NEW_C_SHARP || !UNITY_5_3_OR_NEWER
 using System.Runtime.CompilerServices;
 
-//todo needs to be unit tested
 public struct FixedTypedArray32<T> where T : unmanaged
 {
     static readonly int Length = 32;

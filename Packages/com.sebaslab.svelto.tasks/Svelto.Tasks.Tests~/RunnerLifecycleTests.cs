@@ -87,14 +87,11 @@ namespace Svelto.Tasks.Tests
 
             using (var runner = new MultiThreadRunner("MultiThreadRunner_StopDispose"))
             {
-                var counter = 0;
-
                 IEnumerator<TaskContract> SpinYield(int iterations)
                 {
                     var i = 0;
                     while (i++ < iterations)
                     {
-                        counter++;
                         yield return TaskContract.Yield.It;
                     }
                 }
@@ -150,37 +147,66 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void SteppableRunner_Kill_StopsAndPreventsReuse()
         {
-            using (var runner = new SteppableRunner("SteppableRunner_Kill"))
+            var runner = new SteppableRunner("SteppableRunner_Kill");
+
+            var counter = 0;
+
+            IEnumerator<TaskContract> Increment()
             {
-                var counter = 0;
-
-                IEnumerator<TaskContract> Increment()
-                {
-                    counter++;
-                    yield return TaskContract.Yield.It;
-                    counter++;
-                }
-
-                Increment().RunOn(runner);
-                runner.Step();
-                Assert.That(counter, Is.EqualTo(1));
-
-                // Kill the runner
-                // This is internal in FlushingOperation but exposed via Dispose() or internal methods.
-                // SteppableRunner.Dispose() calls Kill().
-                // However, we want to test Kill specifically if possible, or Dispose behavior.
-                // SteppableRunner doesn't expose Kill() publicly, only Dispose().
-                // But SveltoTaskRunner.FlushingOperation has a Kill method.
-                // Let's use Dispose() which calls Kill().
-                
-                runner.Dispose();
-
-                // Try to run a new task
-                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
-                {
-                    Increment().RunOn(runner);
-                });
+                counter++;
+                yield return TaskContract.Yield.It;
+                counter++;
             }
+
+            Increment().RunOn(runner);
+            runner.Step();
+            Assert.That(counter, Is.EqualTo(1));
+
+            runner.Dispose();
+
+            Assert.Throws<DBC.Tasks.PreconditionException>(() =>
+            {
+                Increment().RunOn(runner);
+            });
+        }
+
+        [Test]
+        public void SteppableRunner_Flush_DisposesRunningTasks()
+        {
+            var runner = new SteppableRunner("SteppableRunner_Flush_Dispose");
+
+            var disposableTask = new DisposableEnumerator();
+
+            disposableTask.RunOn(runner);
+
+            // Start it
+            runner.Step();
+
+            Assert.That(runner.hasTasks, Is.True);
+
+            runner.Flush();
+
+            Assert.That(disposableTask.disposed, Is.True);
+            Assert.That(runner.hasTasks, Is.False);
+
+            runner.Dispose();
+        }
+
+        class DisposableEnumerator : IEnumerator<TaskContract>
+        {
+            public TaskContract Current => TaskContract.Yield.It;
+            object System.Collections.IEnumerator.Current => Current;
+
+            public bool MoveNext() => true;
+
+            public void Reset() {}
+
+            public void Dispose()
+            {
+                disposed = true;
+            }
+
+            public volatile bool disposed;
         }
     }
 }

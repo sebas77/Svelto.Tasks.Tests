@@ -1,0 +1,73 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\Svelto.Common.csproj": {}
+  },
+  "projects": {
+    "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\Svelto.Common.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\Svelto.Common.csproj",
+        "projectName": "Svelto.Common",
+        "projectPath": "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\Svelto.Common.csproj",
+        "packagesPath": "C:\\Users\\Seb\\.nuget\\packages\\",
+        "outputPath": "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Seb\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.1"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.1": {
+            "targetAlias": "netstandard2.1",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "dependencies": {
+            "System.Runtime.CompilerServices.Unsafe": {
+              "target": "Package",
+              "version": "[6.1.2, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "NETStandard.Library": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Users\\Seb\\.dotnet\\sdk\\9.0.309\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

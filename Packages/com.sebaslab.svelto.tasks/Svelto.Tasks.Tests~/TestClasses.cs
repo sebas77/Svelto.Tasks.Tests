@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using Svelto.Tasks.Parallelism;
 
 namespace Svelto.Tasks.Tests
 {
@@ -165,7 +166,7 @@ namespace Svelto.Tasks.Tests
         public int count;
     }
 
-    class WaitEnumerator : IEnumerator<TaskContract>
+    class WaitEnumerator : IEnumerator<TaskContract>, IParallelTask
     {
         DateTime       _future;
         readonly int   _time;
@@ -268,7 +269,7 @@ namespace Svelto.Tasks.Tests
         }
     }
 
-    class WaitEnumeratorExtraLean : IEnumerator
+    class WaitEnumeratorExtraLean : IParallelTask
     {
         DateTime       _future;
         readonly int   _time;
@@ -308,5 +309,7 @@ namespace Svelto.Tasks.Tests
 
             return true;
         }
+
+        public void Dispose() { }
     }
 }

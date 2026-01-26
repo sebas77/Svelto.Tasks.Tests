@@ -291,14 +291,6 @@ namespace Svelto.DataStructures
             return ref _values[(int)findIndex];
         }
 
-        /// <summary>
-        /// This must be unit tested properly
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="builder"></param>
-        /// <param name="recycler"></param>
-        /// <typeparam name="TValueProxy"></typeparam>
-        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref TValue RecycleOrAdd<TValueProxy>(TKey key, Func<TValueProxy> builder
           , ActionRef<TValueProxy> recycler) where TValueProxy : class, TValue

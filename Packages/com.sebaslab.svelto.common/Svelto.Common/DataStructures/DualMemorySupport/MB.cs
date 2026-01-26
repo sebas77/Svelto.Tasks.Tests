@@ -17,9 +17,9 @@ namespace Svelto.DataStructures
     /// but the count will stay zero. It's not the MB responsibility to track the count
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal struct MBInternal<T>:IBuffer<T> 
+    struct MBInternal<T>:IBuffer<T> 
     {
-        MBInternal(T[]  array) : this()
+        public MBInternal(T[]  array) : this()
         {
             _buffer = array;
         }
@@ -68,11 +68,6 @@ namespace Svelto.DataStructures
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-#if DEBUG && ENABLE_PARANOID_CHECKS                
-                if (index >= _buffer.Length)
-                    throw new IndexOutOfRangeException("Paranoid check failed!");
-#endif
-                
                 return ref _buffer[index];
             }
         }
@@ -82,11 +77,6 @@ namespace Svelto.DataStructures
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-#if DEBUG && ENABLE_PARANOID_CHECKS                
-                if (index >= _buffer.Length)
-                    throw new IndexOutOfRangeException("Paranoid check failed!");
-#endif
-
                 return ref _buffer[index];
             }
         }
@@ -98,7 +88,11 @@ namespace Svelto.DataStructures
     {
         MBInternal<T> _bufferImplementation;
 
-        internal MB(MBInternal<T> mbInternal)
+#if DEBUG && !PROFILE_SVELTO
+        int _rwState;
+#endif
+
+        internal MB(MBInternal<T> mbInternal):this()
         {
             _bufferImplementation = mbInternal;
         }
@@ -150,12 +144,91 @@ namespace Svelto.DataStructures
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-#if DEBUG && ENABLE_PARANOID_CHECKS                
-                if (index >= _buffer.Length)
-                    throw new IndexOutOfRangeException("Paranoid check failed!");
+                return ref _bufferImplementation[index];
+            }
+        }
+
+#if DEBUG && !PROFILE_SVELTO
+        public unsafe Reader AsReader()
+        {
+            fixed (int* p = &_rwState)
+                return new Reader(_bufferImplementation, new Sentinel(p, Sentinel.readFlag));
+        }
+
+        public unsafe Writer AsWriter()
+        {
+            fixed (int* p = &_rwState)
+                return new Writer(_bufferImplementation, new Sentinel(p, Sentinel.writeFlag));
+        }
+#else
+        public Reader AsReader() { return new Reader(_bufferImplementation, default); }
+        public Writer AsWriter() { return new Writer(_bufferImplementation, default); }
 #endif
 
-                return ref _bufferImplementation[index];
+        public static MB<T> Create(T[] array)
+        {
+            return new MB<T>(new MBInternal<T>(array));
+        }
+
+        public ref struct Reader
+        {
+            MBInternal<T> _mb;
+            readonly TestThreadSafety _guard;
+
+            internal Reader(MBInternal<T> mb, Sentinel sentinel)
+            {
+                _mb = mb;
+                _guard = sentinel.TestThreadSafety();
+            }
+
+            public int capacity => _mb.capacity;
+
+            public ref T this[uint index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _mb[index];
+            }
+
+            public ref T this[int index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _mb[index];
+            }
+
+            public void Dispose()
+            {
+                _guard.Dispose();
+            }
+        }
+
+        public ref struct Writer
+        {
+            MBInternal<T> _mb;
+            readonly TestThreadSafety _guard;
+
+            internal Writer(MBInternal<T> mb, Sentinel sentinel)
+            {
+                _mb = mb;
+                _guard = sentinel.TestThreadSafety();
+            }
+
+            public int capacity => _mb.capacity;
+
+            public ref T this[uint index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _mb[index];
+            }
+
+            public ref T this[int index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _mb[index];
+            }
+
+            public void Dispose()
+            {
+                _guard.Dispose();
             }
         }
     }

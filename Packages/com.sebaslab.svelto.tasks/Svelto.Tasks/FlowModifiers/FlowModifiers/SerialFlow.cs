@@ -1,4 +1,5 @@
-﻿using Svelto.Tasks.Internal;
+﻿﻿using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.FlowModifiers
 {
@@ -12,11 +13,11 @@ namespace Svelto.Tasks.FlowModifiers
     /// </summary>
     public struct SerialFlow : IFlowModifier
     {
-        public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T : ISveltoTask
+        public bool CanMoveNext<T>(ref TombstoneHandle nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T : ISveltoTask
         {
             if (hasCoroutineCompleted == false)
             {
-                nextIndex--; //stay on the current task until it's done
+                nextIndex = new TombstoneHandle((int)nextIndex - 1); //stay on the current task until it's done
 
                 return false;
             }
@@ -24,7 +25,7 @@ namespace Svelto.Tasks.FlowModifiers
             return true;
         }
 
-        public bool CanProcessThis(ref int index)
+        public bool CanProcessThis(ref TombstoneHandle index)
         {
             return true;
         }

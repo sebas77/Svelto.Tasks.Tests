@@ -15,7 +15,7 @@ using Svelto.Utilities;
 
 namespace Svelto
 {
-    public static partial class Console
+    public static class Console
     {
         static readonly HashSet<Type> _loggersType;
         static readonly ThreadLocal<StringBuilder> _threadSafeStrings;
@@ -28,7 +28,7 @@ namespace Svelto
             _threadSafeStrings = new ThreadLocal<StringBuilder>(() => new StringBuilder(256));
             _loggers           = new FasterList<ILogger>();
             _loggersType = new HashSet<Type>();
-            #if !UNITY_5_3_OR_NEWER
+            #if UNITY_5_3_OR_NEWER
             DefaultUnityLogger.Init(); //one logger must be inizialised here, otherwise the loggers will be null
             #else
             SimpleLogger.Init();
@@ -158,6 +158,7 @@ namespace Svelto
                 _loggers[i].Log(txt, type, showLogStack, e, extraData);
 
             if (logMessage != null) logMessage(txt, type, e);
+            if (type == LogType.Exception && onException != null) onException(e, txt);
         }
 
         public static void CompressLogsToZipAndShow(string zipName)
@@ -166,5 +167,6 @@ namespace Svelto
         }
 
         public static event Action<string, LogType, Exception> logMessage;
+        public static event Action<Exception, string> onException;
     }
 }

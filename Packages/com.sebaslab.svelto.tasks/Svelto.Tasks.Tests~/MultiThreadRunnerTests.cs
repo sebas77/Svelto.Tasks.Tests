@@ -27,7 +27,7 @@ namespace Svelto.Tasks.Tests
             using (var runner = new Lean.MultiThreadRunner("LeanMultiThreadRunner"))
             {
                 Task().RunOn(runner);
-                
+
                 Assert.That(runner.WaitForTasksDone(1000), Is.True);
             }
 
@@ -53,7 +53,7 @@ namespace Svelto.Tasks.Tests
             using (var runner = new ExtraLean.MultiThreadRunner("ExtraLeanMultiThreadRunner"))
             {
                 Task().RunOn(runner);
-                
+
                 Assert.That(runner.WaitForTasksDone(1000), Is.True);
             }
 
@@ -182,14 +182,29 @@ namespace Svelto.Tasks.Tests
         {
             using (var runner = new Lean.MultiThreadRunner("MT_Stop"))
             {
+                var start = Environment.TickCount;
+                while (runner.isStarted == false)
+                {
+                    if (unchecked(Environment.TickCount - start) > 2000)
+                        Assert.Fail("runner did not start");
+
+                    Thread.Sleep(0);
+                }
+
+                var started = new ManualResetEventSlim(false);
+
                 IEnumerator<TaskContract> Infinite()
                 {
+                    started.Set();
+
                     var i = 0;
-                    while (i++ < 1000000)
+                    while (i++ < 100000)
                         yield return TaskContract.Yield.It;
                 }
 
                 Infinite().RunOn(runner);
+
+                Assert.That(started.Wait(2000), Is.True);
 
                 runner.Stop();
 
@@ -199,14 +214,43 @@ namespace Svelto.Tasks.Tests
             }
         }
 
-        class DisposableEnumerator : IEnumerator<TaskContract>, IDisposable
+        class DisposableEnumerator : IEnumerator<TaskContract>
         {
+            public DisposableEnumerator(ManualResetEventSlim started, int steps = 4)
+            {
+                _started = started;
+                _steps = steps;
+            }
+
+            public DisposableEnumerator(int steps = 4)
+            {
+                _steps = steps;
+            }
+
             public TaskContract Current => TaskContract.Yield.It;
             object IEnumerator.Current => Current;
-            public bool MoveNext() => ++count < 4;
-            public void Reset() { count = 0; disposed = false; }
-            public void Dispose() { disposed = true; }
-            public bool disposed = false;
+            public bool MoveNext()
+            {
+                if (_started != null)
+                    _started.Set();
+
+                return ++count < _steps;
+            }
+
+            public void Reset()
+            {
+                count = 0;
+                disposed = false;
+            }
+
+            public void Dispose()
+            {
+                disposed = true;
+            }
+
+            public volatile bool disposed = false;
+            readonly ManualResetEventSlim _started;
+            readonly int _steps;
             int count = 0;
         }
 
@@ -232,9 +276,24 @@ namespace Svelto.Tasks.Tests
             var disposableTask = new DisposableEnumerator();
             var runner = new Lean.MultiThreadRunner("MT_Dispose_DisposesQueuedTasks");
             disposableTask.RunOn(runner);
-            
+
+            var start = Environment.TickCount;
+            while (runner.isStarted == false)
+            {
+                if (unchecked(Environment.TickCount - start) > 2000)
+                    Assert.Fail("runner did not start");
+
+                Thread.Sleep(0);
+            }
+
+            var started = new ManualResetEventSlim(false);
+            var disposableTask2 = new DisposableEnumerator(started, 1024);
+            disposableTask2.RunOn(runner);
+
+            Assert.That(started.Wait(2000), Is.True);
+
             runner.Dispose();
-            
+
             Assert.That(disposableTask.disposed, Is.True);
         }
 
@@ -242,7 +301,13 @@ namespace Svelto.Tasks.Tests
         {
             public object Current => null;
             public bool MoveNext() => ++count < 4;
-            public void Reset() { count = 0; disposed = false; }
+
+            public void Reset()
+            {
+                count = 0;
+                disposed = false;
+            }
+
             public void Dispose() { disposed = true; }
             public bool disposed = false;
             int count = 0;
@@ -263,5 +328,47 @@ namespace Svelto.Tasks.Tests
                 Assert.That(disposableTask.disposed, Is.True);
             }
         }
+
+        [Test]
+        public void MultiThreadRunner_Stop_DisposesRunningTasks()
+        {
+            var started = new ManualResetEventSlim(false);
+            var disposableTask = new DisposableEnumerator(started, 1024);
+
+            using (var runner = new Lean.MultiThreadRunner("MT_Stop_DisposesRunningTasks"))
+            {
+                var start = Environment.TickCount;
+                while (runner.isStarted == false)
+                {
+                    if (unchecked(Environment.TickCount - start) > 2000)
+                        Assert.Fail("runner did not start");
+
+                    Thread.Sleep(0);
+                }
+
+                disposableTask.RunOn(runner);
+
+                Assert.That(started.Wait(2000), Is.True);
+
+                runner.Stop();
+
+                Assert.That(runner.WaitForTasksDone(2000), Is.True);
+                Assert.That(disposableTask.disposed, Is.True);
+            }
+        }
+
+        [Test]
+        public void ExtraLean_MultiThreadRunner_Dispose_DisposesQueuedTasks()
+        {
+            var disposableTask = new DisposableExtraLeanEnumerator();
+            var runner = new ExtraLean.MultiThreadRunner("EL_MT_Dispose_DisposesQueuedTasks");
+
+            disposableTask.RunOn(runner);
+
+            runner.Dispose();
+
+            Assert.That(disposableTask.disposed, Is.True);
+        }
     }
 }
+

@@ -5,19 +5,13 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Svelto.Common;
 using Svelto.DataStructures;
-using Svelto.DataStructures.Experimental;
 
 namespace Svelto.Tasks.Internal
 {
     //ISveltoTask can be Lean or ExtraLean
     public static class SveltoTaskRunner<TSveltoTask> where TSveltoTask : ISveltoTask
     {
-        internal interface IQueueDrainer
-        {
-            void DrainAndDisposeQueuedTasks();
-        }
-
-        internal class Process<TFlowModifier> : IProcessSveltoTasks<TSveltoTask>, IQueueDrainer where TFlowModifier : IFlowModifier
+        internal class Process<TFlowModifier> : IProcessSveltoTasks<TSveltoTask> where TFlowModifier : IFlowModifier
         {
             public override string ToString()
             {
@@ -27,8 +21,8 @@ namespace Svelto.Tasks.Internal
             public Process(FlushingOperation flushingOperation, TFlowModifier info, uint size, string runnerName)
             {
                 _newTaskRoutines   = new ConcurrentQueue<TSveltoTask>();
-                _runningCoroutines = new FasterList<int>(size);
-                _spawnedCoroutines = new TombstoneList<(TSveltoTask task, int)>(size);
+                _runningCoroutines = new FasterList<TombstoneHandle>(size);
+                _spawnedCoroutines = new TombstoneList<(TSveltoTask task, TombstoneHandle)>(size);
                 _flushingOperation = flushingOperation;
                 _info              = info;
                 _runnerName        = $"{typeof(TFlowModifier).Name} - {runnerName} runner";
@@ -44,8 +38,8 @@ namespace Svelto.Tasks.Internal
 
                 if (_flushingOperation.reset)
                 {
-                    foreach ((TSveltoTask task, int parentTaskindex) task in _spawnedCoroutines)
-                        task.task.Dispose();  
+                    foreach (ref var tr in _spawnedCoroutines)
+                        tr.task.Dispose();  
 
                     while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
                         task.Dispose();
@@ -69,7 +63,7 @@ namespace Svelto.Tasks.Internal
                     while (_newTaskRoutines.TryPeek(out TSveltoTask task))
                     {
                         //only root tasks are added at this point
-                        int index = (int)_spawnedCoroutines.Add((task, -1));
+                        TombstoneHandle index = _spawnedCoroutines.Add((task, TombstoneHandle.Invalid));
                         _runningCoroutines.Add(index);
                         _newTaskRoutines.TryDequeue(out _); //Peek + dequeue to avoid race conditions when MT runner is used and the number of tasks is queried
 #if DEBUG_TASKS_FLOW                        
@@ -102,7 +96,7 @@ namespace Svelto.Tasks.Internal
 
                 if (_runningCoroutines.count > 0)
                 {
-                    int index = 0;
+                    TombstoneHandle index = default;
 
                     bool mustExit;
                     do
@@ -112,9 +106,9 @@ namespace Svelto.Tasks.Internal
 
                         StepState result;
 
-                        var currentSpawnedTaskToRunIndex = _runningCoroutines[index]; //current position in _spawnedCoroutines
-                        ref (TSveltoTask task, int parentSpawnedTaskIndex) spawnedCoroutine =
-                                ref _spawnedCoroutines.UnsafeGet(currentSpawnedTaskToRunIndex);
+                        TombstoneHandle currentSpawnedTaskToRunIndex = _runningCoroutines[(int)index]; //current position in _spawnedCoroutines
+                        ref (TSveltoTask task, TombstoneHandle parentSpawnedTaskIndex) spawnedCoroutine =
+                                ref _spawnedCoroutines[currentSpawnedTaskToRunIndex];
                         ref TSveltoTask currentSpawnedTaskToRun = ref spawnedCoroutine.task;
                         var spawnedCoroutineParentTaskIndex = spawnedCoroutine.parentSpawnedTaskIndex;
 
@@ -143,7 +137,7 @@ namespace Svelto.Tasks.Internal
                             result = StepState.Faulted;
                         }
 
-                        if (result != StepState.Faulted && _runningCoroutines[index] != currentSpawnedTaskToRunIndex)
+                        if (result != StepState.Faulted && _runningCoroutines[(int)index] != currentSpawnedTaskToRunIndex)
                         {
                             DBC.Tasks.Check.Require(result != StepState.Completed,
                                 "a task cannot be completed and spawn a new task in the same step");
@@ -163,9 +157,9 @@ namespace Svelto.Tasks.Internal
                             }
 
                             _spawnedCoroutines.RemoveAt(currentSpawnedTaskToRunIndex);
-                            if (spawnedCoroutineParentTaskIndex == -1)
+                            if (spawnedCoroutineParentTaskIndex.IsInvalid)
                             {
-                                _runningCoroutines.UnorderedRemoveAt((uint)index); //the current task was a root task, remove it
+                                _runningCoroutines.UnorderedRemoveAt((uint)(int)index); //the current task was a root task, remove it
 #if DEBUG_TASKS_FLOW
                                     Svelto.Console.Log($"remove task {_spawnedCoroutines[currentSpawnedTaskToRunIndex].task} killed task in location {index}");
 #endif
@@ -173,20 +167,20 @@ namespace Svelto.Tasks.Internal
                             }
                             else
                             {
-                                _runningCoroutines[index] = spawnedCoroutineParentTaskIndex; //the current task is finished, return to the parent one, however this index will be processed the next step
+                                _runningCoroutines[(int)index] = spawnedCoroutineParentTaskIndex; //the current task is finished, return to the parent one, however this index will be processed the next step
 #if DEBUG_TASKS_FLOW
                                     Svelto.Console.Log($"remove task {_spawnedCoroutines[currentSpawnedTaskToRunIndex].task} replaced location {index} with task {_spawnedCoroutines[spawnedCoroutineParentTaskIndex].task}");
 #endif
                             }
                         }
                         else
-                            index++;
+                            index = new TombstoneHandle((int)index + 1);
 
                         var hasCoroutineCompleted = (result & (StepState.Completed | StepState.Faulted)) != 0;
 
                         mustExit = 
                                 _runningCoroutines.count                                                                   == 0
-                             || index                                                                                      >= _runningCoroutines.count
+                             || (int)index                                                                                 >= _runningCoroutines.count
                              || _info.CanMoveNext<TSveltoTask>(ref index, _runningCoroutines.count, hasCoroutineCompleted) == false;
                             
                     } while (mustExit == false);
@@ -206,47 +200,32 @@ namespace Svelto.Tasks.Internal
             /// <param name="task"></param>
             /// <param name="parentTaskIndex"></param>
             /// <param name="index"></param>
-            public void AddTask(  in TSveltoTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) parentTaskIndex)
+            public void AddTask(  in TSveltoTask task, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) parentTaskIndex)
             {
                 DBC.Tasks.Check.Require(_flushingOperation.kill == false,
                     $"can't schedule new routines on a killed scheduler {_runnerName}");
 
-                if (parentTaskIndex.parentSpawnedTaskIndex == -1)
+                if (parentTaskIndex.parentSpawnedTaskIndex == TombstoneHandle.Invalid)
                 {
                     _newTaskRoutines.Enqueue(task); //root task
                 }
                 else
                 {
                     //child task
-                    int index = (int)_spawnedCoroutines.Add((task, parentTaskIndex.parentSpawnedTaskIndex)); //must remember the parent task index in spawnedCoroutines
+                    var index = _spawnedCoroutines.Add((task, parentTaskIndex.parentSpawnedTaskIndex)); //must remember the parent task index in spawnedCoroutines
 #if DEBUG_TASKS_FLOW                    
                     Svelto.Console.Log($"spawn task {_spawnedCoroutines[index]} in place of task {_spawnedCoroutines[parentTaskIndex.parentSpawnedTaskIndex]} at location {parentTaskIndex.runningTaskIndexToReplace}");
 #endif
-                    _runningCoroutines[parentTaskIndex.runningTaskIndexToReplace] = index;
-                }
-            }
-
-            public void DrainAndDisposeQueuedTasks()
-            {
-                while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
-                {
-                    try
-                    {
-                        task.Dispose();
-                    }
-                    catch (Exception e)
-                    {
-                        Console.LogException(e, $"catching exception while disposing task {task.name}");
-                    }
+                    _runningCoroutines[(int)parentTaskIndex.runningTaskIndexToReplace] = index;
                 }
             }
 
             //these are tasks that are not running yet, but are queued to be run
             readonly ConcurrentQueue<TSveltoTask> _newTaskRoutines;
             //these are just the running tasks, not all the spawned tasks. Only the leaves of spawned tasks run. RunningCoroutines contain the index into _spawnedCoroutines of the running task
-            readonly FasterList<int>      _runningCoroutines;
+            readonly FasterList<TombstoneHandle>      _runningCoroutines;
             //spawnedCoroutines holds all the spawned tasks. A new task can be spawned from a running task
-            readonly TombstoneList<(TSveltoTask task, int parentTaskindex)>   _spawnedCoroutines;
+            readonly TombstoneList<(TSveltoTask task, TombstoneHandle parentTaskindex)>   _spawnedCoroutines;
             readonly FlushingOperation      _flushingOperation;
 
             TFlowModifier _info;

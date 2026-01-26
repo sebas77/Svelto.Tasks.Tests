@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
@@ -468,7 +469,8 @@ namespace Svelto.Tasks.Tests
 
             //start a loop, you can actually start multiple loops with different conditions so that
             //you can wait for specific states to be valid before to start the real loop 
-            while (true) //usually last as long as the application run
+            while (true //usually last as long as the application run
+            )
             {
                 if (i++ > 1)
                     yield break;
@@ -591,10 +593,13 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void TestTaskDisposeCalledOnMultiThreadRunnerDispose()
         {
-            var disposableTask = new DisposableEnumerator();
+            var started = new ManualResetEventSlim(false);
+            var disposableTask = new StartedDisposableEnumerator(started);
             var runner         = new MultiThreadRunner("test");
 
             disposableTask.RunOn(runner);
+
+            Assert.That(started.Wait(2000), Is.True);
 
             runner.Dispose();
 
@@ -604,17 +609,56 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void TestJobDisposeCalledOnMultiThreadRunnerDispose()
         {
-            var disposableJobTask = new DisposableJobEnumerator();
+            var started = new ManualResetEventSlim(false);
+            var disposableJobTask = new StartedDisposableJobEnumerator(started);
             var runner            = new MultiThreadRunner("test");
 
             disposableJobTask.RunOn(runner);
+
+            Assert.That(started.Wait(2000), Is.True);
 
             runner.Dispose();
 
             Assert.That(disposableJobTask.disposed, Is.True);
         }
 
-        class DisposableJobEnumerator : IEnumerator<TaskContract>, IDisposable, ISveltoJob
+        class StartedDisposableJobEnumerator : IEnumerator<TaskContract>, ISveltoJob
+        {
+            public StartedDisposableJobEnumerator(ManualResetEventSlim started)
+            {
+                _started = started;
+            }
+
+            public TaskContract Current => TaskContract.Yield.It;
+            object IEnumerator.Current  => Current;
+
+            public bool MoveNext()
+            {
+                _started.Set();
+                return ++count < 3;
+            }
+
+            public void Reset() { count = 0; }
+
+            public void Update(int jobIndex) { }
+
+            public void Dispose() 
+            {
+                Volatile.Write(ref _disposed, true); 
+            }
+            
+            public bool disposed
+            {
+                get => Volatile.Read(ref _disposed);
+            }
+
+            bool _disposed = false;
+
+            readonly ManualResetEventSlim _started;
+            int count = 0;
+        }
+
+        class DisposableJobEnumerator : IEnumerator<TaskContract>, ISveltoJob
         {
             public TaskContract Current => TaskContract.Yield.It;
             object IEnumerator.Current  => Current;
@@ -625,21 +669,55 @@ namespace Svelto.Tasks.Tests
 
             public void Update(int jobIndex) { }
 
-            public void Dispose() { disposed = true; }
+            public void Dispose() 
+            {
+                Volatile.Write(ref _disposed, true); 
+            }
+            
+            public bool disposed
+            {
+                get => Volatile.Read(ref _disposed);
+            }
 
-            public bool disposed = false;
+            bool _disposed = false;
 
             int count = 0;
         }
 
-        class DisposableEnumerator : IEnumerator<TaskContract>, IDisposable
+        class StartedDisposableEnumerator : IEnumerator<TaskContract>
+        {
+            public StartedDisposableEnumerator(ManualResetEventSlim started)
+            {
+                _started = started;
+            }
+
+            public TaskContract Current => TaskContract.Yield.It;
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                _started.Set();
+                return ++count < 3;
+            }
+
+            public void Reset() { count = 0; }
+
+            public void Dispose() { disposed = true; }
+
+            public volatile bool disposed = false;
+
+            readonly ManualResetEventSlim _started;
+            int count = 0;
+        }
+
+        class DisposableEnumerator : IEnumerator<TaskContract>
         {
             public TaskContract Current => TaskContract.Yield.It;
             object IEnumerator.Current => Current;
             public bool MoveNext() => ++count < 3;
             public void Reset() { count = 0; }
             public void Dispose() { disposed = true; }
-            public bool disposed = false;
+            public volatile bool disposed = false;
             int count = 0;
         }
 

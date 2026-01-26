@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "X71PsqrF1xo=",
+  "success": true,
+  "projectFilePath": "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Packages\\com.sebaslab.svelto.common\\Svelto.Common\\Svelto.Common.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Seb\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.1.2\\system.runtime.compilerservices.unsafe.6.1.2.nupkg.sha512"
+  ],
+  "logs": []
+}

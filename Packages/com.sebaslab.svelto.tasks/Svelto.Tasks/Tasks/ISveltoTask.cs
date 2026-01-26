@@ -1,11 +1,12 @@
 using System;
+using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
     //ISveltoTask is not an enumerator just to avoid ambiguity and understand responsibilities in the other classes
     public interface ISveltoTask
     {
-        internal StepState Step(int taskIndex, int currentSpawnedTaskToRunIndex);
+        internal StepState Step(TombstoneHandle taskIndex, TombstoneHandle currentSpawnedTaskToRunIndex);
         internal void Stop();
         internal void Dispose();
 

@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using DBC.Tasks;
+using Svelto.DataStructures;
 
 namespace Svelto.Tasks.ExtraLean
 {
@@ -79,7 +80,7 @@ namespace Svelto.Tasks.ExtraLean
 #if DEBUG && !PROFILE_SVELTO
            Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
 #endif
-                runner.AddTask(this, (-1, -1));
+                runner.AddTask(this, (TombstoneHandle.Invalid, TombstoneHandle.Invalid));
             }
 
             public override string ToString()
@@ -132,7 +133,7 @@ namespace Svelto.Tasks.ExtraLean
             /// </summary>
             /// <param name="taskIndex"></param>
             /// <returns></returns>
-            StepState ISveltoTask.Step(int runningTaskIndexToReplace, int currentSpawnedTaskToRunIndex)
+            StepState ISveltoTask.Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle currentSpawnedTaskToRunIndex)
             {
 #if DEBUG && !PROFILE_SVELTO
                 return ExtraLeanSveltoTaskCommon.Step(ref _threadSafeSveltoTaskStates,
@@ -170,7 +171,7 @@ namespace Svelto.Tasks.ExtraLean
                 "A valid enumerator is required to enable an ExtraLeanSveltTask ".FastConcat(ToString()));
             Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
 #endif
-            runner.AddTask(this, (-1, -1));
+            runner.AddTask(this, (TombstoneHandle.Invalid, TombstoneHandle.Invalid));
         }
 
         public override string ToString()
@@ -210,7 +211,7 @@ namespace Svelto.Tasks.ExtraLean
         /// </summary>
         /// <param name="taskIndex"></param>
         /// <returns></returns>
-        StepState ISveltoTask.Step(int runningTaskIndexToReplace, int currentSpawnedTaskToRunIndex)
+        StepState ISveltoTask.Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle currentSpawnedTaskToRunIndex)
         {
 #if DEBUG && !PROFILE_SVELTO
     return ExtraLeanSveltoTaskCommon.Step(ref _threadSafeSveltoTaskStates,

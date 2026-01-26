@@ -90,7 +90,7 @@ public static class TaskRunnerExtensions
 
         if (_timeout > 0)
         {
-            var  then   = DateTime.UtcNow.AddMilliseconds(_timeout);
+            var  then  = DateTime.UtcNow.AddMilliseconds(_timeout);
 
             while (runner.hasTasks && DateTime.UtcNow < then)
             {

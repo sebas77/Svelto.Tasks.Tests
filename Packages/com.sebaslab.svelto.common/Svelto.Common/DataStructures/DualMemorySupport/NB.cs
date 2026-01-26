@@ -47,7 +47,7 @@ namespace Svelto.DataStructures
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [DebuggerTypeProxy(typeof(NBDebugProxy<>))]
-    readonly struct NBInternal<T> : IBuffer<T>where T : struct
+    internal readonly struct NBInternal<T> : IBuffer<T>where T : struct
     {
         /// <summary>
         /// Note: static constructors are NOT compiled by burst as long as there are no static fields in the struct
@@ -64,6 +64,19 @@ namespace Svelto.DataStructures
         {
             _ptr = array;
             _capacity = capacity;
+        }
+
+#if ENABLE_DEBUG_CHECKS
+        internal readonly unsafe int* _rwState;
+#endif
+
+        public unsafe NBInternal(IntPtr array, uint capacity, IntPtr rwStatePtr): this()
+        {
+            _ptr = array;
+            _capacity = capacity;
+#if ENABLE_DEBUG_CHECKS
+            _rwState = (int*)rwStatePtr;
+#endif
         }
 
         public void CopyTo(uint sourceStartIndex, T[] destination, uint destinationStartIndex, uint count)
@@ -192,9 +205,9 @@ namespace Svelto.DataStructures
     /// and can throw exceptions if the buffer is used in the wrong way.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly /*ref*/ struct NB<T> where T : struct
+    public ref struct NB<T> where T : struct
     {
-        readonly NBInternal<T> _bufferImplementation;
+        NBInternal<T> _bufferImplementation;
 
         internal NB(NBInternal<T> nbInternal)
         {
@@ -232,13 +245,100 @@ namespace Svelto.DataStructures
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-#if DEBUG && ENABLE_PARANOID_CHECKS
-                if (index >= _buffer.Length)
+#if DEBUG && !PROFILE_SVELTO
+                if (index >= _bufferImplementation.capacity)
                     throw new IndexOutOfRangeException("Paranoid check failed!");
 #endif
 
                 return ref _bufferImplementation[index];
             }
         }
+
+#if ENABLE_DEBUG_CHECKS
+        public unsafe Reader AsReader()
+        {
+            return new Reader(_bufferImplementation, new Sentinel(_bufferImplementation._rwState, Sentinel.readFlag));
+        }
+
+        public unsafe Writer AsWriter()
+        {
+            return new Writer(_bufferImplementation, new Sentinel(_bufferImplementation._rwState, Sentinel.writeFlag));
+        }
+#else
+        public Reader AsReader() { return new Reader(_bufferImplementation, default); }
+        public Writer AsWriter() { return new Writer(_bufferImplementation, default); }
+#endif
+
+        public static NB<T> Create(IntPtr array, int capacity, IntPtr rwStatePtr)
+        {
+#if ENABLE_DEBUG_CHECKS
+            return new NB<T>(new NBInternal<T>(array, (uint)capacity, rwStatePtr));
+#else
+            return new NB<T>(new NBInternal<T>(array, (uint)capacity));
+#endif
+        }
+
+        public ref struct Reader
+        {
+            NBInternal<T> _nb;
+            readonly TestThreadSafety _guard;
+
+            internal Reader(NBInternal<T> nb, Sentinel sentinel)
+            {
+                _nb = nb;
+                _guard = sentinel.TestThreadSafety();
+            }
+
+            public int capacity => _nb.capacity;
+
+            public ref T this[uint index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _nb[index];
+            }
+
+            public ref T this[int index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _nb[index];
+            }
+
+            public void Dispose()
+            {
+                _guard.Dispose();
+            }
+        }
+
+        public ref struct Writer
+        {
+            NBInternal<T> _nb;
+            readonly TestThreadSafety _guard;
+
+            internal Writer(NBInternal<T> nb, Sentinel sentinel)
+            {
+                _nb = nb;
+                _guard = sentinel.TestThreadSafety();
+            }
+
+            public int capacity => _nb.capacity;
+
+            public ref T this[uint index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _nb[index];
+            }
+
+            public ref T this[int index]
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => ref _nb[index];
+            }
+
+            public void Dispose()
+            {
+                _guard.Dispose();
+            }
+        }
     }
 }
+

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Svelto.Common;
+using Svelto.DataStructures;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
 using Svelto.Utilities;
@@ -126,6 +127,8 @@ namespace Svelto.Tasks
 
         public bool isStopping => _runnerData.waitForStop;
 
+        public bool isStarted => _runnerData != null && Volatile.Read(ref _runnerData._isStarted) == 1;
+
         public bool   isKilled                => _runnerData == null;
         public bool   isPaused                => _runnerData.isPaused;
         public string name                    => _runnerData.name;
@@ -139,17 +142,20 @@ namespace Svelto.Tasks
             return _runnerData.name;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Pause()
         {
             _runnerData.isPaused = true;
             Volatile.Write(ref _runnerData._quickThreadSpinning, (int)RunnerData.QuckLockinSpinningState.Acquire);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Resume()
         {
             _runnerData.isPaused = false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Flush()
         {
             _runnerData.StopAndFlush();
@@ -159,19 +165,22 @@ namespace Svelto.Tasks
         {
             if (isKilled == false)
             {
+                // Dispose must dispose both running and queued tasks.
+                // Reset+Stop triggers SveltoTaskRunner reset path, which disposes spawned + queued tasks.
                 _runnerData.StopAndFlush();
 
-                _runnerData.DrainAndDisposeQueuedTasks();
+                if (this.WaitForTasksDone(2000) == false)
+                    Console.LogWarning($"Tasks on runner {_runnerData.name} took too long to stop. it will be killed.");
 
-                TaskRunnerExtensions.WaitForTasksDone(this, 2000);
-
-                Kill(null);
+                Kill();
             }
 
             GC.SuppressFinalize(this);
         }
 
-        public void AddTask( in TTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddTask(in TTask task,
+            (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -179,6 +188,7 @@ namespace Svelto.Tasks
             _runnerData.StartTask(task, index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Stop()
         {
             if (isKilled == true)
@@ -186,16 +196,8 @@ namespace Svelto.Tasks
 
             _runnerData.Stop();
         }
-
-        public void Kill(Action onThreadKilled)
-        {
-            if (isKilled == true)
-                throw new MultiThreadRunnerException("Trying to kill a killed runner");
-
-            _runnerData.Kill(onThreadKilled);
-            _runnerData = null;
-        }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Kill()
         {
             if (isKilled == true)
@@ -245,6 +247,7 @@ namespace Svelto.Tasks
                     _lockingMechanism = QuickLockingMechanism;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void Stop()
             {
                 _flushingOperation.Stop(name);
@@ -252,6 +255,7 @@ namespace Svelto.Tasks
                 UnlockThread();
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void StopAndFlush()
             {
                 _flushingOperation.StopAndReset(name);
@@ -260,6 +264,7 @@ namespace Svelto.Tasks
                 UnlockThread();
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void Kill(Action onThreadKilled)
             {
                 _flushingOperation.Kill(name);
@@ -270,7 +275,7 @@ namespace Svelto.Tasks
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void StartTask(in TTask task, (int runningTaskIndexToReplace, int parentSpawnedTaskIndex) index)
+            internal void StartTask(in TTask task, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
             {
                 var processor = _processor;
                 if (processor == null)
@@ -285,25 +290,18 @@ namespace Svelto.Tasks
                 UnlockThread();
             }
 
-            internal void DrainAndDisposeQueuedTasks()
-            {
-                if (_processor is SveltoTaskRunner<TTask>.IQueueDrainer drainer)
-                    drainer.DrainAndDisposeQueuedTasks();
-
-                while (_queuedBeforeInit.TryDequeue(out TTask task))
-                    task.Dispose();
-            }
-
             public void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
             {
                 _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, NUMBER_OF_INITIAL_COROUTINE, name);
 
                 while (_queuedBeforeInit.TryDequeue(out TTask task))
-                    _processor.AddTask(task, (0, -1));
+                    _processor.AddTask(task, (default, TombstoneHandle.Invalid));
             }
 
             internal void RunCoroutineFiber()
             {
+                Volatile.Write(ref _isStarted, 1);
+
                 try
                 {
                     while (true)
@@ -366,7 +364,9 @@ namespace Svelto.Tasks
 
             internal bool isPaused
             {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => _flushingOperation.paused;
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 set
                 {
                     if (value)
@@ -379,8 +379,14 @@ namespace Svelto.Tasks
                 }
             }
 
-            internal bool waitForStop => _flushingOperation.stopping;
-
+            internal bool waitForStop
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get
+                {
+                    return _flushingOperation.stopping;
+                }
+            }
 
             /// <summary>
             /// More reacting pause/resuming system. It spins for a while before reverting to the relaxing locking
@@ -388,30 +394,34 @@ namespace Svelto.Tasks
             /// Acquire: The thread is spinning/waiting.
             /// Release: The thread has been signaled to wake up (by AddTask, Resume, Stop, etc.).
             /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void QuickLockingMechanism()
             {
-                var quickIterations = 0;
-                var frequency       = 128;
+               
+                    var quickIterations = 0;
+                    var frequency       = 128;
 
-                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
+                    Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
 
-                if (waitForStop || (isPaused == false && (numberOfQueuedTasks > 0 || numberOfRunningTasks > 0)))
-                {
-                    Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
-                    return;
-                }
-
-                while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire &&
-                       quickIterations                         < 4096)
-                {
-                    if (waitForStop) //we need to flush the queue, so the thread cannot stop
+                    if (waitForStop || (isPaused == false && (numberOfQueuedTasks > 0 || numberOfRunningTasks > 0)))
+                    {
+                        Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
                         return;
+                    }
 
-                    ThreadUtility.Wait(ref quickIterations, frequency);
-                }
+                    while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire &&
+                           quickIterations                         < 4096)
+                    {
+                        if (waitForStop) //we need to flush the queue, so the thread cannot stop
+                            return;
 
-                //After the spinning, just revert to the normal locking mechanism
-                RelaxedLockingMechanism();
+                        ThreadUtility.Wait(ref quickIterations, frequency);
+                    }
+               
+              
+                    //After the spinning, just revert to the normal locking mechanism
+                    RelaxedLockingMechanism();
+               
             }
 
             /// <summary>
@@ -421,27 +431,32 @@ namespace Svelto.Tasks
             /// and ManualResetEventSlim (spinning too much). This is the best solution:
             /// DO NOT TOUCH THE NUMBERS, THEY ARE THE BEST BALANCE BETWEEN CPU OCCUPATION AND RESUME SPEED
             /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void RelaxedLockingMechanism()
             {
-                var       quickIterations = 0;
-                var       frequency       = 64;
+              
+                    var       quickIterations = 0;
+                    var       frequency       = 64;
 
-                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
+                    Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Acquire);
 
-                if (waitForStop || (isPaused == false && (numberOfQueuedTasks > 0 || numberOfRunningTasks > 0)))
-                {
-                    Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
-                    return;
-                }
+                    if (waitForStop || (isPaused == false && (numberOfQueuedTasks > 0 || numberOfRunningTasks > 0)))
+                    {
+                        Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
 
-                _watchForLocking.Restart();
+                        return;
+                    }
 
-                while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire)
-                {
-                    ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
-                }
+                    _watchForLocking.Restart();
+
+                    while (Volatile.Read(ref _quickThreadSpinning) == (int)QuckLockinSpinningState.Acquire)
+                    {
+                        ThreadUtility.LongWait(ref quickIterations, _watchForLocking, frequency);
+                    }
+             
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void WaitForInterval()
             {
                 var quickIterations = 0;
@@ -454,6 +469,13 @@ namespace Svelto.Tasks
                     if (waitForStop == true)
                         return;
                 }
+            }
+            
+            
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void UnlockThread()
+            {
+                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
             }
 
             internal readonly string name;
@@ -474,6 +496,8 @@ namespace Svelto.Tasks
             /// </summary>
             internal int _quickThreadSpinning;
 
+            internal int _isStarted;
+
             internal enum QuckLockinSpinningState
             {
                 Acquire = 0,
@@ -487,11 +511,6 @@ namespace Svelto.Tasks
             IProcessSveltoTasks<TTask> _processor;
 
             readonly ConcurrentQueue<TTask> _queuedBeforeInit = new ConcurrentQueue<TTask>();
-
-            void UnlockThread()
-            {
-                Volatile.Write(ref _quickThreadSpinning, (int)QuckLockinSpinningState.Release);
-            }
         }
 
         RunnerData _runnerData;

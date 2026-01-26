@@ -304,11 +304,9 @@ namespace Svelto.Common
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //todo unit test
         public static uint Align4(uint input) => (uint) ((input + (4 - 1)) & ~(4 - 1));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //todo unit test
         public static uint Pad4(uint input) => (uint) (-input & (4 - 1));
 
         static long SignedCapacity(uint newCapacity)

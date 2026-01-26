@@ -22,7 +22,7 @@ namespace Svelto.Tasks.Profiler
         static readonly FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>> taskInfos =
             new FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>>();
 
-        public static StepState MonitorUpdateDuration<T>( ref T sveltoTask, string runnerName, (int index, int currentSpawnedTaskToRunIndex) valueTuple) where T : ISveltoTask
+        public static StepState MonitorUpdateDuration<T>( ref T sveltoTask, string runnerName, (TombstoneHandle index, TombstoneHandle currentSpawnedTaskToRunIndex) valueTuple) where T : ISveltoTask
         {
             var taskName = sveltoTask.name;
 #if ENABLE_PIX_EVENTS

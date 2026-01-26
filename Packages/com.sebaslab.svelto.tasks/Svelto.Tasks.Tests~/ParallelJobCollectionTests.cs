@@ -14,6 +14,8 @@ namespace Svelto.Tasks.Tests
             {
                 Interlocked.Increment(ref results[index]);
             }
+
+            public void Dispose() { }
         }
 
         [Test]
@@ -36,9 +38,14 @@ namespace Svelto.Tasks.Tests
                 Assert.That(job.results[i], Is.EqualTo(1), $"Index {i} was not updated correctly");
         }
 
-        struct DisposableJob : ISveltoJob, System.IDisposable
+        sealed class JobCounter
         {
             public int disposeCounter;
+        }
+
+        struct DisposableJob : ISveltoJob
+        {
+            public JobCounter counter;
 
             public void Update(int index)
             {
@@ -46,21 +53,22 @@ namespace Svelto.Tasks.Tests
 
             public void Dispose()
             {
-                Interlocked.Increment(ref disposeCounter);
+                Interlocked.Increment(ref counter.disposeCounter);
             }
         }
 
         [Test]
         public void MultiThreadedParallelJobCollection_Dispose_DisposesJobs()
         {
-            var job = new DisposableJob();
+            var counter = new JobCounter();
+            var job = new DisposableJob { counter = counter };
 
             var collection = new MultiThreadedParallelJobCollection<DisposableJob>("dispose-test", 4, false);
             collection.Add(job, 1024);
 
             collection.Dispose();
 
-            Assert.That(job.disposeCounter, Is.EqualTo(1));
+            Assert.That(counter.disposeCounter, Is.EqualTo(4));
         }
     }
 }

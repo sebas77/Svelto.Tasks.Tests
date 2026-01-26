@@ -10,33 +10,31 @@ namespace Svelto.Tasks.Tests
         public void SerialTaskCollection_ExecutesTasksInOrder_AndIsReusable()
         {
             // What we are testing:
-            // SerialTaskCollection runs tasks one after another and can be reused after Reset().
+            // SerialTaskCollection runs tasks one after another (no overlap) and can be reused after Reset().
             var serial = new SerialTaskCollection("serial");
 
             var log = new List<int>();
 
-            IEnumerator<TaskContract> Task(int id)
+            IEnumerator<TaskContract> TwoPhaseTask(int id)
             {
-                log.Add(id);
-                yield break;
+                log.Add(id); // start
+                yield return TaskContract.Yield.It;
+                log.Add(-id); // finish
             }
 
-            serial.Add(Task(1));
-            serial.Add(Task(2));
-            serial.Add(Task(3));
+            serial.Add(TwoPhaseTask(1));
+            serial.Add(TwoPhaseTask(2));
+            serial.Add(TwoPhaseTask(3));
 
             serial.Complete(1000);
 
-            Assert.That(log.Count, Is.EqualTo(3));
-            Assert.That(log[0], Is.EqualTo(1));
-            Assert.That(log[1], Is.EqualTo(2));
-            Assert.That(log[2], Is.EqualTo(3));
+            Assert.That(log, Is.EqualTo(new[] { 1, -1, 2, -2, 3, -3 }));
 
             serial.Clear();
             log.Clear();
 
-            serial.Add(Task(4));
-            serial.Add(Task(5));
+            serial.Add(TwoPhaseTask(4));
+            serial.Add(TwoPhaseTask(5));
 
             using (var runner = new SyncRunner("sync2"))
             {
@@ -44,43 +42,42 @@ namespace Svelto.Tasks.Tests
                 runner.WaitForTasksDoneRelaxed(1000);
             }
 
-            Assert.That(log.Count, Is.EqualTo(2));
-            Assert.That(log[0], Is.EqualTo(4));
-            Assert.That(log[1], Is.EqualTo(5));
+            Assert.That(log, Is.EqualTo(new[] { 4, -4, 5, -5 }));
         }
 
         [Test]
-        public void ParallelTaskCollection_CompletesAllTasks()
+        public void ParallelTaskCollection_AllowsTasksToOverlap()
         {
             // What we are testing:
-            // ParallelTaskCollection progresses tasks until all complete.
+            // ParallelTaskCollection progresses tasks so that multiple tasks can be in-flight at the same time.
 
             var parallel = new ParallelTaskCollection("parallel", 4);
 
-            var a = 0;
-            var b = 0;
+            var log = new List<int>();
 
-            IEnumerator<TaskContract> TaskA()
+            IEnumerator<TaskContract> TwoPhaseTask(int id)
             {
-                a++;
+                log.Add(id); // start
                 yield return TaskContract.Yield.It;
-                a++;
+                log.Add(-id); // finish
             }
 
-            IEnumerator<TaskContract> TaskB()
-            {
-                b++;
-                yield return TaskContract.Yield.It;
-                b++;
-            }
+            parallel.Add(TwoPhaseTask(1));
+            parallel.Add(TwoPhaseTask(2));
 
-            parallel.Add(TaskA());
-            parallel.Add(TaskB());
+            // One MoveNext progresses all tasks once. With a parallel collection, both tasks can "start"
+            // before either is resumed to "finish".
+            parallel.MoveNext();
+
+            Assert.That(log.Count, Is.EqualTo(2));
+            Assert.That(log[0] > 0, Is.True);
+            Assert.That(log[1] > 0, Is.True);
 
             parallel.Complete(1000);
 
-            Assert.That(a, Is.EqualTo(2));
-            Assert.That(b, Is.EqualTo(2));
+            Assert.That(log, Is.EquivalentTo(new[] { 1, 2, -1, -2 }));
+            Assert.That(log[0] > 0, Is.True);
+            Assert.That(log[1] > 0, Is.True);
         }
 
         [Test]

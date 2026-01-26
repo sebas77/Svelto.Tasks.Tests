@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.FlowModifiers
@@ -11,7 +12,7 @@ namespace Svelto.Tasks.FlowModifiers
             _stopWatch = new Stopwatch();
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref TombstoneHandle nextIndex, int coroutineCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
             if ((float)_stopWatch.Elapsed.TotalMilliseconds > _maxMs)
@@ -22,14 +23,14 @@ namespace Svelto.Tasks.FlowModifiers
                 return false;
             }
 
-            if (nextIndex >= coroutineCount)
-                nextIndex = 0; //restart iteration and continue
+            if ((int)nextIndex >= coroutineCount)
+                nextIndex = new TombstoneHandle(0); //restart iteration and continue
 
             return true;
         }
 
 
-        public bool CanProcessThis(ref int index)
+        public bool CanProcessThis(ref TombstoneHandle index)
         {
             return true;
         }

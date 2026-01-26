@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks.Parallelism;
 
@@ -162,6 +163,124 @@ namespace Svelto.Tasks.Tests
 
                 Assert.That(token.count, Is.EqualTo(1));
             }
+        }
+
+        [Test]
+        public void MultiThreadedParallelTaskCollection_DisposeWithoutStarting_DisposesTasks()
+        {
+            var counter = new DisposeCounter();
+
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_without_start", 2, false))
+            {
+                collection.Add(new DisposableParallelTask(counter));
+                collection.Add(new DisposableParallelTask(counter));
+
+                // Dispose without ever calling MoveNext/Complete
+                collection.Dispose();
+            }
+
+            Assert.That(counter.count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void MultiThreadedParallelTaskCollection_DisposeWhileRunning_DisposesTasks()
+        {
+            var counter = new DisposeCounter();
+
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_while_running", 2, false))
+            {
+                collection.Add(new DisposableBlockingParallelTask(counter));
+                collection.Add(new DisposableBlockingParallelTask(counter));
+
+                // Start
+                collection.MoveNext();
+                Assert.That(collection.isRunning, Is.True);
+
+                // Dispose while tasks are running
+                collection.Dispose();
+            }
+
+            Assert.That(counter.count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void MultiThreadedParallelTaskCollection_StopThenDispose_DisposesTasks()
+        {
+            var counter = new DisposeCounter();
+
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("stop_then_dispose", 2, false))
+            {
+                collection.Add(new DisposableBlockingParallelTask(counter));
+                collection.Add(new DisposableBlockingParallelTask(counter));
+
+                collection.MoveNext();
+                Assert.That(collection.isRunning, Is.True);
+
+                collection.Stop(2000);
+                Assert.That(collection.isRunning, Is.False);
+
+                collection.Dispose();
+            }
+
+            Assert.That(counter.count, Is.EqualTo(2));
+        }
+
+        sealed class DisposeCounter
+        {
+            public int count;
+        }
+
+        struct DisposableParallelTask : IParallelTask
+        {
+            public DisposableParallelTask(DisposeCounter counter)
+            {
+                _counter = counter;
+                _disposed = 0;
+            }
+
+            public object Current => null;
+
+            public bool MoveNext() => false;
+
+            public void Reset() {}
+
+            public void Dispose()
+            {
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                    Interlocked.Increment(ref _counter.count);
+            }
+
+            readonly DisposeCounter _counter;
+            int _disposed;
+        }
+
+        struct DisposableBlockingParallelTask : IParallelTask
+        {
+            public DisposableBlockingParallelTask(DisposeCounter counter)
+            {
+                _counter = counter;
+                _disposed = 0;
+            }
+
+            public object Current => null;
+
+            public bool MoveNext()
+            {
+                // Keep the task alive until stopped/disposed.
+                Thread.SpinWait(64);
+                return true;
+            }
+
+            public void Reset() {}
+
+            public void Dispose()
+            {
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                    Interlocked.Increment(ref _counter.count);
+            }
+
+            readonly DisposeCounter _counter;
+            int _disposed;
         }
     }
 }

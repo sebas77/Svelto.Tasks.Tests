@@ -1,3 +1,5 @@
+using Svelto.DataStructures;
+
 namespace Svelto.Tasks.Internal
 {
     //Note: SerialFlow was once existing. However it was removed because it needed way to much code trickery to work
@@ -5,8 +7,8 @@ namespace Svelto.Tasks.Internal
     
     public interface IFlowModifier
     {
-        bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T : ISveltoTask;
-        bool CanProcessThis(ref int index);
+        bool CanMoveNext<T>(ref TombstoneHandle nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T : ISveltoTask;
+        bool CanProcessThis(ref TombstoneHandle index);
         void Reset();
     }
 }

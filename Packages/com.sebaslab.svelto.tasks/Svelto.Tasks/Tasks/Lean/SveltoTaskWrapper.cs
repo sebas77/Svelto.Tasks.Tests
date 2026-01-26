@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
 
@@ -32,7 +33,7 @@ namespace Svelto.Tasks.Lean
             _current = default;
         }
 
-        internal StepState Step(int runningTaskIndexToReplace, int parentSpawnedTaskIndex)
+        internal StepState Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex)
         {
             //if the tasks returned an extraLeanEnumerator, the parent task takes responsibility to run it. This is because extraLeanEnumerator
             //can run only on extra lean runners, while lean tasks runs only on lean runners.
