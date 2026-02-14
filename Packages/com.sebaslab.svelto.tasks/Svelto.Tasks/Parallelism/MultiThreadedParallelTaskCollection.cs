@@ -151,12 +151,12 @@ namespace Svelto.Tasks.Parallelism
 
         void InitializeThreadsAndData(uint numberOfThreads, bool tightTasks)
         {
-            _runners = new Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator<TTask>>[numberOfThreads];
+            _runners = new Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator>[numberOfThreads];
 
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator<TTask>>(
+                _runners[i] = new Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator>(
                     "MultiThreadedParallelRunner ".FastConcat(_name, " #").FastConcat(i), false, tightTasks);
         }
 
@@ -185,9 +185,9 @@ namespace Svelto.Tasks.Parallelism
             return Volatile.Read(ref _counter) > 0;
         }
 
-        WrapEnumerator<TTask> Wrap(TTask task)
+        WrapEnumerator Wrap(in TTask task)
         {
-            return new WrapEnumerator<TTask>(task, _decrementConcurrentOperationsCounterDelegate);
+            return new WrapEnumerator(task, _decrementConcurrentOperationsCounterDelegate);
         }
 
         void DecrementConcurrentOperationsCounter()
@@ -195,7 +195,7 @@ namespace Svelto.Tasks.Parallelism
             Interlocked.Decrement(ref _counter);
         }
 
-        protected Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator<TTask>>[] _runners;
+        protected Svelto.Tasks.ExtraLean.Struct.MultiThreadRunner<WrapEnumerator>[] _runners;
         readonly List<TTask>  _parallelTasks = new List<TTask>();
 
         int  _counter;
@@ -204,9 +204,9 @@ namespace Svelto.Tasks.Parallelism
         readonly string _name;
         readonly Action _decrementConcurrentOperationsCounterDelegate;
         
-        protected struct WrapEnumerator<TTask> : IEnumerator, IDisposable where TTask : IParallelTask
+        protected struct WrapEnumerator : IEnumerator, IDisposable
         {
-            public WrapEnumerator(TTask task, Action decrementConcurrentOperationsCounter)
+            public WrapEnumerator(in TTask task, Action decrementConcurrentOperationsCounter)
             {
                 _task = task;
                 _decrementConcurrentOperationsCounter = decrementConcurrentOperationsCounter;

@@ -3,29 +3,30 @@
 #endif
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Threading;
 #if NETFX_CORE
 using Windows.System.Diagnostics;
 #else
 using System.Diagnostics;
 #endif
-using System.Text;
-using System.Threading;
 using Svelto.DataStructures;
 using Svelto.Utilities;
 
 namespace Svelto
 {
-    public static class Console
+    public static partial class Console
     {
         static readonly HashSet<Type> _loggersType;
-        static readonly ThreadLocal<StringBuilder> _threadSafeStrings;
         static readonly FasterList<ILogger>        _loggers;
 
         public static bool batchLog = false;
 
         static Console()
         {
-            _threadSafeStrings = new ThreadLocal<StringBuilder>(() => new StringBuilder(256));
+            StringBuilder ValueFactory() => new StringBuilder();
+
+            _stringBuilders = new ThreadLocal<StringBuilder>(ValueFactory);
             _loggers           = new FasterList<ILogger>();
             _loggersType = new HashSet<Type>();
             #if UNITY_5_3_OR_NEWER
@@ -33,22 +34,6 @@ namespace Svelto
             #else
             SimpleLogger.Init();
             #endif
-        }
-
-        static StringBuilder _stringBuilder
-        {
-            get
-            {
-                try
-                {
-                    return _threadSafeStrings.Value;
-                }
-                catch
-                {
-                    return
-                        new StringBuilder(); //this is just to handle finalizer that could be called after the _threadSafeStrings is finalized. So pretty rare
-                }
-            }
         }
 
         public static void AddLogger<T>(T log) where T:ILogger
@@ -87,7 +72,7 @@ namespace Svelto
 
         public static void LogError(string txt, Dictionary<string, string> extraData = null)
         {
-            var builder = _stringBuilder;
+            var builder = stringBuilder;
 
             builder.Length = 0;
             builder.Append("-!!!!!!-> ").Append(txt);
@@ -114,7 +99,7 @@ namespace Svelto
                 InternalLog($"-!!!!!!->Internal Exception - Level [{level++}] ", LogType.Exception, false, tracingE);
             }
             
-            var builder = _stringBuilder;
+            var builder = stringBuilder;
             builder.Length = 0;
             builder.Append(toPrint).Append(exception.Message);
 
@@ -131,7 +116,7 @@ namespace Svelto
 
         public static void LogWarning(string txt)
         {
-            var builder = _stringBuilder;
+            var builder = stringBuilder;
             builder.Length = 0;
             builder.Append("------> ").Append(txt);
 
@@ -166,7 +151,24 @@ namespace Svelto
             _loggers[0]?.CompressLogsToZipAndShow(zipName);
         }
 
+        internal static StringBuilder stringBuilder
+        {
+            get
+            {
+                try
+                {
+                    return _stringBuilders.Value;
+                }
+                catch
+                {
+                    return new StringBuilder(); //this is just to handle finalizer that could be called after the _stringBuilders is finalized. So pretty rare
+                }
+            }
+        }
+
         public static event Action<string, LogType, Exception> logMessage;
         public static event Action<Exception, string> onException;
+
+        static readonly ThreadLocal<StringBuilder> _stringBuilders;
     }
 }

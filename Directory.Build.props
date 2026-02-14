@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Keep NuGet restore + generated imports out of default obj/ -->
+    <MSBuildProjectExtensionsPath Condition="'$(MSBuildProjectExtensionsPath)' == ''">obj~\</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+</Project>

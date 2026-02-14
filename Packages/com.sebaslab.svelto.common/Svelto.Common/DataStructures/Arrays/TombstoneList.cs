@@ -24,6 +24,7 @@ namespace Svelto.DataStructures
         }
 
         public static explicit operator int(TombstoneHandle handle) => (int)handle.index;
+        public static explicit operator uint(TombstoneHandle handle) => (uint)handle.index;
 
         public readonly int index;
         public bool IsInvalid => index == Invalid.index;
@@ -91,7 +92,7 @@ namespace Svelto.DataStructures
             {
                 ValidateIndexAndTombstone(index);
 
-                return ref _buffer[(int)index].Item;
+                return ref _buffer[index.index].Item;
             }
         }
         

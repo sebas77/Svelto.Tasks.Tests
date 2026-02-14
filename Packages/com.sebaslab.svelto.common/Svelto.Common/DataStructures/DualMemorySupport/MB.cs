@@ -17,7 +17,7 @@ namespace Svelto.DataStructures
     /// but the count will stay zero. It's not the MB responsibility to track the count
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    struct MBInternal<T>:IBuffer<T> 
+    internal struct MBInternal<T>:IBuffer<T> 
     {
         public MBInternal(T[]  array) : this()
         {

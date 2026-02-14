@@ -10,13 +10,12 @@ namespace Svelto.Utilities
     {
         public static int CallsDepthToGetHere = 4;
         
-        public static void Init()
+        internal static void Init()
         {
             Console.AddLogger(new DefaultUnityLogger());
         }
 
-        public void Log(string txt, LogType type = LogType.Log, bool showLogStack = true, Exception e = null,
-            Dictionary<string, string> data = null)
+        void ILogger.Log(string txt, LogType type, bool showLogStack, Exception e, Dictionary<string, string> data)
         {
             try
             {
@@ -44,7 +43,7 @@ namespace Svelto.Utilities
                 
                 var logFormatter = ConsoleUtilityForUnity.LogFormatter(txt, type, showLogStack, e, frame, dataString, stackTrace);
 
-                var defaultLogHandler = ConsoleUtilityForUnity.defaultLogHandler;
+                var defaultLogHandler = Console.previousLogHandler;
                 switch (type)
                 {
                     case LogType.Log:
@@ -125,7 +124,7 @@ namespace Svelto.Utilities
             }
         }
 
-        public void OnLoggerAdded()
+        void ILogger.OnLoggerAdded()
         {
             MAINTHREADID = Environment.CurrentManagedThreadId;
             //We want to keep the stack for not Svelto.Console log.

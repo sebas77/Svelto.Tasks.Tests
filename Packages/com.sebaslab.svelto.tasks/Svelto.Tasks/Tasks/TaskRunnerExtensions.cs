@@ -265,8 +265,7 @@ public static class TaskRunnerExtensions
                 while (enumerator.MoveNext())
                     ThreadUtility.Wait(ref quickIterations);
             else //careful, a tight loop may prevent other thread from running as it would take 100% of the core
-                while (enumerator.MoveNext())
-                    ;
+                while (enumerator.MoveNext()) ;
         }
     }
 }

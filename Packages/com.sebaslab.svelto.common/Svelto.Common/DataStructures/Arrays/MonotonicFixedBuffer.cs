@@ -87,7 +87,7 @@ namespace Svelto.DataStructures
                     return false;
 
                 if ((uint)(index - head) >= _expectedCount)
-                    throw new MonotonicWindowBufferOverflowException($"Index out of window range, expected count: {_expectedCount}, index: {index}, head: {head}");
+                    throw new MonotonicWindowBufferOverflowException("Index out of window range");
             }
 
             int slot = (int)(((uint)index) & _mask);

@@ -382,14 +382,14 @@ namespace Svelto.Utilities
             {
                 case LogType.Error:
                 case LogType.Exception:
-                    ConsoleUtilityForUnity.defaultLogHandler.LogFormat(UnityEngine.LogType.Error, null, str);
+                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Error, null, str);
                     break;
                 case LogType.Log:
                 case LogType.LogDebug:
-                    ConsoleUtilityForUnity.defaultLogHandler.LogFormat(UnityEngine.LogType.Log, null, str);
+                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Log, null, str);
                     break;
                 case LogType.Warning:
-                    ConsoleUtilityForUnity.defaultLogHandler.LogFormat(UnityEngine.LogType.Warning, null, str);
+                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Warning, null, str);
                     break;
             }
 #endif

@@ -47,7 +47,7 @@ namespace Svelto.DataStructures
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [DebuggerTypeProxy(typeof(NBDebugProxy<>))]
-    internal readonly struct NBInternal<T> : IBuffer<T>where T : struct
+    internal struct NBInternal<T> : IBuffer<T>where T : struct
     {
         /// <summary>
         /// Note: static constructors are NOT compiled by burst as long as there are no static fields in the struct
@@ -81,21 +81,15 @@ namespace Svelto.DataStructures
 
         public void CopyTo(uint sourceStartIndex, T[] destination, uint destinationStartIndex, uint count)
         {
-            //    using (_threadSentinel.TestThreadSafety())
+            for (int i = 0; i < count; i++)
             {
-                for (int i = 0; i < count; i++)
-                {
-                    destination[i] = this[i];
-                }
+                destination[i] = this[i];
             }
         }
 
         public void Clear()
         {
-            //  using (_threadSentinel.TestThreadSafety())
-            {
-                MemoryUtilities.MemClear<T>(_ptr, _capacity);
-            }
+            MemoryUtilities.MemClear<T>(_ptr, _capacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -128,10 +122,7 @@ namespace Svelto.DataStructures
                     if (index >= _capacity)
                         throw new Exception($"NativeBuffer - out of bound access: index {index} - capacity {capacity}");
 #endif
-                    //     using (_threadSentinel.TestThreadSafety())
-                    {
-                        return ref Unsafe.AsRef<T>((void*)(_ptr + (int)index * MemoryUtilities.SizeOf<T>()));
-                    }
+                    return ref Unsafe.AsRef<T>((void*)(_ptr + (int)index * MemoryUtilities.SizeOf<T>()));
                 }
             }
         }
@@ -147,10 +138,7 @@ namespace Svelto.DataStructures
                     if (index < 0 || index >= _capacity)
                         throw new Exception($"NativeBuffer - out of bound access: index {index} - capacity {capacity}");
 #endif
-                    //                  using (_threadSentinel.TestThreadSafety())
-                    {
-                        return ref Unsafe.AsRef<T>((void*)(_ptr + index * MemoryUtilities.SizeOf<T>()));
-                    }
+                    return ref Unsafe.AsRef<T>((void*)(_ptr + index * MemoryUtilities.SizeOf<T>()));
                 }
             }
         }
@@ -167,35 +155,6 @@ namespace Svelto.DataStructures
         [Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
 #endif
         readonly IntPtr _ptr;
-
-//        readonly Sentinel _threadSentinel;
-
-//        //Todo: this logic is not completed yet, WIP
-//        public NBParallelReader AsReader()
-//        {
-//            return new NBParallelReader(this, new Sentinel(this._ptr, Sentinel.readFlag));
-//        }
-//
-//        public NBParallelWriter AsWriter()
-//        {
-//            return new NBParallelWriter(this, new Sentinel(this._ptr, Sentinel.writeFlag));
-//        }
-//
-//        public struct NBParallelReader
-//        {
-//            public NBParallelReader(NB<T> nb, Sentinel sentinel)
-//            {
-//                throw new NotImplementedException();
-//            }
-//        }
-//        
-//        public struct NBParallelWriter
-//        {
-//            public NBParallelWriter(NB<T> nb, Sentinel sentinel)
-//            {
-//                throw new NotImplementedException();
-//            }
-//        }
     }
 
     /// <summary>
@@ -291,13 +250,13 @@ namespace Svelto.DataStructures
 
             public int capacity => _nb.capacity;
 
-            public ref T this[uint index]
+            public ref readonly T this[uint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => ref _nb[index];
             }
 
-            public ref T this[int index]
+            public ref readonly T this[int index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => ref _nb[index];

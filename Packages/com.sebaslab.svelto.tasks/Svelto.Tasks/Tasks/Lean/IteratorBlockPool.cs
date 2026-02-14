@@ -3,56 +3,51 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks.Lean
 {
-    public class PooledIteratorBlock<P>:IEnumerator<TaskContract> where P : class, new()
+    //Wrap the iterator block in a pooled wrapper, so that we can reuse the same iterator block without having to allocate new ones every time.
+    //Data is a class that can be used to store any data that the iterator block needs to run, so that we can reuse the same iterator block with different data.
+    //for this reason Data must be a class, so that it's value can be changed without having to change the reference to the iterator block.
+    public class PooledIteratorBlock<T>:IEnumerator<TaskContract> where T : class, new()
     {
         IEnumerator<TaskContract> iteratorBlock;
-        P          data;
-        IteratorBlockPool<P> pool;
+        T data;
+        IteratorBlockPool<T> pool;
 
-        public PooledIteratorBlock( IEnumerator<TaskContract> iEnumerator, P data, IteratorBlockPool<P> pool)
+        public PooledIteratorBlock(IEnumerator<TaskContract> iEnumerator, T data, IteratorBlockPool<T> pool)
         { 
             iteratorBlock = iEnumerator;
             this.pool = pool;
             this.data = data;
         }
 
-        public void Refresh(IEnumerator<TaskContract> iEnumerator)
-        {
-            iteratorBlock = iEnumerator;
-        }
-
-        public void Release()
-        {
-            pool.Release(data, this);
-        }
-        
         public bool MoveNext()
         {
             var canMove = iteratorBlock.MoveNext();
             if (canMove == false || iteratorBlock.Current is TaskContract taskContract && taskContract.breakMode != null
              && taskContract.breakMode.AnyBreak)
             {
-                Release();
+                pool.Return(data, this);
                 return false;
             }
 
             return true;
         }
+        
+        public override string ToString() => pool.name;
+
+        public void Dispose() => iteratorBlock?.Dispose();
+
         public void Reset() => throw new NotImplementedException();
-        public object Current => iteratorBlock.Current;
+        public object Current => throw new NotImplementedException();
 
         TaskContract IEnumerator<TaskContract>.Current => iteratorBlock.Current;
-        
-        public override string ToString()
-        {
-            return pool.name;
-        }
-
-        public void Dispose()
-        {
-            iteratorBlock?.Dispose();
-        }
     }
+    
+    // The idea behind this class is to pool the iterator blocks, so that we can reuse them without having to allocate new ones every time.
+    // Iterators can be pooled thanks to the use of the following patter:
+    //  while (true) infinite loop, the state machine never ends.
+//      {
+    //    yield return TaskContract.Break.It; special yield that signals the end of the iteration, but the state machine is not ended, so it can be reused.
+  //    }
     public class IteratorBlockPool<P> where P : class, new()
     {
         readonly Stack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)> _pool = new Stack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)>();
@@ -71,17 +66,24 @@ namespace Svelto.Tasks.Lean
             {
                 var data = new P();
 
-                return (data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
+                Return(data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
             }
 
-            var result = _pool.Pop();
-            result.pooledIteratorBlock.Refresh(_iteratorBlock(result.data));
-            return result;
+            return _pool.Pop();
         }
 
-        public void Release(P data, PooledIteratorBlock<P> pooledIteratorBlock)
+        public void Return(P data, PooledIteratorBlock<P> pooledIteratorBlock)
         {
             _pool.Push((data, pooledIteratorBlock));
+        }
+
+        public void Dispose()
+        {
+            while (_pool.Count > 0)
+            {
+                var (data, pooledIteratorBlock) = _pool.Pop();
+                pooledIteratorBlock.Dispose();
+            }
         }
     }
 }

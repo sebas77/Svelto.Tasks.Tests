@@ -3,9 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
-using System.Threading;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 namespace Svelto.Utilities
 {
@@ -15,11 +13,7 @@ namespace Svelto.Utilities
 
         static ConsoleUtilityForUnity()
         {
-            StringBuilder ValueFactory() => new StringBuilder();
-
-            stringBuilder = new ThreadLocal<StringBuilder>(ValueFactory);
             projectFolder = Application.dataPath.Replace("Assets", "");
-            defaultLogHandler = Debug.unityLogger.logHandler;
         }
 
         public static string LogFormatter(string txt, LogType type, bool showLogStack, Exception e, string frame,
@@ -104,7 +98,7 @@ namespace Svelto.Utilities
         /// <returns></returns>
         static string ExtractFormattedStackTrace(StackTrace stackTrace)
         {
-            var builder = _stringBuilder;
+            var builder = Svelto.Console.stringBuilder;
 
             builder.Length = 0;
 
@@ -215,24 +209,6 @@ namespace Svelto.Utilities
             sb.Append("\n");
         }
 
-        static StringBuilder _stringBuilder
-        {
-            get
-            {
-                try
-                {
-                    return stringBuilder.Value;
-                }
-                catch
-                {
-                    return new StringBuilder(); //this is just to handle finalizer that could be called after the _threadSafeStrings is finalized. So pretty rare
-                }
-            }
-        }
-
-        public static ILogHandler defaultLogHandler;
-
-        static readonly ThreadLocal<StringBuilder> stringBuilder;
         static readonly string projectFolder;
     }
 }

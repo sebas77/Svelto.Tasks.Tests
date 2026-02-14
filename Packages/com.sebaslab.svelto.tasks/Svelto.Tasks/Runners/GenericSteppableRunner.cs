@@ -53,7 +53,7 @@ namespace Svelto.Tasks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTask(in TTask task,
-            (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
+            (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
         {
             if (_flushingOperation.kill == true)
                 throw new DBC.Tasks.PreconditionException($"cannot add a task to a killed runner {_name}");

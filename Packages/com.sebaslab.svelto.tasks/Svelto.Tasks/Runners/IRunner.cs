@@ -15,6 +15,6 @@ namespace Svelto.Tasks
 
     public interface IRunner<T> : IRunner where T : ISveltoTask
     {
-        void AddTask(in T task, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index);
+        void AddTask(in T task, (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index);
     }
 }

@@ -17,7 +17,7 @@ namespace Svelto.Tasks.FlowModifiers
             _stopWatch       = new Stopwatch();
         }
 
-        public bool CanMoveNext<T>(ref TombstoneHandle nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
+        public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted) where T:ISveltoTask
         {
             if ((float)_stopWatch.Elapsed.TotalMilliseconds > _maxMilliseconds)
                 return false;
@@ -25,7 +25,7 @@ namespace Svelto.Tasks.FlowModifiers
             return true;
         }
 
-        public bool CanProcessThis(ref TombstoneHandle index)
+        public bool CanProcessThis(ref int index)
         {
             return true;
         }

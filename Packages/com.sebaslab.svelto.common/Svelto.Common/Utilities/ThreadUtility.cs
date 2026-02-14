@@ -29,7 +29,7 @@ namespace Svelto.Utilities
         public static void Yield()
         {
 #if MOBILE_SPIN
-            Thread.Sleep(1);
+            Thread.Sleep(0);
 #else            
             Thread.Yield();
 #endif
@@ -57,7 +57,7 @@ namespace Svelto.Utilities
         public static void Spin()
         {
 #if MOBILE_SPIN
-            Thread.Sleep(0);
+            Thread.Yield();
 #else            
             Thread.SpinWait(4);
 #endif

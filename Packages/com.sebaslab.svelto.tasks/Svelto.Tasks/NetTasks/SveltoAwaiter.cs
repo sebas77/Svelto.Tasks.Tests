@@ -6,7 +6,7 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Lean
 {
-    public struct ValueTaskRunnerAwaiter : ICriticalNotifyCompletion
+    public readonly struct ValueTaskRunnerAwaiter : ICriticalNotifyCompletion
     {
         readonly SteppableRunner _runner;
         readonly ValueTaskAwaiter _taskAwaiter;

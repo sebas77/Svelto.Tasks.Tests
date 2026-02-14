@@ -29,11 +29,8 @@ namespace Svelto.DataStructures
                 unsafe
                 {
                     BasicTests();
-                    
-             //       using (_threadSentinel.TestThreadSafety())
-                    {
-                        return _queue->size;
-                    }
+
+                    return _queue->size;
                 }
             }
         }
@@ -47,10 +44,7 @@ namespace Svelto.DataStructures
                 {
                     BasicTests();
                     
-                 //   using (_threadSentinel.TestThreadSafety())
-                    {
-                        return _queue->capacity;
-                    }
+                    return _queue->capacity;
                 }
             }
         }
@@ -73,11 +67,8 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-            //    using (_threadSentinel.TestThreadSafety())
-                {
-                    if (_queue == null || _queue->ptr == null)
-                        return true;
-                }
+                if (_queue == null || _queue->ptr == null)
+                    return true;
             }
 
             return count == 0;
@@ -90,12 +81,10 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-          //      using (_threadSentinel.TestThreadSafety())
-                {
-                    _queue->Dispose();
-                    MemoryUtilities.NativeFree((IntPtr)_queue, _queue->allocator);
-                    _queue = null;
-                }
+        
+                _queue->Dispose();
+                MemoryUtilities.NativeFree((IntPtr)_queue, _queue->allocator);
+                _queue = null;
             }
         }
 
@@ -110,15 +99,12 @@ namespace Svelto.DataStructures
 
                 var sizeOf = MemoryUtilities.SizeOf<T>();
                 
-             //   using (_threadSentinel.TestThreadSafety())
+                if (_queue->availableSpace - sizeOf < 0)
                 {
-                    if (_queue->availableSpace - sizeOf < 0)
-                    {
-                        _queue->Grow<T>();
-                    }
-
-                    return ref _queue->Reserve<T>(out index);
+                    _queue->Grow<T>();
                 }
+
+                return ref _queue->Reserve<T>(out index);
             }
         }
 
@@ -129,16 +115,13 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-             //   using (_threadSentinel.TestThreadSafety())
+                var sizeOf = MemoryUtilities.SizeOf<T>();
+                if (_queue->availableSpace - sizeOf < 0)
                 {
-                    var sizeOf = MemoryUtilities.SizeOf<T>();
-                    if (_queue->availableSpace - sizeOf < 0)
-                    {
-                        _queue->Grow<T>();
-                    }
-
-                    _queue->Enqueue(item);
+                    _queue->Grow<T>();
                 }
+
+                _queue->Enqueue(item);
             }
         }
 
@@ -149,10 +132,7 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-             //   using (_threadSentinel.TestThreadSafety())
-                {
-                    _queue->Clear();
-                }
+                _queue->Clear();
             }
         }
 
@@ -163,10 +143,7 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-            //    using (_threadSentinel.TestThreadSafety())
-                {
-                    return _queue->Dequeue<T>();
-                }
+                return _queue->Dequeue<T>();
             }
         }
 
@@ -177,10 +154,7 @@ namespace Svelto.DataStructures
             {
                 BasicTests();
 
-           //     using (_threadSentinel.TestThreadSafety())
-                {
-                    return ref _queue->AccessReserved<T>(reservedIndex);
-                }
+                return ref _queue->AccessReserved<T>(reservedIndex);
             }
         }
 
@@ -190,8 +164,6 @@ namespace Svelto.DataStructures
             if (_queue == null)
                 throw new Exception("SimpleNativeArray: null-access");
         }
-        
-        //Sentinel _threadSentinel;
 
 #if UNITY_COLLECTIONS || UNITY_JOBS || UNITY_BURST
 #if UNITY_BURST

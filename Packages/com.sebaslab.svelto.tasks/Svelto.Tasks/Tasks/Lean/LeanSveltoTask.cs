@@ -21,13 +21,13 @@ namespace Svelto.Tasks.Lean
             _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
 #endif
 
-            runner.AddTask(this, (TombstoneHandle.Invalid, TombstoneHandle.Invalid));
+            runner.AddTask(this, (-1, TombstoneHandle.Invalid));
 
             return _continuation;
         }
         
         //This is now meant to be used ALWAYS FROM THE SAME RUNNER OF THE PARENT TASK THAT IS SPAWNING THIS TASK
-        internal void SpawnContinuingTask<TRunner>(  TRunner runner, in TTask task, Continuation continuation, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
+        internal void SpawnContinuingTask<TRunner>(  TRunner runner, in TTask task, Continuation continuation, (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
             where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(in task, runner);
@@ -62,26 +62,16 @@ namespace Svelto.Tasks.Lean
 
         public string name => _sveltoTask.name;
 
-        StepState ISveltoTask.Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex)
+        StepState ISveltoTask.Step(int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex)
         {
             DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state");
             StepState stepState = StepState.Running;
 
-            try
-            {
-                if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
-                    stepState = _sveltoTask.Step(runningTaskIndexToReplace, parentSpawnedTaskIndex);
-                else
-                    stepState = StepState.Completed;
-            }
-            finally
-            {
-                if (stepState == StepState.Completed)
-                {
-                    _continuation.ReturnToPool();
-                    _threadSafeSveltoTaskStates.completed = true;
-                }
-            }
+            if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
+                stepState = _sveltoTask.Step(runningTaskIndexToReplace, parentSpawnedTaskIndex);
+            else
+                stepState = StepState.Completed;
+      
 
             return stepState;
         }

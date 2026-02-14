@@ -23,7 +23,7 @@ namespace Svelto.Tasks.Lean
             try
             {
                 if (EqualityComparer<TTask>.Default.Equals(task, default) == false)
-                    task?.Dispose();
+                    task.Dispose();
             }
             catch (NotImplementedException )
             {
@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Lean
             _current = default;
         }
 
-        internal StepState Step(TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex)
+        internal StepState Step(int runningTaskIndexFromRunningTasksToReplace, TombstoneHandle parentSpawnedTaskIndex)
         {
             //if the tasks returned an extraLeanEnumerator, the parent task takes responsibility to run it. This is because extraLeanEnumerator
             //can run only on extra lean runners, while lean tasks runs only on lean runners.
@@ -140,7 +140,7 @@ namespace Svelto.Tasks.Lean
                     _current = new TaskContract(continuation, true);
                     _continuingTask = tupleEnumerator; //remember the child task
 
-                    leanSveltoTask.SpawnContinuingTask(_runner, (TTask)tupleEnumerator, continuation, (runningTaskIndexToReplace, parentSpawnedTaskIndex));
+                    leanSveltoTask.SpawnContinuingTask(_runner, (TTask)tupleEnumerator, continuation, (runningTaskIndexFromRunningTasksToReplace, parentSpawnedTaskIndex));
                 }
             }
 

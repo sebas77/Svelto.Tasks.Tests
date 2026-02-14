@@ -180,7 +180,7 @@ namespace Svelto.Tasks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTask(in TTask task,
-            (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
+            (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -275,7 +275,7 @@ namespace Svelto.Tasks
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void StartTask(in TTask task, (TombstoneHandle runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
+            internal void StartTask(in TTask task, (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
             {
                 var processor = _processor;
                 if (processor == null)

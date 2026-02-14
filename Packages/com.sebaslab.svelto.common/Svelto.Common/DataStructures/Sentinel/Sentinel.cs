@@ -14,6 +14,9 @@ namespace Svelto.DataStructures
         public const int writeFlag = 2;
 
 #if ENABLE_DEBUG_CHECKS
+#if UNITY_COLLECTIONS || (UNITY_JOBS || UNITY_BURST)
+        [global::Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
+#endif
         unsafe int* _state;
         int         _flag;
 #endif

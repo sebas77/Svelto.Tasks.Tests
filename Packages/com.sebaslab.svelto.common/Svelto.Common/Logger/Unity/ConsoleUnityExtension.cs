@@ -11,7 +11,7 @@ namespace Svelto
 {
     public static partial class Console
     {
-        public class SveltoConsoleLogHandler: ILogHandler
+        public class SveltoCatchEmAllConsoleLogHandler: ILogHandler
         {
             public void LogFormat(LogType logType, UnityEngine.Object context, string format, params object[] args)
             {
@@ -78,8 +78,8 @@ namespace Svelto
                 Application.SetStackTraceLogType(LogType.Error, StackTraceLogType.None);
                 Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
 
-                ConsoleUtilityForUnity.defaultLogHandler = Debug.unityLogger.logHandler;
-                Debug.unityLogger.logHandler = new SveltoConsoleLogHandler();
+                previousLogHandler = Debug.unityLogger.logHandler;
+                Debug.unityLogger.logHandler = sveltoCatchEmAllConsoleLogHandler;
                 
 #if UNITY_EDITOR
                 EditorApplication.playModeStateChanged += EditorApplicationOnplayModeStateChanged;
@@ -87,6 +87,17 @@ namespace Svelto
                 _initialized = true;
             }
         }
+        
+        public static void LogDefault(string txt)
+        {
+            ILogHandler currentLogHandler = Debug.unityLogger.logHandler;
+            Debug.unityLogger.logHandler = sveltoCatchEmAllConsoleLogHandler;
+            Log(txt);
+            Debug.unityLogger.logHandler = currentLogHandler;
+        }
+        
+        public static ILogHandler previousLogHandler;
+        public static ILogHandler sveltoCatchEmAllConsoleLogHandler = new SveltoCatchEmAllConsoleLogHandler();
 
         public static class FasterLog
         {
@@ -126,7 +137,7 @@ namespace Svelto
         {
             if (mode == PlayModeStateChange.EnteredEditMode && _initialized && _keepLogHandler == false)
             {
-                Debug.unityLogger.logHandler = ConsoleUtilityForUnity.defaultLogHandler;
+                Debug.unityLogger.logHandler = previousLogHandler;
 
                 Application.SetStackTraceLogType(LogType.Exception, _originals.exception);
                 Application.SetStackTraceLogType(LogType.Warning, _originals.warning);
