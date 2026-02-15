@@ -8,7 +8,7 @@ Svelto.Tasks is a platform-agnostic asynchronous library based on `IEnumerator` 
 
 It was designed for standard C#, has been used in Unity for years in production codebases, and includes Unity-specific extensions/integration where relevant. In practice, that means you can keep a clean engine-agnostic core while still plugging into Unity lifecycle points where needed.
 
-Originally it was created to run coroutine-like logic from anywhere in code, without MonoBehaviour coupling. Over time it evolved into a broader orchestration model that can cover many cases usually solved with Unity coroutines, `.NET Task`, or job-like pipelines. The important difference is that Svelto.Tasks makes scheduling explicit and inspectable: you choose the runner, you choose the flow policy, and you control lifecycle boundaries directly.
+Originally it was created to run coroutine-like logic from anywhere in code, without MonoBehaviour coupling. Over time it evolved into a broader orchestration model that can cover many cases usually solved with Unity coroutines, `.NET Task`, or job-like pipelines. The important difference is that Svelto.Tasks makes scheduling explicit and inspectable: you choose the runner, you choose the flow policy, and you control lifecycle boundaries directly. Over the years I realised that Svelto.Tasks is a way better alternative to classic coroutine and .net tasks to write game logic.
 
 In game code, the practical advantages are:
 
