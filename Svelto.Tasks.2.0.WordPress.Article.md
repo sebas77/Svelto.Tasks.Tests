@@ -1,337 +1,288 @@
-# Svelto.Tasks 2.0 (Preview): from zero to practical usage
+# Svelto.Tasks 2.0 (Preview): practical guide for newcomers
 
 > **Draft for sebaslab.com (WordPress-ready)**<br>
-> Suggested slug: `svelto-tasks-2-0-from-zero`<br>
-> Suggested excerpt: *A practical introduction to Svelto.Tasks 2.0 for readers new to Svelto: what it is, why it exists, and how to use runners, continuations, and flow modifiers with concrete examples.*
+> Suggested slug: `svelto-tasks-2-0-practical-guide`<br>
+> Suggested excerpt: *What Svelto.Tasks 2.0 is, why it differs from .NET Tasks, and how to use Lean/ExtraLean, runners, continuation, cross-thread execution, and allocation-friendly patterns with real examples.*
 
 > **Preview disclaimer**<br>
-> At the time of writing, **Svelto.Tasks 2.0 is in preview state**, so APIs and examples may evolve over time.
-
----
-
-## Why this article exists
-
-If you already know Unity coroutines or `.NET Task`, this article explains where **Svelto.Tasks** fits and why you may want to use it.
-
-If you **don’t** know Svelto at all, this is your starting point:
-
-- what Svelto.Tasks is,
-- what a task and a runner are,
-- how to run tasks on main thread or worker threads,
-- how to synchronize tasks without callback hell,
-- how to shape execution with flow modifiers.
-
-The examples are intentionally incremental so the concepts build one on top of the other.
+> At the time of writing, **Svelto.Tasks 2.0 is in preview state**, so APIs and examples may evolve.
 
 ---
 
 ## What is Svelto.Tasks?
 
-Svelto.Tasks is a **platform-agnostic asynchronous task library** built around `IEnumerator`.
+Svelto.Tasks is a platform-agnostic asynchronous library based on `IEnumerator` execution.
 
-Historically, one core motivation was: *run coroutine-style async logic from anywhere, without being tied to MonoBehaviours/GameObjects*. Over time, the library became broader: a lightweight orchestration model that can cover many scenarios often handled by Unity coroutines, job-like systems, or `.NET Task` pipelines.
+Originally it was created to run coroutine-like logic from anywhere in code, without MonoBehaviour coupling. Over time it evolved into a more general orchestration model that can cover many cases usually solved with Unity coroutines, `.NET Task`, or job-like pipelines.
 
-Svelto.Tasks is especially game-friendly:
+In game code, the practical advantages are:
 
-- low overhead,
-- patterns that can be allocation-conscious,
 - explicit scheduling through runners,
-- easy fit with Svelto.ECS style architecture.
-
-And because it is not intrinsically Unity-bound, it can run outside Unity too (Unity-specific features are naturally disabled when unavailable).
+- low overhead and allocation-aware patterns,
+- easy synchronization between main-thread and worker-thread work,
+- good architectural fit with Svelto.ECS-style loops.
 
 ---
 
 ## Why Svelto.Tasks 2.0?
 
-Svelto.Tasks 1.x was already mature and useful. 2.0 is mainly a **redesign for performance and clearer rules**, not a “new toy API for novelty”.
+Svelto.Tasks 1.x was already mature. 2.0 is mostly a redesign for cleaner rules and better performance characteristics.
 
-So the practical tradeoff is:
+The tradeoff is clear:
 
-- **Pros**: improved architecture/perf potential, clearer modernized flow.
-- **Cost**: existing 1.0/1.5 code usually needs a meaningful rewrite.
-
-If you are migrating, treat it as an intentional upgrade pass, not a drop-in rename.
+- **benefit**: stronger architecture and runtime behavior,
+- **cost**: 1.x code usually needs a non-trivial migration.
 
 ---
 
-## The mental model in one minute
+## Lean vs ExtraLean (important first decision)
 
-Svelto.Tasks revolves around three concepts:
+This is the most useful distinction to understand early.
 
-1. **Tasks**: `IEnumerator` routines that yield control.
-2. **Runners**: schedulers that decide where/when/how tasks move forward.
-3. **Continuation**: pause one task until another task (possibly on another runner/thread) completes.
+### Lean tasks
 
-If you internalize these three, most of Svelto.Tasks becomes intuitive.
+Lean tasks (`IEnumerator<TaskContract>`) are closer to **`.NET Task`-style orchestration**.
+
+- They support richer yield contracts.
+- They are great when tasks need to wait/continue other tasks.
+- They are ideal when you want “await-like” logic in iterator form.
+
+### ExtraLean tasks
+
+ExtraLean tasks (`IEnumerator`) are more **job-like**.
+
+- Minimal overhead, minimal semantics.
+- Best when you need pure ticking work and not complex task orchestration.
+- In gameplay code, this is often enough for many hot loops.
+
+A practical rule: use **Lean** when orchestration complexity matters; use **ExtraLean** when you just need fast ticked jobs.
 
 ---
 
-## Part 1 — Run your first task
+## The key difference from .NET Tasks
 
-Let’s start with the smallest useful example.
+Beyond syntax, the deepest difference is execution direction.
+
+### .NET Task mental model
+
+`.NET Task` is designed to run continuations on threadpool/contexts naturally. If you force single-thread execution, you typically introduce a custom ticking/pump mechanism.
+
+### Svelto.Tasks mental model
+
+Svelto.Tasks starts from the opposite side: tasks are naturally **ticked by runners**.
+
+- Runners decide when tasks move (`Step`, update loop, dedicated thread loop).
+- Multithreading is added by choosing thread-based runners.
+- Single-thread orchestration is first-class and explicit.
+
+### Why explicit runners are powerful
+
+A runner is a controllable execution domain. You can `Stop()` a runner and stop all queued/running tasks in that domain together.
+
+That “stop this whole task domain now” behavior is straightforward in Svelto.Tasks and usually less direct in pure `.NET Task` pipelines (where cancellation is often distributed/token-driven across many independent tasks).
+
+---
+
+## First task: simple ExtraLean ticking
 
 ```csharp
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.ExtraLean;
 
-IEnumerator UpdateIt()
+IEnumerator MoveForever()
 {
     while (true)
     {
-        // work
-
-        // IMPORTANT: always yield at least once in infinite loops
-        yield return Yield.It;
+        // do incremental work
+        yield return Yield.It; // never forget to yield in infinite loops
     }
 }
 
-// Queue the task on a runner
-UpdateIt().RunOn(StandardSchedulers.updateScheduler);
+MoveForever().RunOn(StandardSchedulers.updateScheduler);
 ```
 
-### Why this matters
-
-- You can queue tasks from anywhere in code.
-- You are not required to be inside a `MonoBehaviour`.
-- Execution policy is explicit via the selected runner.
-
-### Critical beginner rule
-
-If a task has `while (true)`, it **must yield**; otherwise it becomes a hard infinite loop.
+This already gives you coroutine-like behavior without MonoBehaviour dependency.
 
 ---
 
-## ExtraLean vs Lean (early, simple explanation)
+## Yielding a task on the same runner vs a different runner
 
-In 2.0 there are two common task “modes” you’ll see in practice:
+This is a core pattern and should be explicit.
 
-### ExtraLean
-
-- Minimal overhead path.
-- Uses `IEnumerator` and limited yield semantics (`null` / `Yield.It` patterns).
-- Great for hot/simple loops where you want the leanest possible behavior.
-
-### Lean
-
-- Uses `IEnumerator<TaskContract>`.
-- Supports richer yielded values and continuation semantics naturally.
-- Better when orchestration complexity grows.
-
-Rule of thumb: start with **Lean** for clarity; move hotspots to **ExtraLean** when profiling justifies it.
-
----
-
-## Part 2 — Running on another thread
-
-Now move beyond “main-thread-only coroutine replacement”.
+### 1) Same-runner continuation
 
 ```csharp
 using System.Collections.Generic;
 using Svelto.Tasks.Lean;
 
-IEnumerator<TaskContract> CalculateAndShowNumber(Renderer renderer)
+IEnumerator<TaskContract> Child()
 {
-    while (true)
-    {
-        int colorSeed = FindPrimeNumber(); // expensive CPU work
-
-        // Switch to main-thread runner for Unity API usage
-        yield return SetColor(renderer, colorSeed).RunOn(StandardSchedulers.updateScheduler);
-
-        yield return TaskContract.Yield.It;
-    }
+    // step A
+    yield return TaskContract.Yield.It;
+    // step B
 }
 
-IEnumerator<TaskContract> SetColor(Renderer renderer, int seed)
+IEnumerator<TaskContract> ParentSameRunner()
 {
-    renderer.material.color = new Color(seed % 255 / 255f, seed * seed % 255 / 255f, seed / 44 % 255 / 255f);
+    // parent waits child on the SAME runner
+    yield return Child().Continue();
+
+    // executes after Child completed
+}
+```
+
+### 2) Different-runner continuation (single-thread + multi-thread mix)
+
+```csharp
+using System.Collections.Generic;
+using Svelto.Tasks.Lean;
+
+IEnumerator<TaskContract> HeavyCpu()
+{
+    DoCpuWork();
     yield break;
 }
 
-// Run heavy loop on multi-thread runner
-CalculateAndShowNumber(renderer).RunOn(StandardSchedulers.multiThreadScheduler);
-```
-
-### What is happening?
-
-- `CalculateAndShowNumber` runs on a worker-thread runner.
-- Unity API access is marshaled back to main-thread runner.
-- The worker task **continues only after** the main-thread sub-task finishes.
-- This is continuation-based synchronization, not callback nesting.
-
-That pattern is one of the biggest practical wins in Svelto.Tasks.
-
----
-
-## Continuation, clearly
-
-When you yield another runnable task/continuation, the current task suspends until that child completes.
-
-Think of it as:
-
-```csharp
-// conceptual model
-var continuation = ChildTask().RunOn(otherRunner);
-while (continuation.MoveNext())
-    yield return TaskContract.Yield.It;
-```
-
-But you write the concise form:
-
-```csharp
-yield return ChildTask().RunOn(otherRunner);
-```
-
-No callback pyramids, no manual state machine boilerplate.
-
----
-
-## Part 3 — `Continue()` vs `Forget()`
-
-This distinction is easy to misuse, so make it explicit.
-
-### Wait for child completion
-
-```csharp
-IEnumerator<TaskContract> Parent()
+IEnumerator<TaskContract> ApplyOnMainThread()
 {
-    yield return Child().Continue();
-    // executes after child ended
+    UseUnityApi();
+    yield break;
+}
+
+IEnumerator<TaskContract> ParentCrossRunner(
+    IRunner<LeanSveltoTask<IEnumerator<TaskContract>>> mainThreadRunner,
+    IRunner<LeanSveltoTask<IEnumerator<TaskContract>>> workerRunner)
+{
+    // run heavy step on worker thread and wait
+    yield return HeavyCpu().RunOn(workerRunner);
+
+    // then run Unity-safe step on main thread and wait
+    yield return ApplyOnMainThread().RunOn(mainThreadRunner);
 }
 ```
 
-### Fire-and-forget child
+This pattern gives very readable synchronization points without callback pyramids.
+
+---
+
+## Awaiting an actual .NET Task from Svelto context
+
+Svelto.Tasks includes awaiter integration so a `.NET Task` continuation can resume on a chosen runner.
 
 ```csharp
-IEnumerator<TaskContract> Parent()
+using System.Threading.Tasks;
+using Svelto.Tasks.Lean;
+
+async Task LoadDataAndContinueOnRunner(SteppableRunner runner)
 {
-    yield return Child().Forget();
-    // parent does not wait for child completion
+    // Real .NET Task API call
+    int value = await Task.Run(() => 42).RunOn(runner);
+
+    // continuation is runner-driven
+    Consume(value);
 }
 ```
 
-Use `Continue()` when correctness depends on order; use `Forget()` only when decoupling is intentional.
+This is useful when integrating existing async APIs into runner-controlled execution.
 
 ---
 
-## Part 4 — Runners: where and how tasks run
+## Fire-and-forget vs strict ordering
 
-Runners are first-class in Svelto.Tasks.
+```csharp
+IEnumerator<TaskContract> ParentOrdered()
+{
+    yield return Child().Continue(); // wait child
+}
 
-### Common runner families
+IEnumerator<TaskContract> ParentDecoupled()
+{
+    yield return Child().Forget(); // don't wait child
+}
+```
 
-- **Main-thread / loop runners** (platform-specific variants, including Unity-oriented schedulers).
-- **`MultiThreadRunner`** (one dedicated thread per runner instance).
-- **Manual runners** like `SteppableRunner` for deterministic stepping/testing.
-
-You can create multiple runners and assign domains deliberately (simulation, I/O, preprocessing, etc.).
-
-### Practical note on multithread runners
-
-A `MultiThreadRunner` behaves like a fiber-like queue on its own thread:
-
-- tasks in that runner can share thread-local assumptions,
-- cross-runner interaction needs explicit synchronization (usually via continuation),
-- this makes synchronization points explicit and readable.
+Use `Forget()` only when decoupling is intentional and safe.
 
 ---
 
-## Part 5 — Flow modifiers: control *how much* runs per iteration
+## Runners can process iterator blocks *and* struct enumerators
 
-By default, runners try to process queued work in a standard way. Flow modifiers let you enforce policies.
+Runners are flexible in what they execute:
 
-### Serial flow
+- regular iterator blocks (`yield`-generated classes),
+- custom class-based `IEnumerator`,
+- struct-based enumerators in compatible paths.
 
-Run task queues in strict order (task B won’t advance until task A is done).
-
-### Staggered flow
-
-Limit how many tasks can be processed per iteration.
-
-### TimeBound / TimeSliced flow
-
-Constrain work by time budget per iteration/frame.
-
-These are essential in real-time apps where responsiveness matters as much as throughput.
+That flexibility is important because you can keep convenient iterator blocks for readability, then optimize hot paths with struct enumerators where needed.
 
 ---
 
-## TimeSlice vs TimeBound (practical guidance)
+## Why `while (true)` + iterator block pool is smart
 
-Both are about frame budget, but they differ in behavior assumptions.
+At first glance, `while (true)` tasks seem scary. In Svelto.Tasks they are often intentional and efficient when used correctly.
 
-- Use **time slicing** when you want broad fairness and frame-budget enforcement across many tasks.
-- Use **time bound** when you need stronger total-budget constraints for the runner iteration.
+### The idea
 
-As always: verify with profiler in your target workload, not synthetic assumptions.
+- Long-lived systems (game loops, service loops) naturally fit `while (true)` tasks.
+- Instead of continuously recreating iterator instances, Svelto.Tasks can reuse iterator blocks through iterator block pools in suitable patterns.
+- Reusing long-lived routines reduces allocation churn and helps keep frame behavior stable.
 
----
+### Practical takeaway
 
-## Part 6 — Allocation-aware patterns
+- Yield at least once per loop iteration.
+- Prefer long-lived reusable routines for persistent systems.
+- Combine runner lifetime control (`Stop`/`Dispose`) with pooled/reused iterator patterns to avoid pointless task recreation.
 
-Iterator blocks are convenient but typically allocate when instantiated by C# compiler-generated classes.
-
-Practical options:
-
-- Reuse iterators where safe.
-- Use local-function enumerator patterns where appropriate.
-- For specialized cases, use struct-based enumerator implementations and compatible runners.
-
-The goal is not dogmatic “zero alloc everywhere”; it is *predictable allocation where it matters*.
+This is one reason Svelto.Tasks is attractive for real-time code that must stay allocation-conscious.
 
 ---
 
-## Part 7 — Svelto.Tasks vs async/await vs Jobs
+## Flow modifiers (how tasks are processed per iteration)
 
-This is not a religious replacement discussion; each tool has strengths.
+Runners control not only *where* tasks run, but also *how much* they run per iteration.
 
-- Use **Svelto.Tasks** when you want explicit runner orchestration, continuation-based synchronization, and coroutine-like readability with low overhead.
-- Use **`async/await`** for broader ecosystem integration and Task-based APIs.
-- Use **job systems** for high-scale data-oriented parallel workloads where that model shines.
+- **Serial flow**: strict sequencing.
+- **Staggered flow**: limit tasks advanced per iteration.
+- **TimeBound / TimeSliced flow**: enforce time budgets.
 
-In many projects, Svelto.Tasks complements the others rather than banning them.
-
----
-
-## A migration checklist (1.x → 2.0 preview)
-
-1. Define runner boundaries first (what runs where).
-2. Make synchronization points explicit with continuation.
-3. Decide per domain whether Lean or ExtraLean is appropriate.
-4. Apply flow modifiers from frame budget requirements, not guesswork.
-5. Add deterministic runner-step tests for orchestration edge cases.
-6. Profile in representative scenes before and after migration.
+These are practical tools to trade throughput for responsiveness in frame-based applications.
 
 ---
 
-## Common mistakes to avoid
+## Why stopping runners explicitly is a big win
 
-- Infinite task loops without yields.
-- Calling thread-affine APIs (for example Unity APIs) from worker-thread runners.
-- Using `Forget()` where ordering guarantees are required.
-- Treating flow modifiers as “set once and forget” without profiling.
-- Over-optimizing for zero allocations in cold code paths.
+A runner groups tasks by execution domain (for example: AI update, background loading, networking).
+
+When that domain must shut down, pausing/stopping/disposal is centralized:
+
+- stop one runner,
+- all tasks in that runner stop together,
+- no need to discover/cancel each task independently.
+
+This encourages clean lifecycle boundaries and avoids “zombie task” behavior.
+
+---
+
+## Migration checklist (1.x to 2.0 preview)
+
+1. Decide runner boundaries first.
+2. Pick Lean or ExtraLean per subsystem intent.
+3. Make continuation points explicit (same-runner and cross-runner).
+4. Add flow modifiers based on measured frame budgets.
+5. Refactor hot loops toward reuse/pooling patterns.
+6. Use explicit runner stop/dispose semantics in teardown.
 
 ---
 
 ## Closing
 
-Svelto.Tasks 2.0 preview is best understood as an explicit **asynchronous orchestration framework**:
+Svelto.Tasks 2.0 is best seen as explicit async orchestration:
 
-- simple coroutine ergonomics,
-- controlled scheduling via runners,
-- powerful continuation across runners/threads,
-- scalable policies through flow modifiers.
+- Lean for task-like orchestration,
+- ExtraLean for job-like ticking,
+- runners as first-class execution domains,
+- continuation as readable synchronization,
+- lifecycle control through runner stop/dispose.
 
-If you are new to Svelto, start from a small vertical slice: one runner on main thread, one worker runner, one explicit continuation point. Once this feels natural, the rest of the model scales elegantly.
-
----
-
-## Suggested follow-up articles
-
-1. Unity PlayerLoop integration patterns in depth.
-2. Massive parallelism with task collections and synchronization points.
-3. Profiling/debugging Svelto.Tasks in production.
-4. Services, promises, and task routines in practical game architecture.
+If you start with one main-thread runner, one worker runner, and one clear continuation point, the rest of the model becomes natural very quickly.
