@@ -99,10 +99,18 @@ IEnumerator MoveForever()
     }
 }
 
-MoveForever().RunOn(StandardSchedulers.updateScheduler);
+using (var runner = new Svelto.Tasks.ExtraLean.SteppableRunner("Update"))
+{
+    MoveForever().RunOn(runner);
+
+    // typically called by your loop each tick/frame
+    runner.Step();
+}
 ```
 
 This already gives you coroutine-like behavior without MonoBehaviour dependency.
+
+In 2.0 you usually create/pass runner instances explicitly (for example `SteppableRunner`, `SyncRunner`, `MultiThreadRunner`) rather than relying on old static standard schedulers.
 
 ---
 
