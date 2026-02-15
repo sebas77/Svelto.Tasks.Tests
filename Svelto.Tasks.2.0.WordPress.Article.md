@@ -174,17 +174,23 @@ Svelto.Tasks includes awaiter integration so a `.NET Task` continuation can resu
 using System.Threading.Tasks;
 using Svelto.Tasks.Lean;
 
-async Task LoadDataAndContinueOnRunner(SteppableRunner runner)
+async Task SomeAsyncOperation(SteppableRunner runner)
 {
-    // Real .NET Task API call
-    int value = await Task.Run(() => 42).RunOn(runner);
+    // Real .NET Task awaited with Svelto's runner-aware awaiter
+    await Task.Delay(10).RunOn(runner);
 
-    // continuation is runner-driven
-    Consume(value);
+    // this continuation executes through the runner
+    OnFirstContinuation();
+
+    runner.Stop();
+
+    // after Stop(), this continuation won't run unless the runner resumes/runs again
+    await Task.Delay(10).RunOn(runner);
+    OnSecondContinuation();
 }
 ```
 
-This is useful when integrating existing async APIs into runner-controlled execution.
+This is the exact pattern used in the unit tests to verify that continuations are posted to the runner and do not proceed once the runner is stopped.
 
 ---
 
