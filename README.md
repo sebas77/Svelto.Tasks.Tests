@@ -6,9 +6,9 @@
 
 Svelto.Tasks is a platform-agnostic asynchronous library based on `IEnumerator` execution.
 
-It was designed for standard C#, has been used in Unity for years in production codebases, and includes Unity-specific extensions/integration where relevant.
+It was designed for standard C#, has been used in Unity for years in production codebases, and includes Unity-specific extensions/integration where relevant. In practice, that means you can keep a clean engine-agnostic core while still plugging into Unity lifecycle points where needed.
 
-Originally it was created to run coroutine-like logic from anywhere in code, without MonoBehaviour coupling. Over time it evolved into a more general orchestration model that can cover many cases usually solved with Unity coroutines, `.NET Task`, or job-like pipelines.
+Originally it was created to run coroutine-like logic from anywhere in code, without MonoBehaviour coupling. Over time it evolved into a broader orchestration model that can cover many cases usually solved with Unity coroutines, `.NET Task`, or job-like pipelines. The important difference is that Svelto.Tasks makes scheduling explicit and inspectable: you choose the runner, you choose the flow policy, and you control lifecycle boundaries directly.
 
 In game code, the practical advantages are:
 
@@ -40,6 +40,8 @@ ExtraLean tasks (`IEnumerator`) are more **job-like**.
 - In gameplay code, this is often enough for many hot loops.
 
 A practical rule: use **Lean** when orchestration complexity matters; use **ExtraLean** when you just need fast ticked jobs.
+
+A second practical rule is to optimize *after* design clarity: start with the model that makes intent obvious, then move specific hotspots to the leaner path once profiling confirms it matters.
 
 ---
 
@@ -256,53 +258,62 @@ var (data2, block2) = pool.Get();
 
 This is the key trick: keep the iterator logic long-lived (`while (true)`), but hand control back each step (`Break`/`Yield`) so the runtime can recycle the iterator block instead of constantly allocating new ones.
 
+Why this matters for truly zero-allocation-style runtime code:
+
+- The expensive part is often *re-creating state machines repeatedly*, not ticking an existing one.
+- A persistent `while (true)` routine amortizes setup cost and avoids per-cycle iterator instantiation churn.
+- Pooling closes the loop by reusing both the iterator block and its companion data, so hot paths can run for long periods without GC pressure spikes.
+
+In other words: if the behavior is conceptually a long-lived service (AI update loop, streaming loop, gameplay subsystem loop), model it as a long-lived task too. Start it once, tick it forever, stop it explicitly with runner lifecycle control.
+
 ### Practical takeaway
 
 - Yield at least once per loop iteration.
 - Prefer long-lived reusable routines for persistent systems.
+- Pre-allocate/pool the task blocks and their data where possible.
 - Combine runner lifetime control (`Stop`/`Dispose`) with pooled/reused iterator patterns to avoid pointless task recreation.
 
-This is one reason Svelto.Tasks is attractive for real-time code that must stay allocation-conscious.
+This is one of the main reasons Svelto.Tasks can be used to write allocation-conscious real-time systems that stay stable under sustained load.
 
 ---
 
-## Flow modifiers with a runner (example)
+## Flow modifiers with a runner (example: `TimeSlicedFlow`)
+
+A very common real-world use case is protecting frame time when many tasks are queued.
+Instead of letting a runner drain too much work in one iteration, you can cap execution budget per step/frame.
 
 ```csharp
 using System.Collections.Generic;
+using System.Threading;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
 
-using (var runner = new SteppableRunner("SerialFlow"))
+using (var runner = new SteppableRunner("TimeSliced"))
 {
-    runner.UseFlowModifier(new SerialFlow());
+    // Budget ~2 ms of task processing per Step().
+    runner.UseFlowModifier(new TimeSlicedFlow(2.0f));
 
-    var log = new List<int>();
+    int completed = 0;
 
-    IEnumerator<TaskContract> Task1()
+    IEnumerator<TaskContract> SmallWork()
     {
-        log.Add(1);
+        Thread.Sleep(1); // simulate tiny but non-trivial work
+        completed++;
         yield return TaskContract.Yield.It;
-        log.Add(2);
     }
 
-    IEnumerator<TaskContract> Task2()
-    {
-        log.Add(3);
-        yield return TaskContract.Yield.It;
-        log.Add(4);
-    }
+    for (int i = 0; i < 20; i++)
+        SmallWork().RunOn(runner);
 
-    Task1().RunOn(runner);
-    Task2().RunOn(runner);
+    runner.Step();
+    // With a 2ms slice and 1ms tasks, only a subset should run this frame.
 
-    runner.Step(); // [1]
-    runner.Step(); // [1,2,3]
-    runner.Step(); // [1,2,3,4]
+    runner.Step();
+    // Remaining tasks continue in later frames, smoothing spikes.
 }
 ```
 
-Flow modifiers control how much/how tasks advance per iteration (for example serial, staggered, time-bound, time-sliced policies).
+Use `TimeSlicedFlow` when you care about responsiveness and smoothness more than single-frame throughput, which is usually the right tradeoff for gameplay/update loops.
 
 ---
 
