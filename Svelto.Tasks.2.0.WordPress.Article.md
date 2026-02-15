@@ -228,6 +228,36 @@ At first glance, `while (true)` tasks seem scary. In Svelto.Tasks they are often
 - Instead of continuously recreating iterator instances, Svelto.Tasks can reuse iterator blocks through iterator block pools in suitable patterns.
 - Reusing long-lived routines reduces allocation churn and helps keep frame behavior stable.
 
+A simplified pattern from unit tests (`IteratorBlockPoolTests`) looks like this:
+
+```csharp
+class PoolData
+{
+    public int value;
+}
+
+IEnumerator<TaskContract> MyIterator(PoolData data)
+{
+    while (true)
+    {
+        data.value++;
+        yield return TaskContract.Break.It; // return control so the pooled block can be reused
+    }
+}
+
+var pool = new IteratorBlockPool<PoolData>(MyIterator, "GameplayPool");
+
+var (data1, block1) = pool.Get();
+data1.value = 0;
+block1.MoveNext(); // value = 1
+block1.MoveNext(); // value = 2 and block released back to pool
+
+var (data2, block2) = pool.Get();
+// data2/block2 can be the same reused instances
+```
+
+This is the key trick: keep the iterator logic long-lived (`while (true)`), but hand control back each step (`Break`/`Yield`) so the runtime can recycle the iterator block instead of constantly allocating new ones.
+
 ### Practical takeaway
 
 - Yield at least once per loop iteration.
