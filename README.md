@@ -19,6 +19,20 @@ In game code, the practical advantages are:
 
 ---
 
+## Why stopping runners explicitly is a big win
+
+A runner groups tasks by execution domain (for example: AI update, background loading, networking).
+
+When that domain must shut down, pausing/stopping/disposal is centralized:
+
+- stop one runner,
+- all tasks in that runner stop together,
+- no need to discover/cancel each task independently.
+
+This encourages clean lifecycle boundaries and avoids “zombie task” behavior.
+
+---
+
 ## Lean vs ExtraLean (important first decision)
 
 This is the most useful distinction to understand early.
@@ -333,31 +347,6 @@ Use `TimeSlicedFlow` when you care about responsiveness and smoothness more than
 - Has collection-style APIs/lifecycle (`Add`, `Complete`, `Reset`, `Stop`, `Dispose`) and reuse semantics.
 
 Use `MultiThreadRunner` for long-lived asynchronous flows; use `MultiThreadedParallelTaskCollection` for explicit parallel batches.
-
----
-
-## Why stopping runners explicitly is a big win
-
-A runner groups tasks by execution domain (for example: AI update, background loading, networking).
-
-When that domain must shut down, pausing/stopping/disposal is centralized:
-
-- stop one runner,
-- all tasks in that runner stop together,
-- no need to discover/cancel each task independently.
-
-This encourages clean lifecycle boundaries and avoids “zombie task” behavior.
-
----
-
-## Migration checklist (2.0 preview)
-
-1. Decide runner boundaries first.
-2. Pick Lean or ExtraLean per subsystem intent.
-3. Make continuation points explicit (same-runner and cross-runner).
-4. Add flow modifiers based on measured frame budgets.
-5. Refactor hot loops toward reuse/pooling patterns.
-6. Use explicit runner stop/dispose semantics in teardown.
 
 ---
 
