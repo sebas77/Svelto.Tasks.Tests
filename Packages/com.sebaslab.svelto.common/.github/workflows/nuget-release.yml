@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
 
     - name: make temp dirs
       run: mkdir temp temp/bin temp/bin/debug temp/bin/release
@@ -56,7 +56,7 @@ jobs:
     - name: build nuget package
       run: sudo dotnet pack /p:PackageVersion=${PKG_VERSION} -o . Svelto.Common.csproj -c NugetPack
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v5
       with:
         name: ${{ env.PKG_NAME }}.${{ env.PKG_VERSION }}.nupkg
         path: ${{ env.PKG_NAME }}.${{ env.PKG_VERSION }}.nupkg

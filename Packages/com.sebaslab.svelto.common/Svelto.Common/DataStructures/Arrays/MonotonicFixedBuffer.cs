@@ -22,15 +22,24 @@ namespace Svelto.DataStructures
 // Publication order is "write Value, then Volatile.Write(PublishedIndex)" so the consumer won’t
 // observe an index as present before its value is visible (release/acquire pattern). [web:184][web:98]
 
+    public enum MonotonicSlotState 
+    {
+        NotPublished,
+        Published,
+        Consumed,
+        OutOfRange,
+        NotInitialised
+    }
+    
     public sealed class MonotonicWindowBuffer<T>
     {
         // Combined buffer for cache locality. published marker: slot contains logical index i if published == i + 1.
         // (i + 1 so default 0 means "not published")
-        readonly (T value, uint published)[] _buffer;
+        readonly (T value, int published)[] _buffer;
 
         readonly uint _capacity;
         readonly uint _mask;
-        readonly uint _expectedCount;
+        readonly uint _maxWindowSize;
 
         // Consumer-owned: next logical index to dequeue/peek.
         // -1 means "head not set".
@@ -39,23 +48,32 @@ namespace Svelto.DataStructures
         // Highest published index so far. -1 means nothing published yet.
         int _highestPublished;
 
-        public MonotonicWindowBuffer(uint expectedCount)
+        public int HighestPublishedIndex
         {
-            if (expectedCount == 0)
-                throw new ArgumentOutOfRangeException(nameof(expectedCount));
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Volatile.Read(ref _highestPublished);
+        }
 
-            _expectedCount = expectedCount;
+        public MonotonicWindowBuffer(uint maxWindowSize)
+        {
+            if (maxWindowSize == 0)
+                throw new ArgumentOutOfRangeException(nameof(maxWindowSize));
 
-            _capacity = Utils.NextPowerOfTwo(expectedCount);
+            _maxWindowSize = maxWindowSize;
+
+            _capacity = Utils.NextPowerOfTwo(maxWindowSize);
             _mask = _capacity - 1;
 
             int len = checked((int)_capacity);
-            _buffer = new (T, uint)[len];
+            _buffer = new (T, int)[len];
             _head = -1;
             _highestPublished = -1;
         }
 
         // Returns the span from head to highest published index (inclusive), or 0 if nothing ready.
+        // WARNING: this is NOT the number of dequeue-able items. Holes (unpublished indices) are counted.
+        // Example: SetHead(0), Set(2, v) → Count returns 3, but TryDequeue fails (index 0 not published).
+        // Do NOT use "if (Count > 0) TryDequeue()" — use TryDequeue() directly, it handles holes safely.
         public int Count
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -72,69 +90,93 @@ namespace Svelto.DataStructures
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Set(int index, in T value)
+        public bool Add(int index, in T value)
         {
             if (index < 0)
                 throw new ArgumentOutOfRangeException(nameof(index));
-
+            
             int head = Volatile.Read(ref _head);
+            
+            if (head == -1)
+                throw new MonotonicWindowBufferOverflowException("Trying to add elements before setting the head");
 
             // If head isn't set yet, this is an unsafe set: no window checks can be performed.
             if (head != -1)
             {
-                // Do nothing if retired or outside window
-                if (index < head)
+                // Do nothing if retired or outside window (it's older than the last processed)
+                if (index < head) 
                     return false;
 
-                if ((uint)(index - head) >= _expectedCount)
-                    throw new MonotonicWindowBufferOverflowException("Index out of window range");
+                if ((uint)(index - head) >= _maxWindowSize)
+                    throw new MonotonicWindowBufferOverflowException($"Index {index} is outside of the window (head={head}, expectedCount={_maxWindowSize}).");
             }
 
-            int slot = (int)(((uint)index) & _mask);
-
+            int slot = (int)((uint)index & _mask); //Modulo
             ref var valueTuple = ref _buffer[slot];
-            valueTuple.value = value;
-
-            uint expectedMarker = (uint)index + 1;
-
-            Volatile.Write(ref valueTuple.published, expectedMarker);
-
-            // Update highest published index (SPSC safe - we are the only writer).
-            if (index > _highestPublished)
+            
+            int expectedMarker = index + 1;
+            if (Volatile.Read(ref valueTuple.published) != expectedMarker)
             {
-                Volatile.Write(ref _highestPublished, index);
+                valueTuple.value = value;
+                Volatile.Write(ref valueTuple.published, expectedMarker); //must be after setting the value
+                
+                // Update highest published index (SPSC safe - we are the only writer).
+                if (index > _highestPublished)
+                    Volatile.Write(ref _highestPublished, index);
             }
-  
+            
             return true;
         }
-
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //summary
+        /// summary
         /// Consumer-only. Try get value at index if (and only if) published. Does not retire.
-        /// Get is always an unsafe operation: no window checks are performed.
         /// 
-        public bool TryGet(int index, out T value)
+        public MonotonicSlotState TryGet(int index, out T value)
         {
-            int slot = (int)(((uint)index) & _mask);
+            if (index < 0)
+            {
+                value = default;
+                return MonotonicSlotState.OutOfRange;
+            }
+            
+            int head = Volatile.Read(ref _head); //this is not thread safe, but doesn't matter if we get a retired index, published will be the real gate
 
+            if (head == -1)
+            {
+                value = default;
+                return MonotonicSlotState.NotInitialised;
+            }
+
+            if (index < head)
+            {
+                value = default;
+                return MonotonicSlotState.Consumed;
+            }
+
+            if ((uint)(index - head) >= _maxWindowSize)
+                throw new MonotonicWindowBufferOverflowException($"Index {index} is outside of the window (head={head}, expectedCount={_maxWindowSize}).");
+
+            int slot = (int)((uint)index & _mask);
+            
             ref var valueTuple = ref _buffer[slot];
             if (Volatile.Read(ref valueTuple.published) != (uint)index + 1)
             {
                 value = default;
-                return false;
+                return MonotonicSlotState.NotPublished;
             }
-
             value = valueTuple.value;
-            return true;
-        }
 
+            return MonotonicSlotState.Published;
+        }
+        
         /// <summary>
         /// Consumer-only. Peek current head if (and only if) head has been published. Does not retire.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryPeek(out T value)
         {
-            int head = Volatile.Read(ref _head);
+            int head = _head;
             if (head == -1)
                 throw new InvalidOperationException("Head not set.");
 
@@ -158,7 +200,7 @@ namespace Svelto.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryDequeue(out T value)
         {
-            int head = Volatile.Read(ref _head);
+            int head = _head;
             if (head == -1)
                 throw new InvalidOperationException("Head not set.");
 
@@ -174,20 +216,24 @@ namespace Svelto.DataStructures
 
             value = valueTuple.value;
             
+            ///ATTENTION: YES THE VALUE WILL LEAK HERE IF IT'S A CLASS, BUT ONLY UNTIL IT WILL BE OVERWRITTEN OR THE
+            ///DATASTRUCTURE RELEASED. ADDING THE CLEAR OF THE VALUE HERE WOULD HAVE FORCED TO USE (SPIN)LOCKS AND IT'S NOT WORTH IT
+            
             // Retire head (release).
             Volatile.Write(ref _head, head + 1);
-
+       
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// Consumer-only. 
         public void SetHead(int newHead)
         {
             if (newHead < 0)
                 throw new ArgumentOutOfRangeException(nameof(newHead));
 
-            // Consumer-only. New head must not be retired => must be >= current head.
-            int currentHead = Volatile.Read(ref _head);
+            // Consumer-only. New head must not be retired and must be >= current head.
+            int currentHead = _head;
             if (currentHead != -1 && newHead < currentHead)
                 throw new InvalidOperationException("New head is retired (cannot move head backwards).");
 

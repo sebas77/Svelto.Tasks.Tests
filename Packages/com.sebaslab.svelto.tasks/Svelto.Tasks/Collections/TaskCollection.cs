@@ -41,7 +41,9 @@ namespace Svelto.Tasks
         }
         
         public void Dispose()
-        {}
+        {
+            Clear();
+        }
 
         public bool MoveNext()
         {
@@ -98,7 +100,7 @@ namespace Svelto.Tasks
         /// <summary>
         /// Restore the list of stacks to their original state
         /// </summary>
-        public void Reset()
+        public virtual void Reset()
         {
             isRunning = false;
             
@@ -107,12 +109,20 @@ namespace Svelto.Tasks
             {
                 var stack = _listOfStacks[index];
                 while (stack.count > 1) stack.Pop();
-                stack.Peek().Reset(); 
+                try
+                {
+                    stack.Peek().Reset();
+                }
+                catch (NotSupportedException)
+                {
+                    // ignore – enumerator will simply restart next run
+                }
             }
 
             _currentStackIndex = 0;
         }
         
+        //hard reset
         public void Clear()
         {
             isRunning = false;
@@ -145,8 +155,10 @@ namespace Svelto.Tasks
        
         protected TaskState ProcessStackAndCheckIfDone(int currentindex)
         {
+            //“Which individual stack am I executing right now?”
             _currentStackIndex = currentindex;
             StructFriendlyStack[] arrayOfTasks = rawListOfStacks;
+            //it's the responsability of the caller method to pop this enumerator from the stack, here we just execute
             ref var enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
 
             bool isDone  = !enumerator.MoveNext();
@@ -156,20 +168,56 @@ namespace Svelto.Tasks
 
             if (enumerator is T taskContractEn)
             {
+                TaskContract contract = taskContractEn.Current;  
                 //Svelto.Tasks Tasks IEnumerator are always IEnumerator returning an object so Current is always an object
                 //can yield for one iteration
-                if (taskContractEn.Current.yieldIt)
+                if (contract.yieldIt)
                     return TaskState.yieldIt;
 
                 //can be a Svelto.Tasks Break
-                if (taskContractEn.Current.breakMode == TaskContract.Break.It || taskContractEn.Current.breakMode == TaskContract.Break.AndStop)
+                if (contract.breakMode == TaskContract.Break.It || contract.breakMode == TaskContract.Break.AndStop)
                     return TaskState.breakIt;
 
-                    //careful it must be the array and not the list as it returns a struct!!
-                 arrayOfTasks[_currentStackIndex].Push(taskContractEn); //push the new yielded task and execute it immediately
+                if (contract.isTaskEnumerator(out var t))
+                {
+                    if (t.enumerator is T casted)
+                    {
+                        arrayOfTasks[_currentStackIndex].Push(casted);
+                        return TaskState.continueIt;
+                    }
+
+                    Console.LogError($"TaskCollection: enumerator is not of type of {typeof(T)}");
+                }
+                
+                if (contract.isExtraLeanEnumerator(out IEnumerator extraEnum))
+                {
+                    return StepExtraEnumerator(extraEnum);
+                }
             }
 
             return TaskState.continueIt;
+        }
+        
+        TaskState StepExtraEnumerator(IEnumerator extraEnumerator)
+        {
+            // run one step
+            if (extraEnumerator.MoveNext() == false)
+                return TaskState.continueIt;          // child finished, keep running parent
+
+            // interpret the value it yielded (can be null or TaskContract)
+
+            if (extraEnumerator.Current is not TaskContract yielded || yielded.yieldIt)
+                return TaskState.yieldIt;             // wait until next frame
+
+            if (yielded.breakMode == TaskContract.Break.AndStop)
+                return TaskState.breakIt;             // propagate hard break
+
+            if (yielded.breakMode == TaskContract.Break.It)
+                return TaskState.continueIt;          // soft break – resume parent next loop
+
+            // Anything else is illegal for a plain IEnumerator
+            throw new SveltoTaskException(
+                $"Extra-lean enumerator {extraEnumerator} can only yield null, Yield.It, Break.It or Break.AndStop");
         }
 
         public override string ToString()
@@ -185,7 +233,6 @@ namespace Svelto.Tasks
 
         protected abstract bool RunTasksAndCheckIfDone();
         
-        //TaskContract                             _currentTask; reinsert if we want to use IEnumerator for taskcollection
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
         string                                   _name;

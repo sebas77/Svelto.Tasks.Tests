@@ -146,11 +146,11 @@ namespace Svelto.Utilities
         
         public static void SleepWithOneEyeOpen(float waitTimeMs, in Stopwatch stopwatch, SyncStrategy strategy, int yieldFrequency = 64)
         {
+            stopwatch.Restart();
+            
             if (waitTimeMs <= 0f) // nothing to wait
                 return;
-
-            stopwatch.Restart();
-
+            
 #if MOBILE_SPIN || UNITY_STANDALONE_LINUX
             //On Mobile any small amount of spin wait can cause throttling, however it seems that SpinWait is able to cope with it
             //NEVER NEVER USE SPINNING ON MOBILE, SPIN WAIT IS FORBIDDEN!!!

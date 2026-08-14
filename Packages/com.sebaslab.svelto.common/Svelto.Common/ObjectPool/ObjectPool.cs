@@ -1,20 +1,21 @@
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Svelto.DataStructures;
-#if DEBUG && !PROFILE_SVELTO
-using System.Collections.Generic;
-#endif
 
 namespace Svelto.ObjectPool
 {
-    public class ThreadSafeObjectPool<T> : IObjectPool<T>, IDisposable
+    public class ObjectPool<T> : IObjectPool<T>, IDisposable
 #if DEBUG && !PROFILE_SVELTO
                        , IObjectPoolDebug
 #endif
         where T : class
-    {
-        public ThreadSafeObjectPool(Func<T> objectFactoryFunc) : base()
+    { 
+        public ObjectPool() 
+        {
+        }
+        
+        public ObjectPool(Func<T> objectFactoryFunc) : base()
         {
             _objectFactoryFunc = objectFactoryFunc;
         }
@@ -42,7 +43,7 @@ namespace Svelto.ObjectPool
         /// <summary>
         /// Create Or Reuse
         /// </summary>
-        public async Task<T> Use(int pool, Func<Task<T>> onFirstUse)
+        public async Task<T> Get(int pool, Func<Task<T>> onFirstUse)
         {
             return await CreateOrReuse(pool, onFirstUse);
         }
@@ -50,7 +51,7 @@ namespace Svelto.ObjectPool
         /// <summary>
         /// Create Or Reuse
         /// </summary>
-        public T Use(Func<T> onFirstUse)
+        public T Get(Func<T> onFirstUse)
         {
             return CreateOrReuse(0, onFirstUse);
         }
@@ -58,7 +59,7 @@ namespace Svelto.ObjectPool
         /// <summary>
         /// Create Or Reuse
         /// </summary>
-        public T Use(int pool)
+        public T Get(int pool)
         {
             DBC.Common.Check.Require(_objectFactoryFunc != null, "You need to pass a function to create the object");
 
@@ -68,7 +69,7 @@ namespace Svelto.ObjectPool
         /// <summary>
         /// Create Or Reuse
         /// </summary>
-        public T Use()
+        public T Get()
         {
             DBC.Common.Check.Require(_objectFactoryFunc != null, "You need to pass a function to create the object");
 
@@ -82,15 +83,15 @@ namespace Svelto.ObjectPool
         {
             obj = null;
 
-            ThreadSafeStack<T> localPool = ReturnValidPool(_recycledPools, pool);
+            Stack<T> localPool = ReturnValidPool(_recycledPools, pool);
 
-            while (IsNull(obj) == true && localPool.count > 0)
+            while (IsNull(obj) == true && localPool.Count > 0)
                 localPool.TryPop(out obj);
 
             if (IsNull(obj) == false)
             {
 #if DEBUG && !PROFILE_SVELTO
-                _alreadyRecycled.TryRemove(obj, out _);
+                _alreadyRecycled.Remove(obj);
 #endif
                 _objectsReused++;
 
@@ -118,19 +119,14 @@ namespace Svelto.ObjectPool
             OnDispose();
 
             if (typeof(IDisposable).IsAssignableFrom(typeof(T)))
-                using (var recycledPoolsGetValues = _recycledPools.GetValues)
+            {
+                MB<Stack<T>> values = _recycledPools.GetValues(out var count);
+                for (int i = 0; i < count; i++)
                 {
-                    var values = recycledPoolsGetValues.GetValues(out var count);
-                    for (int i = 0; i < count; i++)                     
-                    {
-                        using (var stacks = values[i].GetValues)
-                        {
-                            var stackValues = stacks.GetValues();
-                            foreach (var obj in stackValues)
-                                ((IDisposable)obj).Dispose();
-                        }
-                    }
+                    foreach (var obj in values[i])
+                        ((IDisposable)obj).Dispose();
                 }
+            }
 
             _recycledPools.Clear();
 
@@ -222,10 +218,10 @@ namespace Svelto.ObjectPool
             _objectsRecycled++;
         }
 
-        ThreadSafeStack<T> ReturnValidPool(ThreadSafeDictionary<int, ThreadSafeStack<T>> pools, int pool)
+        Stack<T> ReturnValidPool(FasterDictionary<int, Stack<T>> pools, int pool)
         {
             if (pools.TryGetValue(pool, out var localPool) == false)
-                pools[pool] = localPool = new ThreadSafeStack<T>();
+                pools[pool] = localPool = new Stack<T>();
 
             return localPool;
         }
@@ -259,13 +255,11 @@ namespace Svelto.ObjectPool
             return aObj is null;
         }
 
-        readonly ThreadSafeDictionary<int, ThreadSafeStack<T>> _recycledPools =
-            new ThreadSafeDictionary<int, ThreadSafeStack<T>>();
+        protected readonly FasterDictionary<int, Stack<T>> _recycledPools = new FasterDictionary<int, Stack<T>>();
         
-
         readonly Func<T> _objectFactoryFunc;
 #if DEBUG && !PROFILE_SVELTO
-        readonly ConcurrentDictionary<T, bool> _alreadyRecycled = new ConcurrentDictionary<T, bool>();
+        readonly Dictionary<T, bool> _alreadyRecycled = new Dictionary<T, bool>();
 #endif
 
         int _objectsReused;

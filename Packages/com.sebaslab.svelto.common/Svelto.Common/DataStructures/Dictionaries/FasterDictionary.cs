@@ -48,11 +48,11 @@ namespace Svelto.DataStructures
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
     [DebuggerTypeProxy(typeof(FasterDictionaryDebugProxy<,>))]
-    public sealed class FasterDictionary<TKey, TValue> where TKey : struct, IEquatable<TKey>
+    public sealed class FasterDictionary<TKey, TValue> : ISveltoDictionary<TKey, TValue>
+        where TKey : struct, IEquatable<TKey>
     {
         public FasterDictionary() : this(1)
-        {
-        }
+        { }
 
         public FasterDictionary(uint size)
         {
@@ -290,16 +290,17 @@ namespace Svelto.DataStructures
         {
             _dictionary.Union(otherDicKeys._dictionary);
         }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopyFrom(FasterDictionary<TKey, TValue> fromComponentsDictionary)
+        {
+            _dictionary.CopyFrom(fromComponentsDictionary._dictionary);
+        }
 
 #if UNITY_COLLECTIONS || UNITY_JOBS || UNITY_BURST
         [Unity.Collections.LowLevel.Unsafe.NativeDisableUnsafePtrRestriction]
 #endif
         SveltoDictionary<TKey, TValue, ManagedStrategy<SveltoDictionaryNode<TKey>>, ManagedStrategy<TValue>,
             ManagedStrategy<int>> _dictionary;
-
-        public void CopyFrom(FasterDictionary<TKey, TValue> fromComponentsDictionary)
-        {
-            _dictionary.CopyFrom(fromComponentsDictionary._dictionary);
-        }
     }
 }

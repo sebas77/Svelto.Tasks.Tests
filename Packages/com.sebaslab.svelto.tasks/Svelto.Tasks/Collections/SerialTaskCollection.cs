@@ -46,6 +46,7 @@ namespace Svelto.Tasks
                                 listBuffer[_stackOffset].Pop(); //now it can be popped, we continue the iteration
                             else
                             {
+                                //“Which root-task slot should I resume from on the next MoveNext()?”
                                 //in order to be able to reuse the task collection, we will keep the stack 
                                 //in its original state (the original stack is not popped). 
                                 _stackOffset++; //we move to the next task
@@ -68,7 +69,41 @@ namespace Svelto.Tasks
 
             return true;
         }
+        
+        public override void Reset()
+        {
+            base.Reset();
+
+            _stackOffset = 0;
+        }
+        
+        public new void Clear()
+        {
+            base.Clear();
+
+            _stackOffset = 0;
+        }
 
         int _stackOffset;
+    }
+
+    /// <summary>
+    /// DO NOT THINK TO ADD static pools, because they could be improperly used and leak all over the place
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public class StackTask<T> : SerialTaskCollection where T : IEnumerator<TaskContract>
+    {
+        const int _INITIAL_STACK_COUNT = 1;
+
+        public StackTask() : base(_INITIAL_STACK_COUNT) { }
+
+        public StackTask(string name) : base(name, _INITIAL_STACK_COUNT) { }
+
+        public void Reset(IEnumerator<TaskContract> loadAndCachePrefab)
+        {
+            base.Reset();
+            
+            Add(loadAndCachePrefab);
+        }
     }
 }

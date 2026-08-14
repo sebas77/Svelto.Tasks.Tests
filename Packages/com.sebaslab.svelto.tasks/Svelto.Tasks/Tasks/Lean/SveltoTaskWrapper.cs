@@ -78,7 +78,10 @@ namespace Svelto.Tasks.Lean
                 while ((result = task.MoveNext()) == true && task.Current.continueIt) ;
 
                 if (result == false)
+                {
+                    task.Dispose();
                     return StepState.Completed;
+                }
             }
             catch (Exception e)
             {
@@ -97,7 +100,10 @@ namespace Svelto.Tasks.Lean
 
             //hasValue stops the execution early, to Unit Test. It seems to be necessary too!
             if (_current.breakMode == TaskContract.Break.It || _current.breakMode == TaskContract.Break.AndStop || _current.hasValue)
+            {
+                task.Dispose();
                 return StepState.Completed;
+            }
 
             //this exists to run IEnumerator that are set to run immediately!
             if (_current.isExtraLeanEnumerator(out var extraLeanEnumerator1))
@@ -154,7 +160,10 @@ namespace Svelto.Tasks.Lean
                 try
                 {
                     if (extraLeanEnumerator.MoveNext() == false)
+                    {
                         current = default; //extra lean enumerator is done, reset the current task to null to signal the parent task (this object) to continue next step (basically the isExtraLeanEnumerator will return false next time)
+                        DisposeEnumerator(extraLeanEnumerator);
+                    }
                     else
                     {
                         var extraLeanChildTaskCurrent = extraLeanEnumerator.Current;
@@ -182,6 +191,12 @@ namespace Svelto.Tasks.Lean
                 DBC.Tasks.Check.Assert(current.continuation.Equals(default));
 
                 return state;
+                
+                static void DisposeEnumerator(in IEnumerator task)
+                {
+                    if (task is IDisposable disposable)
+                        disposable.Dispose(); //dispose the enumerator, it won't be used anymore
+                }
             }
         }
 

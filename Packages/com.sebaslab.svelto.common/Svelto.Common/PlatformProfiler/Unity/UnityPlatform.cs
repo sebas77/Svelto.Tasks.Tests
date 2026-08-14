@@ -5,7 +5,7 @@ using Unity.Profiling;
 
 namespace Svelto.Common
 {
-    public struct DisposableSampler: IDisposable
+    public ref struct DisposableSampler
     {
         ProfilerMarker _marker;
         

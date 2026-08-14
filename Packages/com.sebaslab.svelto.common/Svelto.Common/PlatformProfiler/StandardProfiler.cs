@@ -54,24 +54,31 @@ namespace Svelto.Common
         {
             _elapsed = (uint)(_watch.ElapsedMilliseconds - _startTime);
 
-            Console.Log(_samplerName.FastConcat(" -> ", _profilerName).FastConcat(" -> ").FastConcat(_elapsed).FastConcat(" ms"));
+            Console.Log(_profilerName.FastConcat(" -> ", _samplerName).FastConcat(" -> ").FastConcat(_elapsed).FastConcat(" ms"));
         }
     }
 
-    public ref struct StandardDisposableSamplerHolder
+    public struct StandardDisposableSamplerHolder:IDisposable
     {
+        static readonly double _ticksToNano = 1_000_000_000.0 / Stopwatch.Frequency;
+
         readonly Stopwatch _watch;
         readonly long      _startTime;
+        readonly long      _startTicks;
         uint               _elapsed;
+        long               _elapsedNano;
         bool               _isDisposed;
 
-        public uint Elapsed => (_isDisposed ? _elapsed : (uint)(_watch.ElapsedMilliseconds - _startTime));
+        public uint ElapsedMs => _isDisposed ? _elapsed : (uint)(_watch.ElapsedMilliseconds - _startTime);
+        public long ElapsedNano => _isDisposed ? _elapsedNano : (long)((_watch.ElapsedTicks - _startTicks) * _ticksToNano);
 
         public StandardDisposableSamplerHolder(  Stopwatch stopwatch)
         {
             _watch        = stopwatch;
             _startTime    = stopwatch.ElapsedMilliseconds;
+            _startTicks   = stopwatch.ElapsedTicks;
             _elapsed      = 0;
+            _elapsedNano  = 0;
             _isDisposed   = false;
         }
 
@@ -79,6 +86,7 @@ namespace Svelto.Common
         {
             _isDisposed = true;
             _elapsed = (uint)(_watch.ElapsedMilliseconds - _startTime);
+            _elapsedNano = (long)((_watch.ElapsedTicks - _startTicks) * _ticksToNano);
         }
     }
 }

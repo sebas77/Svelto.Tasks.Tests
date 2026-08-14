@@ -61,4 +61,28 @@ namespace Svelto.DataStructures
 
         readonly          Type _type;
     }
+    
+    [DebuggerDisplay("{_string}")]
+    public readonly struct RefWrapperString: IEquatable<RefWrapperString> 
+    {
+        public RefWrapperString(string @string)
+        {
+            _string     = @string;
+        }
+
+        public bool Equals(RefWrapperString other)
+        {
+            return _string == other._string;
+        }
+        
+        public override int GetHashCode()
+        {
+            return _string.GetHashCode();
+        }
+        
+        public static implicit operator string(RefWrapperString t) => t._string;
+        public static implicit operator RefWrapperString(string t) => new RefWrapperString(t);
+
+        readonly          string _string;
+    }
 }

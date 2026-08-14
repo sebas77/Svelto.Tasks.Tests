@@ -24,7 +24,11 @@ namespace Svelto.Tasks
                 if (_nextFreeStackIndex == _stack.Length)
                 {
                     // Double for small stacks, and increase by 20% for larger stacks
-                    Array.Resize(ref _stack, _stack.Length < 100 ? 2 *_stack.Length : (int) (_stack.Length * 1.2));
+                    int oldLen   = _stack.Length;
+                    int newLen   = oldLen < 100 ? oldLen * 2
+                            : oldLen + Math.Max(1, oldLen / 5); // +20 %
+
+                    Array.Resize(ref _stack, newLen);
                 }
 
                 // Store the value, and increase reference afterwards
@@ -33,17 +37,18 @@ namespace Svelto.Tasks
 
             public T Pop()
             {
-                if(_nextFreeStackIndex == 0)
+                if (_nextFreeStackIndex == 0)
                     throw new InvalidOperationException("The stack is empty");
 
-                // Decrease the reference before fetching the value as
-                // the reference points to the next free place
-                var returnValue = _stack[--_nextFreeStackIndex]; 
+                // Step back first (index now points to the last valid element)
+                var idx = --_nextFreeStackIndex;
+                T value = _stack[idx];
 
-                // As a safety/security measure, reset value to a default value
-                _stack[_nextFreeStackIndex] = default(T);
+                // Dispose if needed
+                value.Dispose();
 
-                return (T)returnValue;
+                _stack[idx] = default;     // safety / GC friendliness
+                return value;
             }
 
             public ref T Peek()
@@ -55,6 +60,9 @@ namespace Svelto.Tasks
 
             public void Clear()
             {
+                for (int i = 0; i < _nextFreeStackIndex; i++)
+                    _stack[i].Dispose();             // dispose every live enumerator
+                
                 Array.Clear(_stack, 0, _stack.Length);
                 
                 _nextFreeStackIndex = 0;

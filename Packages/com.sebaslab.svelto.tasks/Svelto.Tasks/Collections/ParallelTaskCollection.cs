@@ -52,7 +52,7 @@ namespace Svelto.Tasks
             {
                 if (stacks[index].count > 0)
                 {
-                    var processStackAndCheckIfDone = ProcessStackAndCheckIfDone(index);
+                    TaskState processStackAndCheckIfDone = ProcessStackAndCheckIfDone(index);
                     switch (processStackAndCheckIfDone)
                     {
                         case TaskState.doneIt:
@@ -100,6 +100,18 @@ namespace Svelto.Tasks
             (buffer[lastIndex], buffer[index]) = (buffer[index], buffer[lastIndex]);
 
             return --index;
+        }
+        
+        public override void Reset()
+        {
+            base.Reset();        // trims the stacks, rewinds enumerators
+            _stackOffset = 0;    // ensure fresh start next run
+        }
+
+        public new void Clear()
+        {
+            base.Clear();        // hard reset of all stacks
+            _stackOffset = 0;
         }
 
         int _stackOffset;

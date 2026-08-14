@@ -3,21 +3,21 @@ using System.Runtime.CompilerServices;
 
 public struct FixedTypedArray32<T> where T : unmanaged
 {
-    static readonly int Length = 32;
+    static readonly int Capacity = 32;
 
 #pragma warning disable CS0169
     FixedTypedArray16<T> sixteensA;
     FixedTypedArray16<T> sixteensB;
 #pragma warning restore CS0169
 
-    public int length => Length;
+    public int capacity => Capacity;
 
     public T this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            DBC.Common.Check.Require(index < Length, "out of bound index");
+            DBC.Common.Check.Require(index < Capacity, "out of bound index");
 
             return Unsafe.Add(ref Unsafe.As<FixedTypedArray32<T>, T>(ref this), index);
         }
@@ -25,7 +25,7 @@ public struct FixedTypedArray32<T> where T : unmanaged
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
-            DBC.Common.Check.Require(index < Length, "out of bound index");
+            DBC.Common.Check.Require(index < Capacity, "out of bound index");
 
             Unsafe.Add(ref Unsafe.As<FixedTypedArray32<T>, T>(ref this), index) = value;
         }

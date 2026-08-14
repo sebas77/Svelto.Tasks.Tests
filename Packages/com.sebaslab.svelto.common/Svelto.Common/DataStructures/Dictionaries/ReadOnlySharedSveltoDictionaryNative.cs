@@ -1,10 +1,11 @@
 using System;
 using System.Runtime.CompilerServices;
 using Svelto.Common;
+using Svelto.DataStructures;
 
 namespace Svelto.DataStructures.Native
 {
-    public readonly struct ReadonlySharedSveltoDictionaryNative<TKey, TValue>
+    public readonly struct ReadonlySharedSveltoDictionaryNative<TKey, TValue> : global::Svelto.DataStructures.IReadOnlySveltoDictionary<TKey, TValue>
         where TKey : unmanaged, IEquatable<TKey> where TValue : struct
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

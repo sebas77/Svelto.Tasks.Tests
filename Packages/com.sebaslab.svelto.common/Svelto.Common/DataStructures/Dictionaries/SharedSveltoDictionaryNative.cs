@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Svelto.Common;
+using Svelto.DataStructures;
 
 namespace Svelto.DataStructures.Native
 {
@@ -15,7 +16,7 @@ namespace Svelto.DataStructures.Native
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
-    public struct SharedSveltoDictionaryNative<TKey, TValue>
+    public struct SharedSveltoDictionaryNative<TKey, TValue> : global::Svelto.DataStructures.ISveltoDictionary<TKey, TValue>
         where TKey : unmanaged, IEquatable<TKey> where TValue : struct
     {
         public static SharedSveltoDictionaryNative<TKey, TValue> Create

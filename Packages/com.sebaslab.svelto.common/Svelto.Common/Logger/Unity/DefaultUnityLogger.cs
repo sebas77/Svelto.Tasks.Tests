@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Svelto.Utilities
 {
@@ -43,7 +44,7 @@ namespace Svelto.Utilities
                 
                 var logFormatter = ConsoleUtilityForUnity.LogFormatter(txt, type, showLogStack, e, frame, dataString, stackTrace);
 
-                var defaultLogHandler = Console.previousLogHandler;
+                var defaultLogHandler = Console.previousLogHandler ?? Debug.unityLogger.logHandler;
                 switch (type)
                 {
                     case LogType.Log:

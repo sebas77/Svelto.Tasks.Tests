@@ -55,14 +55,11 @@ namespace Svelto
         }
 
         /// <summary>
-        /// Attention if CatchEmAll is enabled, it will break the chain of loghandler. This is by design as
-        /// CatchEmAll is a replacement of the default logger. This is a problem if more loggers are injected
-        /// in the chain. In this case the user must be sure that CatchEmAll is called before
-        /// any other logger is registered
-        /// CatchEmAll catches all the Debug.Log not only the ones coming from Svelto Console, it means that
-        /// all the logs are processed by Svelto Console
+        /// Replaces Unity's global log handler with the Svelto bridge and stores the previous Unity handler so
+        /// Svelto loggers can still forward to the real downstream sink. Order matters if other systems also
+        /// replace Debug.unityLogger.logHandler.
         /// </summary>
-        static void CatchEmAll()
+        static void InstallUnityLoggerReplacement()
         {
             if (_initialized == false)
             {
@@ -88,25 +85,17 @@ namespace Svelto
             }
         }
         
-        public static void LogDefault(string txt)
-        {
-            ILogHandler currentLogHandler = Debug.unityLogger.logHandler;
-            Debug.unityLogger.logHandler = sveltoCatchEmAllConsoleLogHandler;
-            Log(txt);
-            Debug.unityLogger.logHandler = currentLogHandler;
-        }
-        
         public static ILogHandler previousLogHandler;
         public static ILogHandler sveltoCatchEmAllConsoleLogHandler = new SveltoCatchEmAllConsoleLogHandler();
 
         public static class FasterLog
         {
-            public static void UseGlobally(bool catchEmAll)
+            public static void UseGlobally(bool replaceUnityLogger)
             {
-                DefaultUnityLogger.Init(); //first set to the Default Logger to avoid stack overflow with SimpleLogger due to SveltoSystemOutInterceptor
+                DefaultUnityLogger.Init(); //Ensure the default Unity-backed logger is registered before optional replacement/additional loggers.
 
-                if (catchEmAll)
-                    CatchEmAll(); //this must happen first otherwise it will override the set out console of FasterUnityLogger
+                if (replaceUnityLogger)
+                    InstallUnityLoggerReplacement();
 
                 try
                 {
@@ -121,12 +110,11 @@ namespace Svelto
         
         public static class DefaultLog
         {
-            public static void UseGlobally(bool catchEmAll = false, bool keepLogHandlerInEditor = false)
+            public static void ReplaceUnityLogger(bool keepLogHandlerInEditor = false)
             {
-                DefaultUnityLogger.Init(); //first set to the Default Logger to avoid stack overflow with SimpleLogger due to SveltoSystemOutInterceptor
+                DefaultUnityLogger.Init(); //Ensure the default Unity-backed logger is registered before replacing Unity's handler.
 
-                if (catchEmAll)
-                    CatchEmAll(); //this must happen first otherwise it will override the set out console of FasterUnityLogger
+                InstallUnityLoggerReplacement();
                 
                 _keepLogHandler = keepLogHandlerInEditor;
             }
@@ -146,6 +134,8 @@ namespace Svelto
                 Application.SetStackTraceLogType(LogType.Log, _originals.log);
                 
                 EditorApplication.playModeStateChanged -= EditorApplicationOnplayModeStateChanged;
+                previousLogHandler = null;
+                _initialized = false;
             }
         }
         

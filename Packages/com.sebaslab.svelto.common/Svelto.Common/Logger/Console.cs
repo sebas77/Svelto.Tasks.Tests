@@ -30,7 +30,7 @@ namespace Svelto
             _loggers           = new FasterList<ILogger>();
             _loggersType = new HashSet<Type>();
             #if UNITY_5_3_OR_NEWER
-            DefaultUnityLogger.Init(); //one logger must be inizialised here, otherwise the loggers will be null
+            DefaultUnityLogger.Init(); //Ensure Svelto logs have a Unity-backed default sink on first use.
             #else
             SimpleLogger.Init();
             #endif
@@ -142,13 +142,22 @@ namespace Svelto
             for (int i = 0; i < _loggers.count; i++)
                 _loggers[i].Log(txt, type, showLogStack, e, extraData);
 
-            if (logMessage != null) logMessage(txt, type, e);
-            if (type == LogType.Exception && onException != null) onException(e, txt);
+            var currentLogMessage = logMessage;
+            if (currentLogMessage != null)
+                currentLogMessage(txt, type, e);
+
+            if (type == LogType.Exception)
+            {
+                var currentOnException = onException;
+                if (currentOnException != null)
+                    currentOnException(e, txt);
+            }
         }
 
         public static void CompressLogsToZipAndShow(string zipName)
         {
-            _loggers[0]?.CompressLogsToZipAndShow(zipName);
+            for (int i = 0; i < _loggers.count; i++)
+                _loggers[i]?.CompressLogsToZipAndShow(zipName);
         }
 
         internal static StringBuilder stringBuilder

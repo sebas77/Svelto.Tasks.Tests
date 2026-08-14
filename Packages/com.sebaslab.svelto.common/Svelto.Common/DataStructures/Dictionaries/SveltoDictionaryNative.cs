@@ -1,10 +1,11 @@
 using System;
 using System.Runtime.CompilerServices;
 using Svelto.Common;
+using Svelto.DataStructures;
 
 namespace Svelto.DataStructures.Native
 {
-    public struct SveltoDictionaryNative<TKey, TValue>
+    public struct SveltoDictionaryNative<TKey, TValue> : global::Svelto.DataStructures.ISveltoDictionary<TKey, TValue>
         where TKey : unmanaged, IEquatable<TKey> where TValue : struct
     {
         public SveltoDictionaryNative(uint size) : this(size, Allocator.Persistent) { }

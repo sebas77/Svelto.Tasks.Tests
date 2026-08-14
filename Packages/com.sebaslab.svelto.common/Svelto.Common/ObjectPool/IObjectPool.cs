@@ -8,7 +8,7 @@ namespace Svelto.ObjectPool
 
         void Preallocate(int    pool,     int size, Func<T> onFirstUse);
 
-        T Use(int    pool,     Func<T> onFirstUse = null);
+        T Get(int    pool,     Func<T> onFirstUse = null);
 
         void Clear();
     }

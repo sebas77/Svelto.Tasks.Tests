@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Svelto.ObjectPool
 {
-    public class GameObjectPool : ThreadSafeObjectPool<GameObject>
+    public class GameObjectPool : ObjectPool<GameObject>
     {
 #if POOL_DEBUGGER
     public GameObjectPool()
@@ -15,18 +15,11 @@ namespace Svelto.ObjectPool
 #endif
         protected override void OnDispose()
         {
-            using (var recycledPoolsGetValues = _recycledPools.GetValues)
+            var values = _recycledPools.GetValues(out var count);
+            for (int i = 0; i < count; i++)
             {
-                var values = recycledPoolsGetValues.GetValues(out var count);
-                for (int i = 0; i < count; i++)                     
-                {
-                    using (var stacks = values[i].GetValues)
-                    {
-                        var stackValues = stacks.GetValues();
-                        foreach (var obj in stackValues)
-                            GameObject.Destroy(obj);
-                    }
-                }
+                foreach (var obj in values[i])
+                    GameObject.Destroy(obj);
             }
         }
     }

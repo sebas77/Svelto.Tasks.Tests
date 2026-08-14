@@ -378,18 +378,22 @@ namespace Svelto.Utilities
             System.Console.Write(str);
 #else
             //Fasterlog is never used in editor, so this is just for debugging purposes
+            var unityLogHandler = Console.previousLogHandler ?? Debug.unityLogger.logHandler;
+            if (unityLogHandler == null || ReferenceEquals(unityLogHandler, Console.sveltoCatchEmAllConsoleLogHandler))
+                return;
+
             switch (instanceLOGType)
             {
                 case LogType.Error:
                 case LogType.Exception:
-                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Error, null, str);
+                    unityLogHandler.LogFormat(UnityEngine.LogType.Error, null, str);
                     break;
                 case LogType.Log:
                 case LogType.LogDebug:
-                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Log, null, str);
+                    unityLogHandler.LogFormat(UnityEngine.LogType.Log, null, str);
                     break;
                 case LogType.Warning:
-                    Console.previousLogHandler.LogFormat(UnityEngine.LogType.Warning, null, str);
+                    unityLogHandler.LogFormat(UnityEngine.LogType.Warning, null, str);
                     break;
             }
 #endif

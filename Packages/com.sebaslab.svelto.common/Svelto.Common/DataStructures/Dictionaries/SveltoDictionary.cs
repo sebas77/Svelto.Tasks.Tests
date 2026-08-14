@@ -1,8 +1,6 @@
 using System;
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using DBC.Common;
 using Svelto.Common;
 using Svelto.Utilities;
 
@@ -53,7 +51,8 @@ namespace Svelto.DataStructures
     /// value with shared hash hence bucket list index.
     /// </summary>
     [DebuggerTypeProxy(typeof(SveltoDictionaryDebugProxy<,,,,>))]
-    public struct SveltoDictionary<TKey, TValue, TKeyStrategy, TValueStrategy, TBucketStrategy>: IDisposable
+    public struct SveltoDictionary<TKey, TValue, TKeyStrategy, TValueStrategy, TBucketStrategy>: IDisposable,
+        ISveltoDictionary<TKey, TValue>
         where TKey : struct, IEquatable<TKey>
         where TKeyStrategy : struct, IBufferStrategy<SveltoDictionaryNode<TKey>>
         where TValueStrategy : struct, IBufferStrategy<TValue>
@@ -73,13 +72,13 @@ namespace Svelto.DataStructures
             {
                 if (typeof(TKey).GetMethod(
                         "GetHashCode"
-                      , BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                      , System.Reflection.BindingFlags.Public |  System.Reflection.BindingFlags.Instance |  System.Reflection.BindingFlags.DeclaredOnly)
                  == null)
                     Svelto.Console.LogWarning(
                         typeof(TKey).Name
                       + " does not implement GetHashCode -> This will cause unwanted allocations (boxing)");
             }
-            catch (AmbiguousMatchException) { }
+            catch ( System.Reflection.AmbiguousMatchException) { }
 #endif
         }
 
@@ -104,6 +103,7 @@ namespace Svelto.DataStructures
             get => _valuesInfo;
         }
 
+        //in SveltoDictionary, values are always safe to iterate, use dictionary count for length
         public TValueStrategy unsafeValues
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -111,7 +111,7 @@ namespace Svelto.DataStructures
         }
 
         /// <summary>
-        /// Note: the NativeStrategy implementations always hold an pre-boxed version of the buffer, so boxing
+        /// Note: the NativeStrategy implementations always hold a pre-boxed version of the buffer, so boxing
         /// never happens at run time. Unboxing does happen at runtime, but it's very cheap and never incur in
         /// allocations 
         /// </summary>
@@ -536,7 +536,7 @@ namespace Svelto.DataStructures
             {
                 var error =
                         $"out of bounds bucket index {bucketIndex} - capacity {_buckets.capacity} - key {key} - hash {hash} - fastMod {_fastModBucketsMultiplier}";
-                throw new PreconditionException(error);
+                throw new DBC.Common.PreconditionException(error);
             }
 #endif
             
