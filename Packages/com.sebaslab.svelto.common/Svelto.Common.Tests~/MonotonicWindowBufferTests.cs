@@ -56,21 +56,23 @@ namespace Svelto.Common.Tests
         }
 
         [Test]
-        public void Set_And_TryGet_Work_WithoutHeadSet()
+        public void Set_And_TryGet_Work()
         {
             var buf = new MonotonicWindowBuffer<int>(4);
+            buf.SetHead(5);
 
-            Assert.That(buf.Set(5, 123), Is.True);
-            Assert.That(buf.TryGet(5, out var value), Is.True);
+            Assert.That(buf.Add(5, 123), Is.True);
+            Assert.That(buf.TryGet(5, out var value), Is.EqualTo(MonotonicSlotState.Published));
             Assert.That(value, Is.EqualTo(123));
         }
 
         [Test]
-        public void TryGet_Unpublished_ReturnsFalse()
+        public void TryGet_Unpublished_ReturnsNotPublished()
         {
             var buf = new MonotonicWindowBuffer<int>(4);
+            buf.SetHead(0);
 
-            Assert.That(buf.TryGet(0, out _), Is.False);
+            Assert.That(buf.TryGet(0, out _), Is.EqualTo(MonotonicSlotState.NotPublished));
         }
 
         [Test]
@@ -82,8 +84,8 @@ namespace Svelto.Common.Tests
             Assert.That(buf.TryPeek(out _), Is.False);
             Assert.That(buf.TryDequeue(out _), Is.False);
 
-            buf.Set(0, 10);
-            buf.Set(1, 11);
+            buf.Add(0, 10);
+            buf.Add(1, 11);
 
             Assert.That(buf.TryPeek(out var v0), Is.True);
             Assert.That(v0, Is.EqualTo(10));
@@ -106,7 +108,7 @@ namespace Svelto.Common.Tests
             var buf = new MonotonicWindowBuffer<int>(4);
             buf.SetHead(10);
 
-            Assert.That(buf.Set(9, 1), Is.False);
+            Assert.That(buf.Add(9, 1), Is.False);
         }
 
         [Test]
@@ -115,7 +117,7 @@ namespace Svelto.Common.Tests
             var buf = new MonotonicWindowBuffer<int>(4);
             buf.SetHead(0);
 
-            Assert.That(() => buf.Set(4, 1), Throws.TypeOf<MonotonicWindowBufferOverflowException>());
+            Assert.That(() => buf.Add(4, 1), Throws.TypeOf<MonotonicWindowBufferOverflowException>());
         }
 
         [Test]
@@ -126,10 +128,10 @@ namespace Svelto.Common.Tests
 
             Assert.That(buf.Count, Is.EqualTo(0));
 
-            buf.Set(10, 10);
+            buf.Add(10, 10);
             Assert.That(buf.Count, Is.EqualTo(1));
 
-            buf.Set(12, 12);
+            buf.Add(12, 12);
             Assert.That(buf.Count, Is.EqualTo(3));
 
             // dequeue head -> head becomes 11

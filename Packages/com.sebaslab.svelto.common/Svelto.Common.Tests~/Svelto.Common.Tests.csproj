@@ -4,6 +4,7 @@
         <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
         <BaseOutputPath>bin~\</BaseOutputPath>
         <TargetFramework>net9.0</TargetFramework>
+        <RollForward>Major</RollForward>
         <LangVersion>10</LangVersion>
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>disable</Nullable>

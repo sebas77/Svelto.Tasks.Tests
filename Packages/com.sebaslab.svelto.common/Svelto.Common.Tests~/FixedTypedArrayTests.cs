@@ -11,7 +11,7 @@ namespace Svelto.Common.Tests
         {
             var a = new FixedTypedArray4<int>();
 
-            Assert.That(a.length, Is.EqualTo(4));
+            Assert.That(a.capacity, Is.EqualTo(4));
 
             a[0] = 10;
             a[1] = 11;
@@ -29,12 +29,12 @@ namespace Svelto.Common.Tests
         {
             var a = new FixedTypedArray8<int>();
 
-            Assert.That(a.length, Is.EqualTo(8));
+            Assert.That(a.capacity, Is.EqualTo(8));
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 a[i] = i * 2;
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 Assert.That(a[i], Is.EqualTo(i * 2));
         }
 
@@ -43,12 +43,12 @@ namespace Svelto.Common.Tests
         {
             var a = new FixedTypedArray16<int>();
 
-            Assert.That(a.length, Is.EqualTo(16));
+            Assert.That(a.capacity, Is.EqualTo(16));
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 a[i] = i + 100;
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 Assert.That(a[i], Is.EqualTo(i + 100));
         }
 
@@ -57,12 +57,12 @@ namespace Svelto.Common.Tests
         {
             var a = new FixedTypedArray32<int>();
 
-            Assert.That(a.length, Is.EqualTo(32));
+            Assert.That(a.capacity, Is.EqualTo(32));
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 a[i] = i;
 
-            for (var i = 0; i < a.length; i++)
+            for (var i = 0; i < a.capacity; i++)
                 Assert.That(a[i], Is.EqualTo(i));
         }
     }
