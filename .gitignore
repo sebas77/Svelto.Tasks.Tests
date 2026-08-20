@@ -13,3 +13,7 @@ Packages/com.sebaslab.svelto.common/Svelto.Common.Tests~/obj~/
 Packages/com.sebaslab.svelto.tasks/Svelto.Tasks.Tests~/bin~/
 Packages/com.sebaslab.svelto.tasks/Svelto.Tasks.Tests~/obj~/
 Packages/com.sebaslab.svelto.tasks/Svelto.Tasks/obj
+
+# Build output folders (game examples)
+**/bin/
+**/obj/

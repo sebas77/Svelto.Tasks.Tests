@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "r3H1mcX+ey4=",
+  "success": true,
+  "projectFilePath": "C:\\PRGDIR\\Svelto\\Svelto.Tasks\\Svelto.Tasks.Tests\\Examples\\04_ContinueChildTask\\04_ContinueChildTask.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Seb\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.1.2\\system.runtime.compilerservices.unsafe.6.1.2.nupkg.sha512",
+    "C:\\Users\\Seb\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.19\\microsoft.netcore.app.ref.9.0.19.nupkg.sha512",
+    "C:\\Users\\Seb\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.19\\microsoft.windowsdesktop.app.ref.9.0.19.nupkg.sha512",
+    "C:\\Users\\Seb\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.19\\microsoft.aspnetcore.app.ref.9.0.19.nupkg.sha512",
+    "C:\\Users\\Seb\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.19\\microsoft.netcore.app.host.win-x64.9.0.19.nupkg.sha512"
+  ],
+  "logs": []
+}
