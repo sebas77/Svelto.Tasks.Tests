@@ -17,3 +17,5 @@ Packages/com.sebaslab.svelto.tasks/Svelto.Tasks/obj
 # Build output folders (game examples)
 **/bin/
 **/obj/
+Packages/unity-mcp/
+obj~/
